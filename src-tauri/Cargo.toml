@@ -17,8 +17,8 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
-# vcpkg = "0.2"
-# bindgen = { version = "0.71.1", features = ["default"] }
+vcpkg = "0.2"
+bindgen = { version = "0.71.1", features = ["default"] }
 
 [dependencies]
 serde_json = "1.0"
