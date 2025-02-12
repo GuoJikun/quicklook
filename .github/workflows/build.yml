@@ -58,6 +58,9 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install
 
+      - name: Write Sentry Token
+        run: echo "VITE_SENTRY_TOKEN=${{ secrets.SENTRY_TOKEN }}" > ~/.env
+
       - name: Build app
         uses: tauri-apps/tauri-action@v0
         env:

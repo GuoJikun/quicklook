@@ -15,6 +15,8 @@ import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 
+import initSentry from './utils/sentry'
+
 const app = createApp(App)
 
 app.use(createPinia())
@@ -34,5 +36,5 @@ app.config.warnHandler = (msg, vm, trace) => {
     console.warn(vm)
     console.groupEnd()
 }
-
+initSentry({ app, router })
 app.mount('#app')

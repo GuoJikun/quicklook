@@ -1,6 +1,6 @@
 {
   "name": "quicklook",
-  "version": "0.8.3",
+  "version": "0.8.4",
   "description": "Windows 平台的文件预览工具",
   "private": true,
   "type": "module",
@@ -18,6 +18,7 @@
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
     "@handsontable/vue3": "^14.6.1",
+    "@sentry/vue": "^9.0.1",
     "@shikijs/markdown-it": "^1.24.0",
     "@tauri-apps/api": "^2.1.1",
     "@tauri-apps/plugin-autostart": "~2",
@@ -55,6 +56,7 @@
     "xgplayer-music": "^3.0.20"
   },
   "devDependencies": {
+    "@sentry/vite-plugin": "^3.1.2",
     "@tauri-apps/cli": "^2.1.0",
     "@tsconfig/node20": "^20.1.4",
     "@types/jsdom": "^21.1.7",

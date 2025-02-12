@@ -1,6 +1,6 @@
 [package]
 name = "app"
-version = "0.8.3"
+version = "0.8.4"
 description = "Windows 平台的文件预览工具"
 authors = ["GuoJikun <guojikun486546@163.com>"]
 license = ""
