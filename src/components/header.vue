@@ -83,9 +83,9 @@ watch(
     <div class="layout-header" data-tauri-drag-region>
         <div class="layout-header-extra no-seleced" data-tauri-drag-region>
             <slot name="logo">
-                <img v-if="props.logo" :src="logo" alt="logo" />
+                <img v-if="props.logo" :src="logo" alt="logo" data-tauri-drag-region />
             </slot>
-            <h1 class="layout-header-title">{{ props?.file?.name || props.title }}</h1>
+            <h1 class="layout-header-title" data-tauri-drag-region>{{ props?.file?.name || props.title }}</h1>
         </div>
         <div class="layout-header-operate no-selected" data-tauri-drag-region>
             <div class="layout-header-operate-item" @click="pin" :title="`${pined ? '取消固定' : '固定'}`">
@@ -146,10 +146,10 @@ watch(
         align-items: center;
         height: 100%;
         font-size: 2rem;
-        flex: 0 0 50%;
+        flex: 0 1 50%;
         &-item {
             cursor: pointer;
-            flex: 0 0 4rem;
+            flex: 0 1 4rem;
             min-width: 4rem;
             font-size: inherit;
             color: currentColor;
