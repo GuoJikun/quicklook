@@ -1,7 +1,7 @@
 use tauri::{
     menu::{MenuBuilder, MenuItem, MenuItemBuilder},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    App, Manager, WebviewUrl, WebviewWindowBuilder
+    App, Manager, WebviewUrl, WebviewWindowBuilder,
 };
 
 #[path = "./helper/mod.rs"]
@@ -27,20 +27,21 @@ pub fn create_tray(app: &mut App) -> tauri::Result<()> {
         .icon(app.default_window_icon().unwrap().clone())
         .tooltip(tooltip_text)
         .menu(&menu)
-        .menu_on_left_click(false)
+        .show_menu_on_left_click(false)
         .on_menu_event(move |app, event| match event.id.as_ref() {
             "quit" => {
                 app.exit(0);
             }
             "upgrade" => {
-                let _ = WebviewWindowBuilder::new(app, "upgrade", WebviewUrl::App("/upgrade".into()))
-                .center()
-                .title("检查更新")
-                .inner_size(400.0, 500.0)
-                .focused(true)
-                .window_classname("quicklook-upgrade")
-                .auto_resize()
-                .build();
+                let _ =
+                    WebviewWindowBuilder::new(app, "upgrade", WebviewUrl::App("/upgrade".into()))
+                        .center()
+                        .title("检查更新")
+                        .inner_size(400.0, 500.0)
+                        .focused(true)
+                        .window_classname("quicklook-upgrade")
+                        .auto_resize()
+                        .build();
             }
             "setting" => {
                 println!("Setting");

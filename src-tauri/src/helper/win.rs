@@ -1,8 +1,8 @@
 use std::path::Path;
 use windows::{
-    core::{PCWSTR, PWSTR},
+    core::{BOOL, PCWSTR, PWSTR},
     Win32::{
-        Foundation::{BOOL, HWND, LPARAM, S_OK},
+        Foundation::{HWND, LPARAM, S_OK},
         System::Com,
         UI::{Shell, WindowsAndMessaging},
     },
@@ -54,7 +54,7 @@ pub fn show_open_with_dialog(file_path: &str, hwnd: HWND) -> windows::core::Resu
 
     // 调用 SHOpenWithDialog 打开“打开方式”对话框
     unsafe {
-        Shell::SHOpenWithDialog(hwnd, &open_as_info)?;
+        Shell::SHOpenWithDialog(Some(hwnd), &open_as_info)?;
     }
 
     // 释放 COM
@@ -65,13 +65,14 @@ pub fn show_open_with_dialog(file_path: &str, hwnd: HWND) -> windows::core::Resu
 #[allow(unused)]
 pub fn get_default_program_name(path: &str) -> Result<String, String> {
     let path = Path::new(path);
-    let ext = path.extension()
+    let ext = path
+        .extension()
         .and_then(|ext| ext.to_str())
         .ok_or("No file extension".to_string())?;
-    
+
     let ext = format!(".{}", ext);
     let ext_wide: Vec<u16> = ext.encode_utf16().chain(std::iter::once(0)).collect();
-    
+
     unsafe {
         // 获取所需缓冲区大小
         let mut size = 0u32;
@@ -80,7 +81,7 @@ pub fn get_default_program_name(path: &str) -> Result<String, String> {
             Shell::ASSOCSTR_FRIENDLYAPPNAME,
             PCWSTR(ext_wide.as_ptr()),
             None,
-            PWSTR::null(),
+            None,
             &mut size,
         );
 
@@ -91,7 +92,7 @@ pub fn get_default_program_name(path: &str) -> Result<String, String> {
             Shell::ASSOCSTR_FRIENDLYAPPNAME,
             PCWSTR(ext_wide.as_ptr()),
             None,
-            PWSTR(buffer.as_mut_ptr()),
+            Some(PWSTR(buffer.as_mut_ptr())),
             &mut size,
         );
 
@@ -147,7 +148,9 @@ fn is_listary_toolbar_visible() -> bool {
         if result != 0 {
             let class_name = String::from_utf16_lossy(&class_buffer[..result as usize]);
 
-            if class_name.starts_with("Listary_WidgetWin_") && WindowsAndMessaging::IsWindowVisible(hwnd).as_bool() {
+            if class_name.starts_with("Listary_WidgetWin_")
+                && WindowsAndMessaging::IsWindowVisible(hwnd).as_bool()
+            {
                 *(l_param.0 as usize as *mut bool) = true;
                 return BOOL::from(false); // FALSE
             }
@@ -157,7 +160,12 @@ fn is_listary_toolbar_visible() -> bool {
     }
 
     let mut found = false;
-    let _ = unsafe { WindowsAndMessaging::EnumWindows(Some(find_listary_window_proc), LPARAM(&mut found as *mut _ as isize)) };
+    let _ = unsafe {
+        WindowsAndMessaging::EnumWindows(
+            Some(find_listary_window_proc),
+            LPARAM(&mut found as *mut _ as isize),
+        )
+    };
 
     found
 }
