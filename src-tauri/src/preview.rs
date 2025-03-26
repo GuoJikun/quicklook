@@ -1,33 +1,42 @@
 use std::sync::mpsc;
 use std::thread;
 use tauri::{
-    webview::PageLoadEvent, AppHandle, Error as TauriError,  Manager, WebviewUrl, WebviewWindowBuilder
+    webview::PageLoadEvent, AppHandle, Error as TauriError, Manager, WebviewUrl,
+    WebviewWindowBuilder,
 };
 use windows::{
-    core::{w, Error as WError, Interface, HSTRING, VARIANT},
+    core::{w, Error as WError, Interface, BOOL, HSTRING},
     Win32::{
-        Foundation::{BOOL, HWND, LPARAM, LRESULT, WPARAM},
+        Foundation::{HWND, LPARAM, LRESULT, WPARAM},
         System::{
             Com::{
-                CoCreateInstance, CoInitializeEx, CoUninitialize, IDispatch, IServiceProvider, CLSCTX_INPROC_SERVER, CLSCTX_LOCAL_SERVER, COINIT_APARTMENTTHREADED
-            }, 
-            SystemServices::SFGAO_FILESYSTEM, 
-            Variant::{self}
+                CoCreateInstance, CoInitializeEx, CoUninitialize, IDispatch, IServiceProvider,
+                CLSCTX_INPROC_SERVER, CLSCTX_LOCAL_SERVER, COINIT_APARTMENTTHREADED,
+            },
+            SystemServices::SFGAO_FILESYSTEM,
+            Variant::{self, VARIANT},
         },
         UI::{
-            Accessibility::{CUIAutomation, IUIAutomation, IUIAutomationSelectionPattern, UIA_NamePropertyId,  UIA_SelectionPatternId}, 
-            Input::KeyboardAndMouse, 
+            Accessibility::{
+                CUIAutomation, IUIAutomation, IUIAutomationSelectionPattern, UIA_NamePropertyId,
+                UIA_SelectionPatternId,
+            },
+            Input::KeyboardAndMouse,
             Shell::{
-                FOLDERID_Desktop, FOLDERID_Documents, FOLDERID_Downloads, FOLDERID_Libraries, FOLDERID_Music, FOLDERID_Pictures, FOLDERID_Videos, IShellBrowser, IShellItem, IShellItemArray, IShellView, IShellWindows, SHCreateItemFromParsingName, SHGetKnownFolderPath, ShellWindows, KF_FLAG_DEFAULT, SIGDN_DESKTOPABSOLUTEPARSING, SIGDN_FILESYSPATH, SVGIO_SELECTION, SWC_DESKTOP, SWFO_NEEDDISPATCH
-            }, 
-            WindowsAndMessaging
+                FOLDERID_Desktop, FOLDERID_Documents, FOLDERID_Downloads, FOLDERID_Libraries,
+                FOLDERID_Music, FOLDERID_Pictures, FOLDERID_Videos, IShellBrowser, IShellItem,
+                IShellItemArray, IShellView, IShellWindows, SHCreateItemFromParsingName,
+                SHGetKnownFolderPath, ShellWindows, KF_FLAG_DEFAULT, SIGDN_DESKTOPABSOLUTEPARSING,
+                SIGDN_FILESYSPATH, SVGIO_SELECTION, SWC_DESKTOP, SWFO_NEEDDISPATCH,
+            },
+            WindowsAndMessaging,
         },
     },
 };
 
 #[path = "./helper/mod.rs"]
 mod helper;
-use helper::{win, monitor};
+use helper::{monitor, win};
 
 #[path = "./utils/mod.rs"]
 mod utils;
@@ -55,11 +64,11 @@ impl Selected {
             Err(e) => {
                 log::error!("Error: {:?}", e);
                 Err(e)
-            },
+            }
         }
     }
 
-    fn get_selected_file() -> Result<String,WError> {
+    fn get_selected_file() -> Result<String, WError> {
         if let Some(fw_window_type) = Self::get_focused_type() {
             match fw_window_type {
                 FwWindowType::Explorer => unsafe { Self::get_selected_file_from_explorer() },
@@ -79,11 +88,18 @@ impl Selected {
         if class_name.contains("CabinetWClass") {
             type_str = Some(FwWindowType::Explorer);
         } else if class_name.contains("Progman") || class_name.contains("WorkerW") {
-            let defview = unsafe { WindowsAndMessaging::FindWindowExW(hwnd_gfw, None, w!("SHELLDLL_DefView"), None) };
+            let defview = unsafe {
+                WindowsAndMessaging::FindWindowExW(
+                    Some(hwnd_gfw),
+                    None,
+                    w!("SHELLDLL_DefView"),
+                    None,
+                )
+            };
             if defview.is_ok() {
                 type_str = Some(FwWindowType::Desktop);
             }
-        }else if class_name.contains("#32770") {
+        } else if class_name.contains("#32770") {
             type_str = Some(FwWindowType::Dialog);
         }
         log::info!("type_str: {:?}", type_str);
@@ -102,8 +118,12 @@ impl Selected {
                 let hwnd_gfw = WindowsAndMessaging::GetForegroundWindow();
                 let shell_windows: IShellWindows =
                     CoCreateInstance(&ShellWindows, None, CLSCTX_LOCAL_SERVER)?;
-                let result_hwnd =
-                    WindowsAndMessaging::FindWindowExW(hwnd_gfw, None, w!("ShellTabWindowClass"), None)?;
+                let result_hwnd = WindowsAndMessaging::FindWindowExW(
+                    Some(hwnd_gfw),
+                    None,
+                    w!("ShellTabWindowClass"),
+                    None,
+                )?;
 
                 let mut target_path = String::new();
                 let count = shell_windows.Count().unwrap_or_default();
@@ -133,10 +153,8 @@ impl Selected {
                 }
 
                 Ok(target_path)
-        
             })();
             tx.send(result).unwrap();
-            
         });
         let target_path = rx.recv().unwrap()?;
 
@@ -151,11 +169,11 @@ impl Selected {
             let result: Result<String, WError> = (|| -> Result<String, WError> {
                 // 初始化 COM 库
                 let _ = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
-                
+
                 let mut target_path = String::new();
                 let hwnd_gfw = WindowsAndMessaging::GetForegroundWindow(); // 获取当前活动窗口句柄
                 log::info!("hwnd_gfw: {:?}", hwnd_gfw);
-                let shell_windows: Result<IShellWindows, WError>  =
+                let shell_windows: Result<IShellWindows, WError> =
                     CoCreateInstance(&ShellWindows, None, CLSCTX_LOCAL_SERVER);
                 if shell_windows.is_err() {
                     log::info!("shell_windows 不存在");
@@ -169,12 +187,12 @@ impl Selected {
                 let mut phwnd: i32 = 0;
 
                 let dispatch = shell_windows.FindWindowSW(
-                        &pvar_loc,
-                        &pvar_loc,
-                        SWC_DESKTOP,
-                        &mut phwnd,
-                        SWFO_NEEDDISPATCH,
-                    )?;
+                    &pvar_loc,
+                    &pvar_loc,
+                    SWC_DESKTOP,
+                    &mut phwnd,
+                    SWFO_NEEDDISPATCH,
+                )?;
 
                 if win::is_cursor_activated(HWND(phwnd as *mut _)) {
                     log::info!("存在激活的鼠标");
@@ -201,17 +219,19 @@ impl Selected {
         let target_path = rx.recv().unwrap()?;
         Ok(target_path)
     }
-     
+
     fn get_selected_file_from_dialog() -> Result<String, WError> {
         let mut target_path = String::new();
-        let fw_hwnd = unsafe {
-            WindowsAndMessaging::GetForegroundWindow()
-        };
+        let fw_hwnd = unsafe { WindowsAndMessaging::GetForegroundWindow() };
         println!("fw_hwnd: {:?}", fw_hwnd);
 
         let defview = unsafe {
             let mut tmp: Option<HWND> = None;
-            let _ = WindowsAndMessaging::EnumChildWindows(fw_hwnd, Some(Self::dialog_defview_proc), LPARAM(&mut tmp as *mut _ as isize));
+            let _ = WindowsAndMessaging::EnumChildWindows(
+                Some(fw_hwnd),
+                Some(Self::dialog_defview_proc),
+                LPARAM(&mut tmp as *mut _ as isize),
+            );
             tmp
         };
 
@@ -219,31 +239,31 @@ impl Selected {
             log::info!("defview 不存在");
             return Ok(target_path);
         }
-        let defview = defview.unwrap();
+        // let defview = defview.unwrap();
 
-        let listview = unsafe {
-            WindowsAndMessaging::FindWindowExW(defview, None, w!("DirectUIHWND"), None)
+        if win::is_cursor_activated(HWND::default()) {
+            return Ok(target_path);
         };
+
+        let listview =
+            unsafe { WindowsAndMessaging::FindWindowExW(defview, None, w!("DirectUIHWND"), None) };
         if listview.is_err() {
             log::info!("listview(DirectUIHWND) 不存在");
-            return  Ok(target_path);
+            return Ok(target_path);
         }
         let listview = listview?;
         let seleced_file_title = unsafe {
             let _ = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
             // 通过 ui automation 获取选中文件
-            let automation: IUIAutomation = CoCreateInstance(
-                &CUIAutomation,
-                None,
-                CLSCTX_INPROC_SERVER
-            )?;
+            let automation: IUIAutomation =
+                CoCreateInstance(&CUIAutomation, None, CLSCTX_INPROC_SERVER)?;
             // 获取列表元素
             let list_element = automation.ElementFromHandle(listview)?;
-            
+
             // 获取选中项
             let selection_pattern = list_element.GetCurrentPattern(UIA_SelectionPatternId)?;
             let selection = selection_pattern.cast::<IUIAutomationSelectionPattern>()?;
-            
+
             // 获取选中的元素
             let selected = selection.GetCurrentSelection()?;
             let count = selected.Length()?;
@@ -263,14 +283,23 @@ impl Selected {
         // 获取搜索框的 Text
         let mut breadcrumb_parent_hwnd: Option<HWND> = None;
         let _ = unsafe {
-            WindowsAndMessaging::EnumChildWindows(fw_hwnd, Some(Self::breadcrumb_proc), LPARAM(&mut breadcrumb_parent_hwnd as *const _ as isize))
+            WindowsAndMessaging::EnumChildWindows(
+                Some(fw_hwnd),
+                Some(Self::breadcrumb_proc),
+                LPARAM(&mut breadcrumb_parent_hwnd as *const _ as isize),
+            )
         };
         if breadcrumb_parent_hwnd.is_none() {
             return Ok(target_path);
         }
-        let breadcrumb_parent_hwnd = breadcrumb_parent_hwnd.unwrap();
+        // let breadcrumb_parent_hwnd = breadcrumb_parent_hwnd.unwrap();
         let breadcrumb_hwnd = unsafe {
-            WindowsAndMessaging::FindWindowExW(breadcrumb_parent_hwnd, None, w!("ToolbarWindow32"), None)
+            WindowsAndMessaging::FindWindowExW(
+                breadcrumb_parent_hwnd,
+                None,
+                w!("ToolbarWindow32"),
+                None,
+            )
         };
         if breadcrumb_hwnd.is_err() {
             return Ok(target_path);
@@ -278,7 +307,10 @@ impl Selected {
         let breadcrumb_hwnd = breadcrumb_hwnd.unwrap();
         let mut breadcrumb_title = win::get_window_text(breadcrumb_hwnd);
         log::info!("弹窗目录: {:?}", breadcrumb_title);
-        let arr = breadcrumb_title.split(": ").map(|item|item.to_string()).collect::<Vec<String>>();
+        let arr = breadcrumb_title
+            .split(": ")
+            .map(|item| item.to_string())
+            .collect::<Vec<String>>();
         if arr.len() > 1 {
             breadcrumb_title = arr[1].clone();
         }
@@ -294,7 +326,7 @@ impl Selected {
 
         target_path = format!("{}\\{}", breadcrumb_title, seleced_file_title);
         println!("target_path: {:?}", target_path);
-        
+
         Ok(target_path)
     }
     fn get_library_path(name: &str) -> Result<String, WError> {
@@ -309,34 +341,23 @@ impl Selected {
                 "桌面" | "Desktop" => &FOLDERID_Desktop,
                 _ => {
                     // 如果是自定义库，尝试从Libraries文件夹读取
-                    let libraries_path = SHGetKnownFolderPath(
-                        &FOLDERID_Libraries,
-                        KF_FLAG_DEFAULT,
-                        None
-                    )?;
-                    
+                    let libraries_path =
+                        SHGetKnownFolderPath(&FOLDERID_Libraries, KF_FLAG_DEFAULT, None)?;
+
                     let lib_file = format!("{}\\{}.library-ms", libraries_path.to_string()?, name);
-                    let shell_item: IShellItem = SHCreateItemFromParsingName(
-                        &HSTRING::from(lib_file),
-                        None
-                    )?;
-                    
+                    let shell_item: IShellItem =
+                        SHCreateItemFromParsingName(&HSTRING::from(lib_file), None)?;
+
                     return Ok(shell_item.GetDisplayName(SIGDN_FILESYSPATH)?.to_string()?);
                 }
             };
-            
+
             println!("libraries_path: {:?}", folder_id);
 
-            
-            let path = SHGetKnownFolderPath(
-                folder_id,
-                KF_FLAG_DEFAULT,
-                None
-            )?;
+            let path = SHGetKnownFolderPath(folder_id, KF_FLAG_DEFAULT, None)?;
             Ok(path.to_string()?)
         }
-        
-    }   
+    }
 
     unsafe extern "system" fn dialog_defview_proc(hwnd: HWND, lparam: LPARAM) -> BOOL {
         let list_view = lparam.0 as *mut Option<HWND>;
@@ -358,7 +379,6 @@ impl Selected {
     }
 
     unsafe fn dispath2browser(dispatch: IDispatch) -> Option<IShellBrowser> {
-        
         let mut service_provider: Option<IServiceProvider> = None;
         dispatch
             .query(
@@ -398,8 +418,7 @@ impl Selected {
                 }
             }
 
-            if let Ok(display_name) = shell_item.GetDisplayName(SIGDN_DESKTOPABSOLUTEPARSING)
-            {
+            if let Ok(display_name) = shell_item.GetDisplayName(SIGDN_DESKTOPABSOLUTEPARSING) {
                 let tmp = display_name.to_string();
                 if tmp.is_err() {
                     continue;
@@ -418,7 +437,6 @@ impl Selected {
                 target_path = tmp.unwrap();
                 break;
             }
-            
         }
         target_path
     }
@@ -508,7 +526,7 @@ impl PreviewFile {
     pub fn handle_key_down(&self, vk_code: u32) {
         if vk_code == KeyboardAndMouse::VK_SPACE.0 as u32 {
             let result = Self::preview_file(self.app_handle.clone().unwrap());
-            if result.is_err()  {
+            if result.is_err() {
                 log::error!("Error: {:?}", result.err().unwrap());
             }
         }
@@ -517,11 +535,15 @@ impl PreviewFile {
     // 全局键盘钩子的回调函数
     extern "system" fn keyboard_proc(ncode: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
         // 确保消息被传递给其他应用程序
-        let next_hook_result = unsafe { WindowsAndMessaging::CallNextHookEx(None, ncode, wparam, lparam) };
+        let next_hook_result =
+            unsafe { WindowsAndMessaging::CallNextHookEx(None, ncode, wparam, lparam) };
         #[cfg(debug_assertions)]
         log::info!("Hook called - next_hook_result: {:?}", next_hook_result);
-        
-        if ncode >= 0 && (wparam.0 == WindowsAndMessaging::WM_KEYDOWN as usize || wparam.0 == WindowsAndMessaging::WM_SYSKEYDOWN as usize) {
+
+        if ncode >= 0
+            && (wparam.0 == WindowsAndMessaging::WM_KEYDOWN as usize
+                || wparam.0 == WindowsAndMessaging::WM_SYSKEYDOWN as usize)
+        {
             let kb_struct = unsafe { *(lparam.0 as *const WindowsAndMessaging::KBDLLHOOKSTRUCT) };
             let vk_code = kb_struct.vkCode;
 
@@ -530,19 +552,19 @@ impl PreviewFile {
                 if type_str.is_none() {
                     return next_hook_result;
                 }
-                
+
                 // 获取 PreviewFile 实例并处理按键事件
                 if let Some(app) = unsafe { APP_INSTANCE.as_ref() } {
                     app.handle_key_down(vk_code);
                 }
-            } 
+            }
         }
-        
+
         next_hook_result
     }
     fn calc_window_size(file_type: &str) -> (f64, f64) {
         let monitor_info = monitor::get_monitor_info();
-            
+
         let scale = monitor_info.scale;
         let mut width = 1000.0;
         let mut height = 600.0;
@@ -561,8 +583,13 @@ impl PreviewFile {
             width = helper::get_scaled_size(width, scale);
             height = helper::get_scaled_size(height, scale);
         }
-       
-        log::info!("Client Rect: width is {}, height is {}, scale is {}", width, height, scale);
+
+        log::info!(
+            "Client Rect: width is {}, height is {}, scale is {}",
+            width,
+            height,
+            scale
+        );
         (width, height)
     }
 
@@ -594,7 +621,6 @@ impl PreviewFile {
                     let _ = window.set_focus();
                 }
                 None => {
-
                     let result = WebviewWindowBuilder::new(
                         &app,
                         "preview",
@@ -627,11 +653,9 @@ impl PreviewFile {
                     })
                     .focused(true)
                     .visible_on_all_workspaces(true)
-                    
                     .build();
 
                     if let Ok(preview) = result {
-                        
                         let _ = preview.show();
                     }
                 }
