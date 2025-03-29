@@ -1,7 +1,10 @@
 <script lang="ts" setup>
 import { check, Update } from '@tauri-apps/plugin-updater'
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref } from 'vue'
 import { info } from '@tauri-apps/plugin-log'
+import MdViewer from '@/components/md-viewer/index.vue'
+import { createMd } from '@/utils/markdown/index'
+import type MarkdownIt from 'markdown-it'
 
 const checked = ref(false)
 const checkUpgrade = async (): Promise<{ updaterInstance: Update | null; isUpgrade: boolean }> => {
@@ -11,18 +14,29 @@ const checkUpgrade = async (): Promise<{ updaterInstance: Update | null; isUpgra
         isUpgrade: !!result,
     }
 }
+let md: MarkdownIt | null = null
+const renderNotes = async (txt: string) => {
+    if (md === null) {
+        md = await createMd()
+    }
+
+    notes.value = md.render(txt)
+}
 let updaterInstance: Update | null = null
 const isUpgrade = ref(false)
+const notes = ref<string>('')
 onMounted(async () => {
     checked.value = false
     const tmp = await checkUpgrade()
     checked.value = true
+    console.log('check upgrade', tmp.updaterInstance)
     updaterInstance = tmp.updaterInstance
     isUpgrade.value = tmp.isUpgrade
-})
-
-const notes = computed(() => {
-    return updaterInstance?.body
+    let tmoNotes = tmp.updaterInstance?.body || ''
+    tmoNotes = tmoNotes.replace(/^\"|\"$/g, '')
+    tmoNotes = tmoNotes.replace(/\\r\\n/g, '\n')
+    console.log('tmoNotes', tmoNotes)
+    renderNotes(tmoNotes)
 })
 
 const calcPercentage = (current: number, total: number) => {
@@ -74,12 +88,14 @@ const handleUpgrade = () => {
         <template v-if="checked">
             <div v-if="isUpgrade" class="upgrade-yes">
                 <p>更新内容：</p>
-                <el-scrollbar max-height="400px" style="height: auto">
-                    <pre v-html="notes"></pre>
-                </el-scrollbar>
-                <p>更新进度：</p>
+                <MdViewer :content="notes" />
+                <p style="margin-bottom: 12px">更新进度：</p>
                 <el-progress :percentage="percentage" text-inside striped striped-flow :stroke-width="15" />
-                <el-button @click="handleUpgrade">{{ isDownloading ? '取消升级' : '现在升级' }}</el-button>
+                <div style="display: flex; justify-content: center；; margin-top: 12px">
+                    <el-button @click="handleUpgrade" size="small" type="primary">{{
+                        isDownloading ? '取消升级' : '现在升级'
+                    }}</el-button>
+                </div>
             </div>
             <div v-else class="upgrade-none">
                 <p>当前已经是最新版本了</p>
