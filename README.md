@@ -14,7 +14,7 @@ QuickLook 是一个 windows 平台的快速预览工具。
 - Docs：docx、xls、xlsx、xlsm、xlsb、xla、xlam、ods、csv
 - Code：cpp、js、mjs、cjs、ts、mts、tsx、rs、py、java、html、css、scss、sass、less、c、go、vue、svelte、astro、jsx、json、yml、yaml、toml、bat、ps1、ini、swift、kt、php、h、xml、sql
 - Image：jpg、jpeg、png、webp、svg、apng
-- Video：mp4、mkv、、、
+- Video：mp4、mkv、webm
 - Auido：mp3
 - Book：pdf
 - Font: ttf、otf、woff2、woff
@@ -101,6 +101,10 @@ pnpm tauri build
     - [x] woff2
   - 书籍:
     - [x] pdf
+  - 视频:
+    - [x] mkv
+    - [x] mp4
+    - [x] webm
   - 压缩文件:
     - [x] zip
     - [ ] rar
@@ -116,8 +120,12 @@ pnpm tauri build
 - calamine: 解析 Excel 文件
 - vitepress 的样式
 - zip: 解析 zip 格式的文件
-- docx-rs
 - docx-preview
 - image
 - windows: windows api
 - tauri: 一个跨平台应用开发框架
+- markdown-it: 解析 md 文件
+- handsontable: 显示解析后的 excel 文件和 csv 文件的内容
+- pdfjs-dist: 解析 pdf 并显示
+- shiki: 解析代码文件和样式显示
+- vue: 前端使用的框架
