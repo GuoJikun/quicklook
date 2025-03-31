@@ -62,8 +62,8 @@ pub fn run() {
             tray::create_tray(app)?;
             // 初始化预览文件
             let app_handle = app.handle().clone();
-            let preview_instance = preview::init_preview_file(app_handle);
-            app.manage(preview_instance);
+            preview::init_preview_file(app_handle);
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -83,8 +83,6 @@ pub fn run() {
                     info!("exit code: {:?}", code);
                 }
             }
-            _ => {
-                println!("event: {:?}", event);
-            }
+            _ => {}
         });
 }

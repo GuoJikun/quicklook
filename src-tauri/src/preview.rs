@@ -1,4 +1,4 @@
-use std::sync::{mpsc, LazyLock, Mutex};
+use std::sync::{mpsc, Arc, LazyLock, Mutex};
 use std::thread;
 use tauri::{
     webview::PageLoadEvent, AppHandle, Error as TauriError, Manager, WebviewUrl,
@@ -601,6 +601,10 @@ impl PreviewFile {
             let file_path = file_path.unwrap();
             let file_info = get_file_info(&file_path);
 
+            let preview_state = app.state::<PreviewState>();
+            let mut preview_state = preview_state.lock().unwrap();
+            preview_state.input_path = file_path.clone();
+
             if file_info.is_none() {
                 return Ok(());
             }
@@ -677,16 +681,21 @@ impl PreviewFile {
     }
 }
 
-static PREVIEW_INSTANCE: LazyLock<Mutex<Option<PreviewFile>>> = LazyLock::new(|| Mutex::new(None));
+static PREVIEW_INSTANCE: LazyLock<Mutex<Option<Arc<PreviewFile>>>> =
+    LazyLock::new(|| Mutex::new(None));
 // 函数用于设置全局 PreviewFile 实例
 pub fn set_global_instance(instance: PreviewFile) {
     if let Ok(mut handle) = PREVIEW_INSTANCE.lock() {
-        *handle = Some(instance);
+        *handle = Some(Arc::new(instance));
     }
 }
 // 函数用于获取全局 PreviewFile 实例
-fn get_global_instance() -> Option<PreviewFile> {
-    PREVIEW_INSTANCE.lock().ok()?.clone()
+fn get_global_instance() -> Option<Arc<PreviewFile>> {
+    if let Ok(guard) = PREVIEW_INSTANCE.lock() {
+        guard.clone()
+    } else {
+        None
+    }
 }
 
 impl Drop for PreviewFile {
@@ -702,17 +711,25 @@ impl Default for PreviewFile {
     }
 }
 
-pub type PreviewState = Mutex<PreviewFile>;
+#[derive(Debug, Clone, Default)]
+pub struct PreviewStateInner {
+    input_path: String,
+}
+
+unsafe impl Send for PreviewStateInner {}
+unsafe impl Sync for PreviewStateInner {}
+
+pub type PreviewState = Mutex<PreviewStateInner>;
 
 //noinspection ALL
 // 公开一个全局函数来初始化 PreviewFile
-pub fn init_preview_file(handle: AppHandle) -> PreviewState {
+pub fn init_preview_file(handle: AppHandle) {
     let mut preview_file = PreviewFile::default();
     preview_file.set_keyboard_hook();
-    preview_file.app_handle = Some(handle);
+    preview_file.app_handle = Some(handle.clone());
 
     // 将实例存储在全局变量中
-    set_global_instance(preview_file.clone());
+    set_global_instance(preview_file);
 
-    Mutex::new(preview_file)
+    handle.manage::<PreviewState>(Mutex::new(PreviewStateInner::default()));
 }
