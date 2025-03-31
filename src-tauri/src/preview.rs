@@ -1,4 +1,4 @@
-use std::sync::mpsc;
+use std::sync::{mpsc, LazyLock, Mutex};
 use std::thread;
 use tauri::{
     webview::PageLoadEvent, AppHandle, Error as TauriError, Manager, WebviewUrl,
@@ -42,11 +42,13 @@ use helper::{monitor, win};
 mod utils;
 use utils::{get_file_info, File as UFile};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PreviewFile {
     hook_handle: Option<WindowsAndMessaging::HHOOK>, // 钩子的句柄
     app_handle: Option<AppHandle>,
 }
+unsafe impl Send for PreviewFile {}
+unsafe impl Sync for PreviewFile {}
 
 #[derive(Debug)]
 pub enum FwWindowType {
@@ -554,7 +556,7 @@ impl PreviewFile {
                 }
 
                 // 获取 PreviewFile 实例并处理按键事件
-                if let Some(app) = unsafe { APP_INSTANCE.as_ref() } {
+                if let Some(app) = get_global_instance() {
                     app.handle_key_down(vk_code);
                 }
             }
@@ -675,7 +677,18 @@ impl PreviewFile {
     }
 }
 
-static mut APP_INSTANCE: Option<PreviewFile> = None;
+static PREVIEW_INSTANCE: LazyLock<Mutex<Option<PreviewFile>>> = LazyLock::new(|| Mutex::new(None));
+// 函数用于设置全局 AppHandle
+pub fn set_global_instance(instance: PreviewFile) {
+    if let Ok(mut handle) = PREVIEW_INSTANCE.lock() {
+        *handle = Some(instance);
+    }
+}
+// 函数用于获取全局 AppHandle
+fn get_global_instance() -> Option<PreviewFile> {
+    PREVIEW_INSTANCE.lock().ok()?.clone()
+}
+
 impl Drop for PreviewFile {
     fn drop(&mut self) {
         println!("Dropping PreviewFile instance");
@@ -689,14 +702,17 @@ impl Default for PreviewFile {
     }
 }
 
+pub type PreviewState = Mutex<PreviewFile>;
+
 //noinspection ALL
 // 公开一个全局函数来初始化 PreviewFile
-pub fn init_preview_file(handle: AppHandle) {
+pub fn init_preview_file(handle: AppHandle) -> PreviewState {
     let mut preview_file = PreviewFile::default();
     preview_file.set_keyboard_hook();
     preview_file.app_handle = Some(handle);
+
     // 将实例存储在全局变量中
-    unsafe {
-        APP_INSTANCE = Some(preview_file);
-    }
+    set_global_instance(preview_file.clone());
+
+    Mutex::new(preview_file)
 }

@@ -1,8 +1,8 @@
+use log::info;
 use tauri::{Listener, Manager};
 use tauri_plugin_autostart::MacosLauncher;
 #[cfg(not(debug_assertions))]
 use tauri_plugin_autostart::ManagerExt;
-use log::info;
 
 mod helper;
 mod preview;
@@ -11,8 +11,7 @@ mod tray;
 #[path = "./command.rs"]
 mod command;
 use command::{
-    archive, document, get_default_program_name, get_monitor_info,
-    show_open_with_dialog,
+    archive, document, get_default_program_name, get_monitor_info, show_open_with_dialog,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -32,7 +31,7 @@ pub fn run() {
             let handle = app.handle();
             handle.plugin(
                 tauri_plugin_log::Builder::default()
-                    .level(log::LevelFilter::Debug)  // 改为 Debug 级别
+                    .level(log::LevelFilter::Debug) // 改为 Debug 级别
                     .max_file_size(50000)
                     .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
                     .timezone_strategy(tauri_plugin_log::TimezoneStrategy::UseLocal)
@@ -63,8 +62,8 @@ pub fn run() {
             tray::create_tray(app)?;
             // 初始化预览文件
             let app_handle = app.handle().clone();
-            preview::init_preview_file(app_handle);
-
+            let preview_instance = preview::init_preview_file(app_handle);
+            app.manage(preview_instance);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -76,19 +75,16 @@ pub fn run() {
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
-        .run(|_app_handle, event| {
-            match event {
-                tauri::RunEvent::ExitRequested { api, code, .. } => {
-                    if code.is_none() {
-                        api.prevent_exit();
-                    } else {
-                        info!("exit code: {:?}", code);
-                    }
+        .run(|_app_handle, event| match event {
+            tauri::RunEvent::ExitRequested { api, code, .. } => {
+                if code.is_none() {
+                    api.prevent_exit();
+                } else {
+                    info!("exit code: {:?}", code);
                 }
-                _ => {
-                    println!("event: {:?}", event);
-                }
-
+            }
+            _ => {
+                println!("event: {:?}", event);
             }
         });
 }
