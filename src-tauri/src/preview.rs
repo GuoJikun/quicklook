@@ -678,13 +678,13 @@ impl PreviewFile {
 }
 
 static PREVIEW_INSTANCE: LazyLock<Mutex<Option<PreviewFile>>> = LazyLock::new(|| Mutex::new(None));
-// 函数用于设置全局 AppHandle
+// 函数用于设置全局 PreviewFile 实例
 pub fn set_global_instance(instance: PreviewFile) {
     if let Ok(mut handle) = PREVIEW_INSTANCE.lock() {
         *handle = Some(instance);
     }
 }
-// 函数用于获取全局 AppHandle
+// 函数用于获取全局 PreviewFile 实例
 fn get_global_instance() -> Option<PreviewFile> {
     PREVIEW_INSTANCE.lock().ok()?.clone()
 }
