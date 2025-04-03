@@ -660,7 +660,7 @@ impl PreviewFile {
                     .focused(true)
                     .visible_on_all_workspaces(true)
                     .build();
-
+                    log::info!("result: {:?}", result);
                     if let Ok(preview) = result {
                         let _ = preview.show();
                     }
