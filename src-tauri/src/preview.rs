@@ -632,6 +632,7 @@ impl PreviewFile {
                         "preview",
                         WebviewUrl::App("/preview".into()),
                     )
+                    .title("Preview")
                     .center()
                     .decorations(false)
                     .skip_taskbar(false)
