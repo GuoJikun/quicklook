@@ -129,3 +129,33 @@ pnpm tauri build
 - pdfjs-dist: 解析 pdf 并显示
 - shiki: 解析代码文件和样式显示
 - vue: 前端使用的框架
+
+## 软件截图
+
+### 预览 Code (utf-8)
+
+![code.png](./screenshots/preview-code.png)
+
+### 预览 Docx
+
+![code.png](./screenshots/preview-docx.png)
+
+### 预览 Excel
+
+![code.png](./screenshots/preview-excel.png)
+
+### 预览 Image
+
+![code.png](./screenshots/preview-image.png)
+
+### 预览 Md
+
+![code.png](./screenshots/preview-md.png)
+
+### 预览 Pdf
+
+![code.png](./screenshots/preview-pdf.png)
+
+### 预览 Zip
+
+![code.png](./screenshots/preview-zip.png)
