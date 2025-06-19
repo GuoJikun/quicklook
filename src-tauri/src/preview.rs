@@ -275,7 +275,6 @@ impl Selected {
                 let item = selected.GetElement(0)?;
                 // 获取文件名
                 let name = item.GetCurrentPropertyValue(UIA_NamePropertyId)?;
-                println!("name: {:?}", name);
                 file_name = name.to_string();
             }
             file_name
@@ -634,6 +633,7 @@ impl PreviewFile {
                     )
                     .title("Preview")
                     .center()
+                    .devtools(cfg!(debug_assertions))
                     .decorations(false)
                     .skip_taskbar(false)
                     .auto_resize()

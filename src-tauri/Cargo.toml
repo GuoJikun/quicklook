@@ -26,7 +26,7 @@ serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
 tauri = { version = "2", features = ["protocol-asset", "unstable", "tray-icon"] }
 tauri-plugin-log = "2.5.0"
-windows = { version = "0.60.0", features = [
+windows = { version = "0.61.0", features = [
     "Win32_System_Com",
     "Win32_UI_Shell",
     "Win32_UI_Shell_Common",
@@ -38,6 +38,10 @@ windows = { version = "0.60.0", features = [
     "Win32_System_Registry",
     "Win32_Graphics_Gdi",
     "Win32_UI_Accessibility",
+    "Win32_System_SystemServices",
+    "Win32_System_Variant",
+    "Win32_UI_Input",
+    "Win32_UI_Input_KeyboardAndMouse"
 ] }
 infer = { version = "0.16.0", features = ["std"] }
 tauri-plugin-fs = "2.3.0"

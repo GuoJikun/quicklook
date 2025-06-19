@@ -1,12 +1,12 @@
 use tauri::{
-    webview::WebviewWindow, AppHandle, Error as TError, Manager, WebviewUrl, WebviewWindowBuilder
+    webview::WebviewWindow, AppHandle, Error as TError, Manager, WebviewUrl, WebviewWindowBuilder,
 };
 
 pub mod archives;
+pub mod config;
 pub mod docs;
 pub mod monitor;
 pub mod win;
-pub mod config;
 // pub mod ffmp;
 
 #[allow(unused)]
