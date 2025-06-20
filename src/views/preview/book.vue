@@ -6,8 +6,9 @@ import { useRoute } from 'vue-router'
 import type { FileInfo } from '@/utils/typescript'
 import { convertFileSrc } from '@tauri-apps/api/core'
 import * as PDFJS from 'pdfjs-dist'
-import { ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
+import { CollectionTag } from '@element-plus/icons-vue'
 import { info } from '@tauri-apps/plugin-log'
+import type { PDFDocumentProxy } from 'pdfjs-dist'
 
 const route = useRoute()
 
@@ -17,14 +18,14 @@ defineOptions({
 
 const fileInfo = ref<FileInfo>()
 
-const loadDocument = (url: string) => {
+const loadDocument = (url: string): Promise<PDFDocumentProxy> => {
     return new Promise((resolve, reject) => {
         PDFJS.getDocument({
             url,
             cMapUrl: '/pdf/cmaps/',
             cMapPacked: true,
         })
-            .promise.then((pdf: any) => {
+            .promise.then((pdf: PDFDocumentProxy) => {
                 resolve(pdf)
             })
             .catch(e => {
@@ -33,47 +34,96 @@ const loadDocument = (url: string) => {
     })
 }
 
-const renderPage = (pdf: any, num: number) => {
-    pdf.getPage(num).then((page: any) => {
+const getMeta = async (pdf: PDFDocumentProxy) => {
+    const outline = await pdf.getOutline()
+    const meta = await pdf.getMetadata()
+    const count = pdf.numPages
+    return {
+        outline,
+        meta,
+        count,
+    }
+}
+const visible = ref(false)
+const showOutline = () => {
+    visible.value = !visible.value
+}
+
+// 通过大纲跳转到对应页码
+const jumpByOutline = async (ev: any) => {
+    console.log('jumpByOutline', ev)
+    const dest = ev.dest
+    console.log('dest', dest)
+    if (!dest && dest.length === 0) {
+        console.warn('No destination found in outline item')
+        return
+    }
+
+    if (typeof dest === 'string') {
+        // 如果是字符串，直接跳转到对应的页码
+        const pageIndex = parseInt(dest, 10) - 1
+        pager.value.current = pageIndex + 1
+        renderPage(pdf as PDFDocumentProxy, pager.value.current)
+        return
+    }
+
+    // 如果是数组，获取第一个元素作为目标
+    if (Array.isArray(dest)) {
+        const ref = dest[0]
+        const pageIndex = (await pdf?.getPageIndex(ref)) ?? 0
+        pager.value.current = pageIndex + 1
+        renderPage(pdf as PDFDocumentProxy, pager.value.current)
+    }
+}
+
+const renderPage = (pdf: PDFDocumentProxy, num: number) => {
+    pdf.getPage(num).then(page => {
         page.cleanup()
         const context = canvasRef.value?.getContext('2d')
         const viewport = page.getViewport({ scale: 1 })
         ;(canvasRef.value as HTMLCanvasElement).height = viewport.height
         ;(canvasRef.value as HTMLCanvasElement).width = viewport.width
         page.render({
-            canvasContext: context,
+            canvasContext: context as CanvasRenderingContext2D,
             viewport,
         })
     })
 }
 
 const handlePrev = (pdf: any) => {
-    if (pager.value <= 1) {
+    if (pager.value.current <= 1) {
         return
     }
-    pager.value--
-    renderPage(pdf, pager.value)
+    pager.value.current--
+    renderPage(pdf, pager.value.current)
 }
 const handleNext = (pdf: any) => {
-    if (pager.value >= pdf.numPages) {
+    if (pager.value.current >= pdf.numPages) {
         return
     }
-    pager.value++
-    renderPage(pdf, pager.value)
+    pager.value.current++
+    renderPage(pdf, pager.value.current)
 }
 
 const canvasRef = ref<HTMLCanvasElement>()
-const pager = ref<number>(1)
-let pdf: any = null
+const pager = ref<{ current: number; total: number }>({
+    current: 1,
+    total: 0,
+})
+const outline = ref<any[]>([])
+let pdf: PDFDocumentProxy | null = null
 onMounted(async () => {
     PDFJS.GlobalWorkerOptions.workerSrc = '/pdf/pdf.worker.mjs'
-    pager.value = 1
+    pager.value.current = 1
     fileInfo.value = route?.query as unknown as FileInfo
     const path = convertFileSrc(fileInfo.value.path)
     pdf = await loadDocument(path)
-
+    const meta = await getMeta(pdf)
+    console.log('meta', meta)
+    pager.value.total = meta.count
+    outline.value = meta.outline || []
     if (pdf) {
-        renderPage(pdf, pager.value)
+        renderPage(pdf, pager.value.current)
     } else {
         info(pdf)
         console.error(pdf)
@@ -83,16 +133,32 @@ onMounted(async () => {
 
 <template>
     <LayoutPreview :file="fileInfo">
-        <div class="text-support">
-            <div class="text-support-inner">
-                <canvas ref="canvasRef" class="canvas"></canvas>
-            </div>
-            <div class="pager">
-                <div class="pager-item" @click="handlePrev(pdf)">
-                    <el-icon size="18px"><ArrowLeft /></el-icon>
+        <div class="book">
+            <div class="book-utils">
+                <div>
+                    <el-link :underline="false" @click="showOutline">
+                        <el-icon size="18px">
+                            <CollectionTag />
+                        </el-icon>
+                    </el-link>
                 </div>
-                <div class="pager-item" @click="handleNext(pdf)">
-                    <el-icon size="18px"><ArrowRight /></el-icon>
+                <div></div>
+                <div></div>
+            </div>
+            <div class="book-wrap">
+                <div class="book-outline" v-if="visible">
+                    <el-scrollbar class="scrollbar" :always="false">
+                        <el-tree
+                            :data="outline"
+                            :props="{ label: 'title', children: 'items' }"
+                            :highlight-current="true"
+                            @node-click="jumpByOutline"
+                        >
+                        </el-tree>
+                    </el-scrollbar>
+                </div>
+                <div class="book-canvas">
+                    <canvas ref="canvasRef" class="canvas"></canvas>
                 </div>
             </div>
         </div>
@@ -100,51 +166,47 @@ onMounted(async () => {
 </template>
 
 <style scoped lang="scss">
-.text-support {
+.book {
     width: 100%;
     height: 100%;
-    display: flex;
-    &-inner {
+    &-wrap {
         width: 100%;
+        height: calc(100% - 40px);
+        overflow: auto;
+        padding-right: 24px;
+        font-size: 14px;
+        display: flex;
+        font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+        .canvas {
+            display: block;
+            margin: 0 auto;
+        }
+    }
+    &-utils {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        height: 40px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        background-color: #fff;
+        padding: 0 24px;
+    }
+    &-outline {
+        width: 240px;
         height: 100%;
         overflow: auto;
-        padding: 12px 24px;
-        font-size: 14px;
-        font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        padding: 12px;
+        box-shadow: 1px 0 2px rgba(0, 0, 0, 0.1);
+        background-color: #f9f9f9;
     }
-    .canvas {
-        display: block;
-        margin: 0 auto;
-    }
-    .pager {
-        position: fixed;
-        top: 50%;
-        left: 0;
-        transform: translateY(-50%);
-        pointer-events: none;
-        display: none;
-        justify-content: space-between;
-        width: 100%;
-        padding: 0 24px;
-        &-item {
-            pointer-events: auto;
-            cursor: pointer;
-            display: inline-block;
-            justify-content: center;
-            align-items: center;
-            border-radius: 50%;
-            overflow: hidden;
-            width: 40px;
-            height: 40px;
-            &:hover :deep(.el-icon) {
-                color: var(--el-color-primary);
-            }
-        }
-    }
-    &:hover {
-        .pager {
-            display: flex;
-        }
+    &-canvas {
+        flex: auto;
+        height: calc(100% - 24px);
+        position: relative;
+        top: 12px;
     }
 }
 </style>
