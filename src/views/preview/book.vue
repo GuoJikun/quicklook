@@ -88,7 +88,7 @@ const getMeta = async (pdf: PDFDocumentProxy) => {
         count,
     }
 }
-const visible = ref(false)
+const visible = ref(true)
 const showOutline = () => {
     visible.value = !visible.value
 }
@@ -151,7 +151,6 @@ onMounted(async () => {
     const path = convertFileSrc(fileInfo.value.path)
     pdfDoc = await loadDocument(path)
     const meta = await getMeta(pdfDoc)
-    console.log('meta', meta)
     pager.value.total = meta.count
     list.value = Array.from({ length: pager.value.total }, (_, i) => {
         return {
@@ -181,8 +180,8 @@ onMounted(async () => {
                 </div>
                 <div></div>
             </div>
-            <el-container class="book-wrap">
-                <el-aside class="book-outline" v-if="visible">
+            <div class="book-wrap">
+                <div class="book-outline" v-if="visible">
                     <el-scrollbar class="scrollbar" :always="false">
                         <el-tree
                             :data="outline"
@@ -192,14 +191,15 @@ onMounted(async () => {
                         >
                         </el-tree>
                     </el-scrollbar>
-                </el-aside>
-                <el-main class="book-canvas">
+                </div>
+                <div class="book-canvas">
                     <virtual-list
                         ref="virtualListRef"
                         list-class="custom-scroll-wrap"
                         item-class="custom-scroll-item"
                         :items="list"
                         :item-size="pageHeight"
+                        :buffer="1000"
                         class="pdf-virtual-list"
                         #default="{ item }"
                     >
@@ -210,8 +210,8 @@ onMounted(async () => {
                             />
                         </div>
                     </virtual-list>
-                </el-main>
-            </el-container>
+                </div>
+            </div>
         </div>
     </LayoutPreview>
 </template>
@@ -227,10 +227,6 @@ onMounted(async () => {
         font-size: 14px;
         display: flex;
         font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
-        .canvas {
-            display: block;
-            margin: 0 auto;
-        }
     }
     &-utils {
         display: flex;
@@ -243,13 +239,12 @@ onMounted(async () => {
         padding: 0 24px;
     }
     &-outline {
-        width: 240px;
+        width: 300px;
         height: 100%;
         overflow: auto;
         position: relative;
         display: flex;
         flex-direction: column;
-        padding: 12px;
         box-shadow: 1px 0 2px rgba(0, 0, 0, 0.1);
         background-color: #f9f9f9;
     }
@@ -257,7 +252,6 @@ onMounted(async () => {
         flex: auto;
         height: calc(100% - 24px);
         position: relative;
-        top: 12px;
     }
     .pdf-virtual-list {
         height: 100%;
@@ -265,9 +259,10 @@ onMounted(async () => {
     :global(.custom-scroll-item) {
         display: flex;
         justify-content: center;
+        background-color: #efefef;
     }
     :global(.custom-scroll-item:not(:first-child)) {
-        border-top: 1px solid #eaeaea;
+        border-top: 1px solid #efefef;
     }
 }
 </style>
