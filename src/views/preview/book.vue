@@ -1,14 +1,17 @@
-<!-- eslint-disable @typescript-eslint/no-explicit-any -->
+div<!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick, useTemplateRef } from 'vue'
 import LayoutPreview from '@/components/layout-preview.vue'
 import { useRoute } from 'vue-router'
 import type { FileInfo } from '@/utils/typescript'
 import { convertFileSrc } from '@tauri-apps/api/core'
 import * as PDFJS from 'pdfjs-dist'
 import { CollectionTag } from '@element-plus/icons-vue'
-import { info } from '@tauri-apps/plugin-log'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-expect-error
+import { RecycleScroller as VirtualList } from 'vue-virtual-scroller'
+import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 
 const route = useRoute()
 
@@ -17,6 +20,20 @@ defineOptions({
 })
 
 const fileInfo = ref<FileInfo>()
+const canvasMap = new Map()
+const pager = ref<{ current: number; total: number; scale: number }>({
+    current: 1,
+    total: 0,
+    scale: 1,
+})
+const outlineProps = {
+    children: 'items',
+    label: 'title',
+}
+const pageHeight = ref(1000) // 预估值，将根据渲染后更新
+const virtualListRef = useTemplateRef('virtualListRef')
+const outline = ref<any[]>([])
+let pdfDoc: PDFDocumentProxy | null = null
 
 const loadDocument = (url: string): Promise<PDFDocumentProxy> => {
     return new Promise((resolve, reject) => {
@@ -34,12 +51,39 @@ const loadDocument = (url: string): Promise<PDFDocumentProxy> => {
     })
 }
 
+const parseOutline = async (outlineList: any[]): Promise<any[]> => {
+    const result: any[] = []
+    for (const item of outlineList) {
+        let pageNumber = 1
+        if (item.dest) {
+            if (typeof item.dest === 'string') {
+                // 如果是字符串，直接跳转到对应的页码
+                const pageIndex = parseInt(item.dest, 10) - 1
+                pageNumber = pageIndex + 1
+            }
+
+            // 如果是数组，获取第一个元素作为目标
+            if (Array.isArray(item.dest)) {
+                const ref = item.dest[0]
+                const pageIndex = (await pdfDoc?.getPageIndex(ref)) ?? 0
+                pageNumber = pageIndex + 1
+            }
+        }
+        result.push({
+            title: item.title,
+            page: pageNumber,
+            items: item.items ? await parseOutline(item.items) : [],
+        })
+    }
+    return result
+}
+
 const getMeta = async (pdf: PDFDocumentProxy) => {
-    const outline = await pdf.getOutline()
+    const outline = (await pdf.getOutline()) ?? []
     const meta = await pdf.getMetadata()
     const count = pdf.numPages
     return {
-        outline,
+        outline: await parseOutline(outline),
         meta,
         count,
     }
@@ -49,40 +93,42 @@ const showOutline = () => {
     visible.value = !visible.value
 }
 
+const goToPage = (page: number) => {
+    if (page < 1 || page > pager.value.total) return
+    pager.value.current = page
+    scrollToPage()
+}
+
 // 通过大纲跳转到对应页码
 const jumpByOutline = async (ev: any) => {
-    console.log('jumpByOutline', ev)
-    const dest = ev.dest
-    console.log('dest', dest)
-    if (!dest && dest.length === 0) {
+    const dest = ev.page
+    if (!dest) {
         console.warn('No destination found in outline item')
         return
     }
+    goToPage(ev.page)
+}
 
-    if (typeof dest === 'string') {
-        // 如果是字符串，直接跳转到对应的页码
-        const pageIndex = parseInt(dest, 10) - 1
-        pager.value.current = pageIndex + 1
-        renderPage(pdf as PDFDocumentProxy, pager.value.current)
-        return
-    }
-
-    // 如果是数组，获取第一个元素作为目标
-    if (Array.isArray(dest)) {
-        const ref = dest[0]
-        const pageIndex = (await pdf?.getPageIndex(ref)) ?? 0
-        pager.value.current = pageIndex + 1
-        renderPage(pdf as PDFDocumentProxy, pager.value.current)
+const registerCanvas = (pageNum: number, el: HTMLCanvasElement | null) => {
+    if (el && !canvasMap.has(pageNum)) {
+        canvasMap.set(pageNum, el)
+        renderPage(pageNum)
     }
 }
 
-const renderPage = (pdf: PDFDocumentProxy, num: number) => {
-    pdf.getPage(num).then(page => {
+const renderPage = (pageNum: number) => {
+    const canvas = canvasMap.get(pageNum)
+    if (!canvas || !pdfDoc) return
+    pdfDoc.getPage(pageNum).then(page => {
         page.cleanup()
-        const context = canvasRef.value?.getContext('2d')
-        const viewport = page.getViewport({ scale: 1 })
-        ;(canvasRef.value as HTMLCanvasElement).height = viewport.height
-        ;(canvasRef.value as HTMLCanvasElement).width = viewport.width
+        const context = canvas?.getContext('2d')
+        const viewport = page.getViewport({ scale: pager.value.scale, offsetX: 0, offsetY: 0 })
+        ;(canvas as HTMLCanvasElement).height = viewport.height
+        ;(canvas as HTMLCanvasElement).width = viewport.width
+        canvas.style.height = viewport.height + 'px'
+        canvas.style.width = viewport.width + 'px'
+        pageHeight.value = viewport.height
+
         page.render({
             canvasContext: context as CanvasRenderingContext2D,
             viewport,
@@ -90,44 +136,32 @@ const renderPage = (pdf: PDFDocumentProxy, num: number) => {
     })
 }
 
-const handlePrev = (pdf: any) => {
-    if (pager.value.current <= 1) {
-        return
-    }
-    pager.value.current--
-    renderPage(pdf, pager.value.current)
-}
-const handleNext = (pdf: any) => {
-    if (pager.value.current >= pdf.numPages) {
-        return
-    }
-    pager.value.current++
-    renderPage(pdf, pager.value.current)
+const rerenderVisiblePages = () => {
+    canvasMap.forEach((_, pageNum) => renderPage(pageNum))
 }
 
-const canvasRef = ref<HTMLCanvasElement>()
-const pager = ref<{ current: number; total: number }>({
-    current: 1,
-    total: 0,
-})
-const outline = ref<any[]>([])
-let pdf: PDFDocumentProxy | null = null
+const scrollToPage = () => {
+    virtualListRef.value?.scrollToItem(pager.value.current - 1)
+}
+const list = ref<{ id: number; pageNum: number }[]>([])
 onMounted(async () => {
     PDFJS.GlobalWorkerOptions.workerSrc = '/pdf/pdf.worker.mjs'
     pager.value.current = 1
     fileInfo.value = route?.query as unknown as FileInfo
     const path = convertFileSrc(fileInfo.value.path)
-    pdf = await loadDocument(path)
-    const meta = await getMeta(pdf)
+    pdfDoc = await loadDocument(path)
+    const meta = await getMeta(pdfDoc)
     console.log('meta', meta)
     pager.value.total = meta.count
+    list.value = Array.from({ length: pager.value.total }, (_, i) => {
+        return {
+            id: i + 1,
+            pageNum: i + 1,
+        }
+    })
     outline.value = meta.outline || []
-    if (pdf) {
-        renderPage(pdf, pager.value.current)
-    } else {
-        info(pdf)
-        console.error(pdf)
-    }
+
+    nextTick(() => rerenderVisiblePages())
 })
 </script>
 
@@ -142,25 +176,42 @@ onMounted(async () => {
                         </el-icon>
                     </el-link>
                 </div>
-                <div></div>
+                <div>
+                    <div>{{ pager.current }} / {{ pager.total }}</div>
+                </div>
                 <div></div>
             </div>
-            <div class="book-wrap">
-                <div class="book-outline" v-if="visible">
+            <el-container class="book-wrap">
+                <el-aside class="book-outline" v-if="visible">
                     <el-scrollbar class="scrollbar" :always="false">
                         <el-tree
                             :data="outline"
-                            :props="{ label: 'title', children: 'items' }"
+                            :props="outlineProps"
                             :highlight-current="true"
                             @node-click="jumpByOutline"
                         >
                         </el-tree>
                     </el-scrollbar>
-                </div>
-                <div class="book-canvas">
-                    <canvas ref="canvasRef" class="canvas"></canvas>
-                </div>
-            </div>
+                </el-aside>
+                <el-main class="book-canvas">
+                    <virtual-list
+                        ref="virtualListRef"
+                        list-class="custom-scroll-wrap"
+                        item-class="custom-scroll-item"
+                        :items="list"
+                        :item-size="pageHeight"
+                        class="pdf-virtual-list"
+                        #default="{ item }"
+                    >
+                        <div>
+                            <canvas
+                                :ref="el => registerCanvas(item.pageNum, el as HTMLCanvasElement | null)"
+                                :style="{ height: pageHeight + 'px' }"
+                            />
+                        </div>
+                    </virtual-list>
+                </el-main>
+            </el-container>
         </div>
     </LayoutPreview>
 </template>
@@ -173,7 +224,6 @@ onMounted(async () => {
         width: 100%;
         height: calc(100% - 40px);
         overflow: auto;
-        padding-right: 24px;
         font-size: 14px;
         display: flex;
         font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
@@ -185,6 +235,7 @@ onMounted(async () => {
     &-utils {
         display: flex;
         align-items: center;
+        justify-content: space-between;
         width: 100%;
         height: 40px;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
@@ -207,6 +258,16 @@ onMounted(async () => {
         height: calc(100% - 24px);
         position: relative;
         top: 12px;
+    }
+    .pdf-virtual-list {
+        height: 100%;
+    }
+    :global(.custom-scroll-item) {
+        display: flex;
+        justify-content: center;
+    }
+    :global(.custom-scroll-item:not(:first-child)) {
+        border-top: 1px solid #eaeaea;
     }
 }
 </style>
