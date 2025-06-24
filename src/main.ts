@@ -36,5 +36,7 @@ app.config.warnHandler = (msg, vm, trace) => {
     console.warn(vm)
     console.groupEnd()
 }
-initSentry({ app, router })
+if (!import.meta.env.DEV) {
+    initSentry({ app, router })
+}
 app.mount('#app')

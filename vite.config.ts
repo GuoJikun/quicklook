@@ -8,12 +8,12 @@ import { sentryVitePlugin } from '@sentry/vite-plugin'
 import pkg from './package.json'
 
 // https://vite.dev/config/
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode, command }) => {
     const env = loadEnv(mode, process.cwd())
-    return {
-        plugins: [
-            vue(),
-            vueJsx(),
+
+    const plugins = [vue(), vueJsx()]
+    if (command === 'build') {
+        plugins.push(
             sentryVitePlugin({
                 org: 'zhiqiu',
                 project: 'quicklook-vue',
@@ -25,7 +25,11 @@ export default defineConfig(({ mode }) => {
                     name: pkg.version || 'default',
                 },
             }),
-        ],
+        )
+    }
+
+    return {
+        plugins,
         resolve: {
             alias: {
                 '@': fileURLToPath(new URL('./src', import.meta.url)),
