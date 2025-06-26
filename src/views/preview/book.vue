@@ -1,6 +1,6 @@
 div<!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script setup lang="ts">
-import { ref, onMounted, nextTick, useTemplateRef } from 'vue'
+import { ref, onMounted } from 'vue'
 import LayoutPreview from '@/components/layout-preview.vue'
 import { useRoute } from 'vue-router'
 import type { FileInfo } from '@/utils/typescript'
@@ -8,10 +8,11 @@ import { convertFileSrc } from '@tauri-apps/api/core'
 import * as PDFJS from 'pdfjs-dist'
 import { CollectionTag } from '@element-plus/icons-vue'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-expect-error
-import { RecycleScroller as VirtualList } from 'vue-virtual-scroller'
-import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
+import { App, Canvas, PointerEvent } from 'leafer-ui'
+// import '@leafer-in/view' // 导入视口插件
+import '@leafer-in/viewport' // 导入视口插件
+import '@leafer-in/animate' // 导入画布插件
+import { ScrollBar } from '@leafer-in/scroll' // 导入滚动条插件  //
 
 const route = useRoute()
 
@@ -19,21 +20,22 @@ defineOptions({
     name: 'BookSupport',
 })
 
+let leaferInstance: InstanceType<typeof App> | null = null
 const fileInfo = ref<FileInfo>()
-const canvasMap = new Map()
-const pager = ref<{ current: number; total: number; scale: number }>({
+const pager = ref<{ current: number; total: number; scale: number; rotation: number }>({
     current: 1,
     total: 0,
     scale: 1,
+    rotation: 0,
 })
 const outlineProps = {
     children: 'items',
     label: 'title',
 }
-const pageHeight = ref(1000) // 预估值，将根据渲染后更新
-const virtualListRef = useTemplateRef('virtualListRef')
+
 const outline = ref<any[]>([])
 let pdfDoc: PDFDocumentProxy | null = null
+const list = ref<{ id: number; pageNum: number; el: HTMLCanvasElement | null }[]>([])
 
 const loadDocument = (url: string): Promise<PDFDocumentProxy> => {
     return new Promise((resolve, reject) => {
@@ -93,74 +95,130 @@ const showOutline = () => {
     visible.value = !visible.value
 }
 
-const goToPage = (page: number) => {
-    if (page < 1 || page > pager.value.total) return
-    pager.value.current = page
-    scrollToPage()
+const goPage = (pageNum: number) => {
+    pager.value.current = pageNum
+    const targetNode = leaferInstance?.tree.children.find((_, i) => i + 1 === pageNum)
+    const moveY = targetNode?.y ?? 0
+
+    const currentY = leaferInstance?.tree.y ?? 0
+
+    let move = 0
+
+    if (moveY < Math.abs(currentY)) {
+        move = currentY == 0 ? moveY : Math.abs(currentY) - moveY
+    } else {
+        move = Math.abs(currentY) - moveY
+    }
+
+    ;(leaferInstance as App).tree.move(0, move, true)
 }
 
-// 通过大纲跳转到对应页码
-const jumpByOutline = async (ev: any) => {
-    const dest = ev.page
-    if (!dest) {
-        console.warn('No destination found in outline item')
+const handleNodeClick = (data: any) => {
+    const page = data.page
+
+    pageNum.value = page
+    goPage(page)
+}
+
+const pageNum = ref<number>(1)
+const handleJump = () => {
+    const page = pageNum.value
+    if (page < 1 || page > pager.value.total) {
+        pageNum.value = pager.value.current
         return
     }
-    goToPage(ev.page)
+
+    goPage(page)
 }
 
-const registerCanvas = (pageNum: number, el: HTMLCanvasElement | null) => {
-    if (el && !canvasMap.has(pageNum)) {
-        canvasMap.set(pageNum, el)
-        renderPage(pageNum)
+const renderPage = async () => {
+    if (!pdfDoc) return
+    if (!leaferInstance) return
+
+    const width = leaferInstance.tree.width ?? 0
+
+    let offsetY = 0
+
+    for (let pageNum = 1; pageNum <= pager.value.total; pageNum++) {
+        const page = await pdfDoc.getPage(pageNum)
+
+        const viewport = page.getViewport({
+            scale: pager.value.scale,
+            rotation: pager.value.rotation,
+        })
+
+        const x = (width - viewport.width) / 2
+
+        const canvasNode = new Canvas({
+            x: x,
+            y: offsetY,
+            width: viewport.width,
+            height: viewport.height,
+            scale: pager.value.scale,
+        })
+
+        await page.render({
+            canvasContext: canvasNode.context as CanvasRenderingContext2D,
+            viewport,
+        }).promise
+
+        canvasNode.paint()
+        leaferInstance.tree.add(canvasNode, pageNum)
+        offsetY += viewport.height + 16
+
+        page.cleanup()
     }
 }
 
-const renderPage = (pageNum: number) => {
-    const canvas = canvasMap.get(pageNum)
-    if (!canvas || !pdfDoc) return
-    pdfDoc.getPage(pageNum).then(page => {
-        page.cleanup()
-        const context = canvas?.getContext('2d')
-        const viewport = page.getViewport({ scale: pager.value.scale, offsetX: 0, offsetY: 0 })
-        ;(canvas as HTMLCanvasElement).height = viewport.height
-        ;(canvas as HTMLCanvasElement).width = viewport.width
-        canvas.style.height = viewport.height + 'px'
-        canvas.style.width = viewport.width + 'px'
-        pageHeight.value = viewport.height
+const initLeader = () => {
+    if (leaferInstance) return
+    leaferInstance = new App({
+        view: 'leafer-canvas',
+        tree: { type: 'document' }, // 给 tree 层添加视口
+        sky: {},
+        fill: '#efefef',
+        zoom: {
+            min: 1,
+            max: 10,
+        },
+    })
+    new ScrollBar(leaferInstance as any, {
+        theme: 'light',
+        minSize: 24,
+    })
 
-        page.render({
-            canvasContext: context as CanvasRenderingContext2D,
-            viewport,
-        })
+    leaferInstance.tree.on(PointerEvent.POINTER, ev => {
+        console.log('scroll', ev)
     })
 }
 
-const rerenderVisiblePages = () => {
-    canvasMap.forEach((_, pageNum) => renderPage(pageNum))
-}
-
-const scrollToPage = () => {
-    virtualListRef.value?.scrollToItem(pager.value.current - 1)
-}
-const list = ref<{ id: number; pageNum: number }[]>([])
-onMounted(async () => {
+const initPdf = async (src: any) => {
+    if (pdfDoc) {
+        return
+    }
     PDFJS.GlobalWorkerOptions.workerSrc = '/pdf/pdf.worker.mjs'
     pager.value.current = 1
-    fileInfo.value = route?.query as unknown as FileInfo
-    const path = convertFileSrc(fileInfo.value.path)
-    pdfDoc = await loadDocument(path)
+    pdfDoc = await loadDocument(src)
+
     const meta = await getMeta(pdfDoc)
     pager.value.total = meta.count
     list.value = Array.from({ length: pager.value.total }, (_, i) => {
         return {
             id: i + 1,
             pageNum: i + 1,
+            el: null as HTMLCanvasElement | null,
         }
     })
     outline.value = meta.outline || []
+}
 
-    nextTick(() => rerenderVisiblePages())
+onMounted(async () => {
+    initLeader()
+
+    fileInfo.value = route?.query as unknown as FileInfo
+    const path = convertFileSrc(fileInfo.value.path)
+    await initPdf(path)
+    await renderPage()
 })
 </script>
 
@@ -175,8 +233,24 @@ onMounted(async () => {
                         </el-icon>
                     </el-link>
                 </div>
-                <div>
-                    <div>{{ pager.current }} / {{ pager.total }}</div>
+                <div class="book-utils-operation">
+                    <!-- <el-button-group>
+                        <el-button text :icon="Minus" size="small" @click="handleZoomOut"></el-button>
+                        <el-button text :icon="Plus" size="small" @click="handleZoomIn"></el-button>
+                    </el-button-group> -->
+                    <el-divider direction="vertical"></el-divider>
+                    <div>
+                        <el-input
+                            v-model.number="pageNum"
+                            size="small"
+                            style="width: 50px"
+                            @keydown.enter="handleJump"
+                        ></el-input>
+                        /
+                        {{ pager.total }}
+                    </div>
+                    <el-divider direction="vertical"></el-divider>
+                    <!-- <el-button text @click="handleRotate" :icon="RefreshLeft" size="small"></el-button> -->
                 </div>
                 <div></div>
             </div>
@@ -187,29 +261,13 @@ onMounted(async () => {
                             :data="outline"
                             :props="outlineProps"
                             :highlight-current="true"
-                            @node-click="jumpByOutline"
+                            @node-click="handleNodeClick"
                         >
                         </el-tree>
                     </el-scrollbar>
                 </div>
                 <div class="book-canvas">
-                    <virtual-list
-                        ref="virtualListRef"
-                        list-class="custom-scroll-wrap"
-                        item-class="custom-scroll-item"
-                        :items="list"
-                        :item-size="pageHeight"
-                        :buffer="1000"
-                        class="pdf-virtual-list"
-                        #default="{ item }"
-                    >
-                        <div>
-                            <canvas
-                                :ref="el => registerCanvas(item.pageNum, el as HTMLCanvasElement | null)"
-                                :style="{ height: pageHeight + 'px' }"
-                            />
-                        </div>
-                    </virtual-list>
+                    <div id="leafer-canvas" style="height: 100%"></div>
                 </div>
             </div>
         </div>
@@ -237,6 +295,13 @@ onMounted(async () => {
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
         background-color: #fff;
         padding: 0 24px;
+        &-operation {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            font-size: 14px;
+        }
     }
     &-outline {
         width: 300px;
@@ -250,19 +315,8 @@ onMounted(async () => {
     }
     &-canvas {
         flex: auto;
-        height: calc(100% - 24px);
-        position: relative;
-    }
-    .pdf-virtual-list {
         height: 100%;
-    }
-    :global(.custom-scroll-item) {
-        display: flex;
-        justify-content: center;
-        background-color: #efefef;
-    }
-    :global(.custom-scroll-item:not(:first-child)) {
-        border-top: 1px solid #efefef;
+        position: relative;
     }
 }
 </style>

@@ -14,6 +14,18 @@ importers:
       '@handsontable/vue3':
         specifier: ^15.2.0
         version: 15.2.0(handsontable@15.2.0)(vue@3.5.13(typescript@5.7.2))
+      '@leafer-in/animate':
+        specifier: ^1.7.0
+        version: 1.7.0(@leafer-in/color@1.7.0(@leafer-in/interface@1.7.0(@leafer-ui/interface@1.7.0)(@leafer/interface@1.7.0))(@leafer-ui/draw@1.7.0)(@leafer-ui/interface@1.7.0))(@leafer-in/interface@1.7.0(@leafer-ui/interface@1.7.0)(@leafer/interface@1.7.0))(@leafer-ui/draw@1.7.0)(@leafer-ui/interface@1.7.0)
+      '@leafer-in/scroll':
+        specifier: ^1.7.0
+        version: 1.7.0(@leafer-in/interface@1.7.0(@leafer-ui/interface@1.7.0)(@leafer/interface@1.7.0))(@leafer-ui/core@1.7.0)(@leafer-ui/interface@1.7.0)
+      '@leafer-in/view':
+        specifier: ^1.7.0
+        version: 1.7.0(@leafer-in/interface@1.7.0(@leafer-ui/interface@1.7.0)(@leafer/interface@1.7.0))(@leafer-ui/draw@1.7.0)(@leafer-ui/interface@1.7.0)
+      '@leafer-in/viewport':
+        specifier: ^1.7.0
+        version: 1.7.0(@leafer-in/interface@1.7.0(@leafer-ui/interface@1.7.0)(@leafer/interface@1.7.0))(@leafer-ui/core@1.7.0)(@leafer-ui/interface@1.7.0)
       '@sentry/vue':
         specifier: ^9.10.1
         version: 9.10.1(pinia@3.0.1(typescript@5.7.2)(vue@3.5.13(typescript@5.7.2)))(vue@3.5.13(typescript@5.7.2))
@@ -63,8 +75,8 @@ importers:
         specifier: ^15.2.0
         version: 15.2.0
       leafer-ui:
-        specifier: ^1.5.1
-        version: 1.5.1
+        specifier: ^1.7.0
+        version: 1.7.0
       markdown-it:
         specifier: ^14.1.0
         version: 14.1.0
@@ -832,152 +844,185 @@ packages:
   '@juggle/resize-observer@3.4.0':
     resolution: {integrity: sha512-dfLbk+PwWvFzSxwk3n5ySL0hfBog779o8h68wK/7/APo/7cgyWp5jcXockbxdk5kFRkbeXWm4Fbi9FrdN381sA==}
 
-  '@leafer-in/interface@1.5.1':
-    resolution: {integrity: sha512-kLC3Wi8QvPm/Lvfx+FHJbKJU4YEYB3xPG0r4OAdWOrJg/YEy9MSMXysxJfOnZxfJYIm3i0ir9LQv5Rv5WAuPGg==}
+  '@leafer-in/animate@1.7.0':
+    resolution: {integrity: sha512-UCFWby97Z+wu0+SI7ihvGl5y68fMn2FZFip47PDWo7osRt9i726ZESgPV/PZqmz10z5kWMZTTpcYeWNSkrxF3A==}
     peerDependencies:
-      '@leafer-ui/interface': ^1.5.1
-      '@leafer/interface': ^1.5.1
+      '@leafer-in/color': ^1.7.0
+      '@leafer-in/interface': ^1.7.0
+      '@leafer-ui/draw': ^1.7.0
+      '@leafer-ui/interface': ^1.7.0
 
-  '@leafer-ui/app@1.5.1':
-    resolution: {integrity: sha512-amOFv4ShFjaCfKxBbSvggb6YCuxTy75JT6EbhF+FCr+Vod4nSofrsLcRT80JaObWspWjjqY4VtrKhItKm8wPJA==}
+  '@leafer-in/color@1.7.0':
+    resolution: {integrity: sha512-M7ZPSDbVnam7ZrCXueYI5UlM4ckTE13pe2GWcrMWexTdlQQRwe9+LNP+ivRP5O9277Ipi8y5rJNvNug3pm0D0A==}
+    peerDependencies:
+      '@leafer-in/interface': ^1.7.0
+      '@leafer-ui/draw': ^1.7.0
+      '@leafer-ui/interface': ^1.7.0
 
-  '@leafer-ui/bounds@1.5.1':
-    resolution: {integrity: sha512-Ljqj+2mf+6B8FMTelGnZvaTqAM9b65S9ModufoetfK7vdxtYzRfYjLe6zT3USQpLPkIJqTh4DIYkzw3m9TxWwg==}
+  '@leafer-in/interface@1.7.0':
+    resolution: {integrity: sha512-CdOwYcKbsQ02ychJrh+1BI6wOVK+2a4ba+bb6PbwYdYy5PZU+LzMiIDJr8TbdpzqIGJ1xbOILgdgL80qhbw30g==}
+    peerDependencies:
+      '@leafer-ui/interface': ^1.7.0
+      '@leafer/interface': ^1.7.0
 
-  '@leafer-ui/color@1.5.1':
-    resolution: {integrity: sha512-hEAINGAyiRwIU3x6gz8EgjbiY+wuezk0TdAgg1Q6mfpUxYk6Ve6YlNWXFsCK6hnUKGzT34H3/OqDXURVRCdRVQ==}
+  '@leafer-in/scroll@1.7.0':
+    resolution: {integrity: sha512-awlkKhvs6/jIMBGSlGgjF4benVaYUWQeOidm6erXRcEolHvoZfVpKratHdchqj6um7nJgu+N5TiXNQAdjytmAg==}
+    peerDependencies:
+      '@leafer-in/interface': ^1.7.0
+      '@leafer-ui/core': ^1.7.0
+      '@leafer-ui/interface': ^1.7.0
 
-  '@leafer-ui/core@1.5.1':
-    resolution: {integrity: sha512-5LK97J3jNj3Vj6hhDbzmbGL5VS50wY5yC/gVfOoNiSYcgsQWCQU7X+4yai6PXhn3gTVTXtWezOxki5veDgjggw==}
+  '@leafer-in/view@1.7.0':
+    resolution: {integrity: sha512-Isdb8rRNdtBaObeHVafezwVVQYd4ZwN6RCo87fTNBSiOtI95dmkjFMTHZAdHwEHsjfy75QA0in/1HWrVKABbSA==}
+    peerDependencies:
+      '@leafer-in/interface': ^1.7.0
+      '@leafer-ui/draw': ^1.7.0
+      '@leafer-ui/interface': ^1.7.0
 
-  '@leafer-ui/data@1.5.1':
-    resolution: {integrity: sha512-hvVVXteVl5cUbHO1jtRFfAPZNIaWWEPsGNX2G303iMTAeJnRjTP8WadZjRcvrA7GABxcE+4A4OlMDl32vLKAPA==}
+  '@leafer-in/viewport@1.7.0':
+    resolution: {integrity: sha512-xVt6gVyGSOkmyxE3755GjYPQVpqrcMDeHL84eFW8YdfCftSKXD5CkwPNmMGqgFTZI/l6exbtNvsyvP1bpfhU7Q==}
+    peerDependencies:
+      '@leafer-in/interface': ^1.7.0
+      '@leafer-ui/core': ^1.7.0
+      '@leafer-ui/interface': ^1.7.0
 
-  '@leafer-ui/decorator@1.5.1':
-    resolution: {integrity: sha512-i8mdVxNM7Ho9njzo21QPK39GVUGZV5NV+NLSV6K6ghMtj/jFx+yZmtYL51/PScD2Sts3hlL/9WkcQLyU1O+GWQ==}
+  '@leafer-ui/app@1.7.0':
+    resolution: {integrity: sha512-KbeVWar+3y4mbZ/5kQeJRU7najGvhf8Tkc20Ux1+7XULhhqyafj1XP7wwrFqpb2LhFdpLLZeWSNKYlPUni4K6A==}
 
-  '@leafer-ui/display-module@1.5.1':
-    resolution: {integrity: sha512-IJV+QkRaIky781mhIKHRdO+qXZx0PaxEDygdrw6FwL5n7wGJO6kZ8rMpN3NXHAt30BiuxtPkI456jfx8NT5jRQ==}
+  '@leafer-ui/bounds@1.7.0':
+    resolution: {integrity: sha512-Ebj8RBz9R0EcHebDEmGzSNH27716je/cXbAk+FPBvbbRjAMFbjTPx19UJ4Ioqs6XKC9z0bBNzTOTk3i865PdTw==}
 
-  '@leafer-ui/display@1.5.1':
-    resolution: {integrity: sha512-W38D0kvWN0fjib9yLGIADyWtbIQvdm3IlI+iGlQMsdrFjo1dhUKdu1RZM8XeM7lpvEDLeEVc35sZH7lx8vsyMg==}
+  '@leafer-ui/color@1.7.0':
+    resolution: {integrity: sha512-LRnuybqrkvQqqtr8ezmPpkO231iHTIbYJWOwXIOU5abWcmE/ta1c9Ug6Rr8Hsj8GKPYc9j0JKXfI9AYJCxIqSA==}
 
-  '@leafer-ui/draw@1.5.1':
-    resolution: {integrity: sha512-QQC8CBYOfKzwM8zNpjUVyWlvxYxker9I1keW6wlxJo1RMzStbBtJC11KWIPJTNAwh9sigRelg94uMrWmV3npHg==}
+  '@leafer-ui/core@1.7.0':
+    resolution: {integrity: sha512-0Kz2BSwY0ZSkeOOxX1nRvhBSWPKkCz5BbiNOhwu76hwvNOM7POA5ktInIbZFEvNyAopeiQ8TESi1Q/1mE7i3rA==}
 
-  '@leafer-ui/effect@1.5.1':
-    resolution: {integrity: sha512-spN/FHNTW+GhNVfJjHZ6zBM5gNkWwBo0KC+BUZCKA7MOdE/LQcrlCw82Q6JgfEqs0P2BZf2hw5E6VwE7fEctuA==}
+  '@leafer-ui/data@1.7.0':
+    resolution: {integrity: sha512-pH0ezhxGn+KF3Wor1f1vXyrrUxllpgBA75FiLb5LLTG5QxdwgZz3XKNte6FEwEVwiAOT2aRwBCs37wa6anwBjw==}
 
-  '@leafer-ui/event@1.5.1':
-    resolution: {integrity: sha512-QPviYRjputM/Cl/5T/rddrPg4XOqJGTw/gGMgk7d8xCgTnAmeUPIqU7x5TJ1A0LTJvsaBBLFKLkvqWAsGLrJag==}
+  '@leafer-ui/decorator@1.7.0':
+    resolution: {integrity: sha512-OW8owgLFuIhb15trXPxqCmXVKQOygQ+VD0TckQPHp8k7C3MhFdv48pNes8cwinWP2PyZTZ5M/BlLnpvksWkMkg==}
 
-  '@leafer-ui/external@1.5.1':
-    resolution: {integrity: sha512-LkanOUY7GQCUgzdnpPGOOjutr7j/JZ6mR5CvCM/2413ko9wzwpIn7JclGJ0E+oDJuZ0xl4YHqy5PsEWJpz0Kkw==}
+  '@leafer-ui/display-module@1.7.0':
+    resolution: {integrity: sha512-pYEmLBjnltb9KiVk5uQhIoIK5+Y3HE7Dx+NAS9jyZnmXsW2ePRgiKOMI1jOf+bp/Fup33EKz7jHRUtZOwwHEoQ==}
 
-  '@leafer-ui/hit@1.5.1':
-    resolution: {integrity: sha512-srpQwzgV1tKFPBYY5cQn36QaUYQJtIKnq3cHSXT/8/MW9fY5WU3V7ygSMmpxvhmKWOcDIgpFe7WT2RmGVpqPFw==}
+  '@leafer-ui/display@1.7.0':
+    resolution: {integrity: sha512-XjOBpLuVtzVe42rJbw72m9Lg5VwG3Gp/P7x0oVU0CEmnO/Qv7bYNCgItBmL4hO4ysMqsxAGe9ygWJP3wuLIfZQ==}
 
-  '@leafer-ui/interaction-web@1.5.1':
-    resolution: {integrity: sha512-z6rdwy/Vg1N4IkYk/XNeFG7EQHXb9q+kxsNIOL9Qmwxfh/U4XbcWOiswmHJU36/5c9/0p+Yuw6sFnpjhMzgw3w==}
+  '@leafer-ui/draw@1.7.0':
+    resolution: {integrity: sha512-vmjyK7Cv84Vb08A0q6PnbTl6/iY+CBYyLRnO+tVGaSoM9hMEvnF1AwrHfJH4YWL4SBWWBbkWit3pgI+WKLl62A==}
 
-  '@leafer-ui/interaction@1.5.1':
-    resolution: {integrity: sha512-Yyh+rYhsfLIiXkfZ+p0+7jG39FL2lygwK4nnm9nSF1Hhfzj1xbAJ1oo3q74v1WQC9cGekA4w20Fk5czJD3eFmQ==}
+  '@leafer-ui/effect@1.7.0':
+    resolution: {integrity: sha512-svI+yCfxh0OnTKk2sqkrB5WPQFoRSCPppsm5bUMNf06sXZOe+3sZshmr8lg+vgEoY5oYtzGhGptK25s/Am3RYQ==}
 
-  '@leafer-ui/interface@1.5.1':
-    resolution: {integrity: sha512-tv8t05E9kPLQ9VmFz4zvzqzufHFe3R3wScJ2pdjIwu1PTteUKKKUqJvn+L7E8bLx3oKqQxNRalz8DWqaoGAGUQ==}
+  '@leafer-ui/event@1.7.0':
+    resolution: {integrity: sha512-P82PMLX9TTvlhECvw6oPBzF+RBfW3gjVfqfp6GXihws2QZoaFlajxbaB5mi2oDJpsmtMLqcqPvcvs22rMPj0Nw==}
 
-  '@leafer-ui/paint@1.5.1':
-    resolution: {integrity: sha512-ZaLH51Upe0DVz2ZpUpugk73fnxM9hbPFWNGiqqt+TySzsQxPn6UlfoDr5aLoMOqjIYr01VjHGnAU0lUB7nctvA==}
+  '@leafer-ui/external@1.7.0':
+    resolution: {integrity: sha512-Emn3jEPOF1kSc8daOWii5rgNn6H43j3sOTe7aSaK0myPs2WiUWGdoWODGVGLLJ31aKnQUulr2SgEqkOm8rAYSA==}
 
-  '@leafer-ui/partner@1.5.1':
-    resolution: {integrity: sha512-KdHlGB6wytjwAqmIlnSAYzVGxee6enbdMRbGxP08xTYeGnEkRG0jjelz/10uYxl4uCHWnH2ZU38bj0456lcuIw==}
+  '@leafer-ui/hit@1.7.0':
+    resolution: {integrity: sha512-UWgbHVUYD3qqv9UP45ZDSuy/7JubhnS56yYejm8j9AqOWIah9aH0YHqBcbl+RRFe6NrF0inv5tcrCVqER/SjQA==}
 
-  '@leafer-ui/render@1.5.1':
-    resolution: {integrity: sha512-aLD4IQBEY3isJFjpuqhULpNaaOUoCFYCZDG5q5VoeopbCLqJ4/AEbJJDg9Ez5Ypa45786wc6ejOKJZ1DU7hgug==}
+  '@leafer-ui/interaction-web@1.7.0':
+    resolution: {integrity: sha512-lVIaCAYGdAB7obR1VpYLOpxJWu1nmPvGwaHA9K/cm1uAkoWSOobHQbGFI7+0bH1QI9wQO7teQi2YameK5XIeFA==}
 
-  '@leafer-ui/text@1.5.1':
-    resolution: {integrity: sha512-UXQML3jnQHCkKWE2I3ef2YJRO6X4Jn4nahK656ZTem30w8saKdHDAkPzt7yqIPF4e2VnM4ImvrhIRldK9zrYqw==}
+  '@leafer-ui/interaction@1.7.0':
+    resolution: {integrity: sha512-5pGN1YaoxCGGgi9YnNIvDZnKYhymUNLZ+Du//8VtEifHSJwUxvZyiT0YlyKrpeU9T0yK1oBCKqxsRJQzZJNSXg==}
 
-  '@leafer-ui/web@1.5.1':
-    resolution: {integrity: sha512-5NShdvBHs8yOCZxMtU2MVv5zc84tn/Ccx7KxC33Lvqal/i1C8N+M1visZep2OIXNoEeb7KW1eJx6Lat9/32+Aw==}
+  '@leafer-ui/interface@1.7.0':
+    resolution: {integrity: sha512-vHOzxV0xuJxqaJNXSTfYT1oTRepAe505A/QW8jpZhnx452SLNaayF6nng4ZOP58FAxkxEFE+ozqoqd1B8BHs5A==}
 
-  '@leafer/canvas-web@1.5.1':
-    resolution: {integrity: sha512-ML/cHNtvcBfLuG2rVHahhJEsj0E28C3Ctkf7nnX75EC2GZVXJ4UFA5TNegWAQvA+Pl8xq+Gc713aFCkJE4EbWA==}
+  '@leafer-ui/paint@1.7.0':
+    resolution: {integrity: sha512-GNQmbM0Nq2IC0SBVbYE6UVwGHUvT9n0V7wMCYCfd3WJwLRwYW4pM487VF8dCuALsWXXy3L5l7TmHS3hGpV9DPw==}
 
-  '@leafer/canvas@1.5.1':
-    resolution: {integrity: sha512-b3r6F7dH0yLkuuiiAAxoP4vC4r2FiKpTYLQQqtEN7sOfbmCU2bbFYT47yFkN4P7ODSJIf5PGfkRAXi0RY1n0og==}
+  '@leafer-ui/partner@1.7.0':
+    resolution: {integrity: sha512-nvZlodyoML8eOKGUHpk7BT6sdLl2hCQP6K3s/n64op5XxmHdAkBu2cghF6H8GiYExv8KlB7s+pWg9cdsE/4wTQ==}
 
-  '@leafer/core@1.5.1':
-    resolution: {integrity: sha512-qZ+vIyp+iJCZpJjLErVfqMYuV+ZzMpq6rzVr74KpHt2md2hkdnA1ky4WVl+XkmqLfzVc+TL/ZP9SQyQQIHfRag==}
+  '@leafer-ui/render@1.7.0':
+    resolution: {integrity: sha512-r3upa17vitC3GBnS0Vve2SnwFYOZUvi/PvXqwnGnrHWO+OHWUgvjdHCmlIJprJjiJtD4CiRnOI2JpJx61quFpA==}
 
-  '@leafer/data@1.5.1':
-    resolution: {integrity: sha512-L+swL1RZ2zMB8pUVYeIVlaRZxtKHWZiOpjpgcgtOMzKWtwcjUjjtQnv16lUyxyqQPymGNPeqkWappz/JNWs02g==}
+  '@leafer-ui/text@1.7.0':
+    resolution: {integrity: sha512-UqPSf0lcaxxow0ZqN1/r6ny6qfPCOhpFmuitvo9ctNWaN85JXujbE26Saj4XaJ0iZ8pcRKZf9rlyRs/O2foJEA==}
 
-  '@leafer/debug@1.5.1':
-    resolution: {integrity: sha512-uLlhjP0vWk0U9WyAWfxS+WNaAwaOJA5s1vGN04OY9RhJ6fqBPXSHWO0OTRae8FHGohtswkoCJOEWDOYNKOj6+A==}
+  '@leafer-ui/web@1.7.0':
+    resolution: {integrity: sha512-5y8CEsXHxLShS3N7pTj0NBUnyeozpDru+slE2GarDFIX9U/LUkWlCeXMNGfs1ObuRI/w4dMyFT/TvmY9ISJBOA==}
 
-  '@leafer/decorator@1.5.1':
-    resolution: {integrity: sha512-ZrINODemAiw3BJUX7fhAyGde7qy7RBaiz3z8YxDIQc4KFY1Vo4A5HhDQFuujKQc+Cs/9R2ZLZJa18szYjQzCtg==}
+  '@leafer/canvas-web@1.7.0':
+    resolution: {integrity: sha512-LqStiVK3hXAXHxAhP3C83ME22GWbX4G/d32R2E7gfSJrfziKk7/CUqiI6UcqEmx97F+EOEhfwtRwGEm2LtNNvw==}
 
-  '@leafer/display-module@1.5.1':
-    resolution: {integrity: sha512-kZGoOeD63HhzyXksCJ0CUWts6Ic66h2203RiZC8mmcfpt+HsIbQo7Jlrh5S9x/KqS2JeHZEBwMYOtrBtzwepiA==}
+  '@leafer/canvas@1.7.0':
+    resolution: {integrity: sha512-vqNQGF+g0ATPJj8/j9gESWy5H+qCuSmeLaPSMwhYVpTnSlVb2z31MptoFSfll8EcHd2gt3YSekbeqADOLsoRuw==}
 
-  '@leafer/display@1.5.1':
-    resolution: {integrity: sha512-jNB6O4c9Ke8yGnndfCk8MH/01slXReaD5BOgHS6xpseh0h6/Z3KKC9Wg1tyYsaLbKM0uCju1zhodKJqUBojWZg==}
+  '@leafer/core@1.7.0':
+    resolution: {integrity: sha512-ymMcejQwuREG/yzF0eiyoYPeFgkb6PuzB5b6MczZHdl0Ymf8nS9pVyHIBeZkixCobr16e2jlN2jUHbt9HB/AUg==}
 
-  '@leafer/event@1.5.1':
-    resolution: {integrity: sha512-9yelnAFydYtPaUUTaDCQsW8Rg7SE+kBTHAFw1NGuuL3ZwUraHLAlsj4H8VfObZ1vWXxuRNzXIDO0LS6YHft3Sw==}
+  '@leafer/data@1.7.0':
+    resolution: {integrity: sha512-sbGvA2+esyyIE2MzCBsll1/sJYnHcqlG5yYgDoNHTeVUzm1dGCZIXyjQiyI807ffCD3Mu+tqHh4J72QJpgKlbg==}
 
-  '@leafer/file@1.5.1':
-    resolution: {integrity: sha512-gguXgTyhWgrsZPQ03KB9+o9hjVL4pEOfEFb9V4/SsBi6l8rfc1+rRvBAy6yeTH3pECkI2kd60OUMmnTw7Q8JEg==}
+  '@leafer/debug@1.7.0':
+    resolution: {integrity: sha512-vc1Nq1wDwzY7y9jopV1F+pBRouCyiQs4oBNmbENlZTyAslDd427KPmE56A8+MCJk69xDwOHNZZUBEZ3vM4pcZg==}
 
-  '@leafer/helper@1.5.1':
-    resolution: {integrity: sha512-U9L3/jwtvAQfNnrQ4f/oFt485nmC4un7BXf/kX37eSrY+XVGTO6GJEQN7PS+NAzAsYkeDZAuPynyRlv2VNgY5w==}
+  '@leafer/decorator@1.7.0':
+    resolution: {integrity: sha512-TWZZRf1XQ3l/eE0BIeSHHYR/I3pv9T+YPTFcIvHqSlR3o88nseAxjVgbA2jEoNb0gxJkzK4HVeMnapL0xaieRw==}
 
-  '@leafer/image-web@1.5.1':
-    resolution: {integrity: sha512-SOimnb0QTBIqK+VLIhaEcb2ketAeAVAlu0xwHxgRDW0N3NLW6/gvzB9GFA/dVbaEfeJFr76g8ApL4VbHz7QvgQ==}
+  '@leafer/display-module@1.7.0':
+    resolution: {integrity: sha512-rZQjPfq0MSlVgDySgBctTl03/TAhXzDaNJ3fJ7XV7Zie3CleHVrZdvYrDp/JO0nuKcXQvuHjKW4wPw/OVjwGnw==}
 
-  '@leafer/image@1.5.1':
-    resolution: {integrity: sha512-kXYvAKkmeWI8s5iSPV1tJx9qcuK1p74carfRUoFI9RG/MWaNKq+tIbQuGdPlEANnTObep3r8LzkUtDROtiSKNA==}
+  '@leafer/display@1.7.0':
+    resolution: {integrity: sha512-Gb3on7hOsqgWzSoTmCAP+D78+IMUDG6S7ha1cmejaUXr0qO1qeYLhzA9Y6uq2htXzeyg/1pTmysx9/UKKgPunQ==}
 
-  '@leafer/interface@1.5.1':
-    resolution: {integrity: sha512-LWy8zhd7Jqtig5P2rcgQveNJG5tsr323WpBqov8LyWH0LHVODUUhCeqJ9UQmZvYQzLzD3sXUoUqBvDjHkOxonA==}
+  '@leafer/event@1.7.0':
+    resolution: {integrity: sha512-2KDnA0swynXAKYlpNGLIuLqPDFiWlYyYs4mP+v076P9H62pwSLnsmCUSl+XeL8dLI3+PI1WOZZ7VAbu5uJuX7A==}
 
-  '@leafer/layout@1.5.1':
-    resolution: {integrity: sha512-IzIgpXLUzYYWuwTIG4mkp+16MhT7E+hIvW0kXNAiku0N2M0uNNEX1+of4ryNlD/5FDZJJAXgN+Wm0waF+dd/UQ==}
+  '@leafer/file@1.7.0':
+    resolution: {integrity: sha512-C4vpO08oYxiiAS7f3Vus2fVRCD0+MAvOyuutKEf3WdgceDwZnXCqAdXDd52YhCZaZLiBb/0X4RAnyY/x9jkDhQ==}
 
-  '@leafer/layouter@1.5.1':
-    resolution: {integrity: sha512-anj+21rtXGhK3MkkDF20tdALSpqeFA/fpU9yhqCCUioqi+32reInqmBK7LmyBnNQrwGVyKO3pQGII8MH/n4kfQ==}
+  '@leafer/helper@1.7.0':
+    resolution: {integrity: sha512-E7AZL7e8tnUgN3uS80c3bIGah7ZGHsa7xPHJarj2fTrRTlYSVcsRCO6wLaso5RFWLdmQ9WM97U9AqXQQfS3C5Q==}
 
-  '@leafer/list@1.5.1':
-    resolution: {integrity: sha512-ezyWYNuCSXHh6eRZnM3gTzd8sZrLQyPAb9ne1uSGZ6Q2DSRWl6BFpYiJxFg5YNy3dDLAvwtZC9gnS+vGAEn7NQ==}
+  '@leafer/image-web@1.7.0':
+    resolution: {integrity: sha512-sR1CIrB1ZGu0vyLtH+iUCcrt+YSAqiAVzvjJs9zmp/DOlX0XmKwj04Arj7+ednnCW3rlzpXP7pJhDIolmfAINw==}
 
-  '@leafer/math@1.5.1':
-    resolution: {integrity: sha512-ZS3geYUmbNG+PF+OmD3QDMLLKpSraOmi1CoECdovC2202OLVA4zCSZj8V3zrW8JfZTO/8LEmgjmDaw6zaY0eKQ==}
+  '@leafer/image@1.7.0':
+    resolution: {integrity: sha512-lik/uzs+NaIWs+6nmLU4VM5JiVXA0aIQdF8ZNukD2+CJ8tNM4K2lbEV9UYasiopiOoV7qAuKD8AC1QFj4wTpGQ==}
 
-  '@leafer/partner@1.5.1':
-    resolution: {integrity: sha512-IVyDPjweyxII703JxOgL5wDcnWyw/JZQlBGZ1DJ3a+O1b13SCtOMlASpQT8svFUMHBZTQN1JhsKSjYYgOEA4dg==}
+  '@leafer/interface@1.7.0':
+    resolution: {integrity: sha512-E3xujAqMiTB8hg46bt9gBvmmVXY+6k6EgqYnTL2x8fF5MR50D4ocajHmbiZpZp81Zd+J9Tc03fMdjHWoG+3JpQ==}
 
-  '@leafer/path@1.5.1':
-    resolution: {integrity: sha512-tyr0+IDZmZpr6MPYPeYmQdnXDNIYDLh44Gr61/whvgY5T0qgIOoJMEQZHzG0XK4eDjfniFosWOQ8jMjnG3n4VA==}
+  '@leafer/layout@1.7.0':
+    resolution: {integrity: sha512-ZyNkNb5OiA/urb/DvepXs7CoTW1fMEDFEryA/lBeCLS4lZZt+bJNz2zRL8Dts90O5fIkmT3k4ElOKeHeUOwiSQ==}
 
-  '@leafer/platform@1.5.1':
-    resolution: {integrity: sha512-14eT5kN+9iRU5aq0ggaWW9PEkAtOxvLuQZVo/TmQ1K437mmn2beaQnejb7U5aMBKt+qHDzZWog8VaByrIoYmqA==}
+  '@leafer/layouter@1.7.0':
+    resolution: {integrity: sha512-tdMhvwkh8HRZtLgWqtCrCpEGZWqE+HTjPBNpsB6H0cKR6MKOI5Nfa9IYP4I/78s+f6wXzEvVowGvwHvzR4VIvg==}
 
-  '@leafer/renderer@1.5.1':
-    resolution: {integrity: sha512-jKyBzb+aZUezsuqa2T9nhkyYAYOeSwvF6SLUyL6nuLD9oUwMLpInjonHQF0IuPJjz+XIS3cKQ35K1qbeloVCLA==}
+  '@leafer/list@1.7.0':
+    resolution: {integrity: sha512-eq2Fbh8x81/BXM2JTitQ7RZ/GgCuNE/A0H/ARXEc18OuMUSV63fByIsA8IOuVlLc5AaAPp0YMAZ3Gj0pm9V+gA==}
 
-  '@leafer/selector@1.5.1':
-    resolution: {integrity: sha512-nQKXrqaIU5V+Z5exBGu2yn6ChVbxPVHMi+ejLId5FKgBQNND82G0rE/X4/WshpQqH+vuMdrTb4DRYlTsUu4W3A==}
+  '@leafer/math@1.7.0':
+    resolution: {integrity: sha512-VO8S7AxMQ/4ePuI79jeOAMY0va9QdjRmL2AoVaPPaAw4hkudbMPjBXl81xzzKOZxkkLUePDcnpkX1N5309OIDQ==}
 
-  '@leafer/task@1.5.1':
-    resolution: {integrity: sha512-zcflxmhWTFnRchAw6fU826qhY0FPKA42OTGwepaArWZbCeg3L15+1qz2uPMbEAsyr69UJjocxdxhqBg/8q6bUQ==}
+  '@leafer/partner@1.7.0':
+    resolution: {integrity: sha512-evXONdF2EcwsLVjPk7y95GT7AMDYkyVVpjUgTKX0xCq9QQCaABZs/PFmR5wPd3hr+MWJNZoXvdzBZ0n1H0GV8Q==}
 
-  '@leafer/watcher@1.5.1':
-    resolution: {integrity: sha512-3KsFISiqacj7OG3zXM5NcG0FJ7woj/crRYIB/+YPu/Rkg0JOvKbSTFnvh6bvIViWAab9rqmEihvdA+lgIChOaw==}
+  '@leafer/path@1.7.0':
+    resolution: {integrity: sha512-6ZbbqQj/02wzW1vC1zEfZVczt4T0O1YnFm6S4AgN6yCqo9lIQ8Vbx6Yps+zY7E2uydx5PbBU5LIdgRXp4Kjf3Q==}
 
-  '@leafer/web@1.5.1':
-    resolution: {integrity: sha512-84862KYZJOuwtwG4M6Rh57Kru2PuNLG228DMyjYHt+nX5oBWgN5tnfqrOM0Kk/1kWzz1cqmpnLbF8QrO/2sCfg==}
+  '@leafer/platform@1.7.0':
+    resolution: {integrity: sha512-12yn9Kfc6YSOg5TOMPRtE77gxLmZSC1pylGlgKpcL6WwRxga+rFM/gpgkXT0GEeLVuVdktnxgAjmpSNpvId+8Q==}
+
+  '@leafer/renderer@1.7.0':
+    resolution: {integrity: sha512-IJ6pQMr0WhZ/8jNtBDQRcUJxqw9/6mIfrAxrPtIcBlmOvmooaBLskFoHUxuj4N/IhkVVfjIDeDbIAIhih3jafw==}
+
+  '@leafer/selector@1.7.0':
+    resolution: {integrity: sha512-bvjpytS287YJE/4M1ekwYdj+Mj9N/MUiYpPmYUqTLSrng8BJNF1U67cqZJIX9P00tk/A20789xphzv3lzNXAgA==}
+
+  '@leafer/task@1.7.0':
+    resolution: {integrity: sha512-WLC3Q4iCNT6wYFwn7/lwPCv6kPvdcOwhpRbcy6AM38UZKc/6PeFOO2VxiiZt1+LI4gRGo9C9g09ENv/N49EAeg==}
+
+  '@leafer/watcher@1.7.0':
+    resolution: {integrity: sha512-b49HIJPu9bkWvzdTenG5luxqJWY1srERM7Tkvpuqh3LHafNu8qaqYGNhXj+LPrkt1t8wEYE6NeMkl0OSQ4gT8Q==}
 
   '@lezer/common@1.2.3':
     resolution: {integrity: sha512-w7ojc8ejBqr2REPsWxJjrMFsA/ysDCFICn8zEOR9mrqzOu2amhITYuLD8ag6XZf0CFXDrhKqw7+tW8cX66NaDA==}
@@ -2575,8 +2620,8 @@ packages:
   keyv@4.5.4:
     resolution: {integrity: sha512-oxVHkHR/EJf2CNXnWxRLW6mg7JyCCUcG0DtEGmL2ctUo1PNTin1PUil+r/+4r5MpVgC/fn1kjsx7mjSujKqIpw==}
 
-  leafer-ui@1.5.1:
-    resolution: {integrity: sha512-RDG6cBdY1BGl1mdQn4Mz6a8Y9lBxoJJ4lChkxK1izqfuTTDmWwqalEDIttpUWgFvpAw1wFowqdRn6IeiSlKRUQ==}
+  leafer-ui@1.7.0:
+    resolution: {integrity: sha512-cDWOeYldpKYVdnKNyWDZXiQmb500wyhi50GBUZDcEF1gg3Lf/l8wWy9bVH1CSYIMe7Wo14NVlpOkj2fJq/jzEw==}
 
   levn@0.4.1:
     resolution: {integrity: sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==}
@@ -4237,277 +4282,305 @@ snapshots:
 
   '@juggle/resize-observer@3.4.0': {}
 
-  '@leafer-in/interface@1.5.1(@leafer-ui/interface@1.5.1)(@leafer/interface@1.5.1)':
+  '@leafer-in/animate@1.7.0(@leafer-in/color@1.7.0(@leafer-in/interface@1.7.0(@leafer-ui/interface@1.7.0)(@leafer/interface@1.7.0))(@leafer-ui/draw@1.7.0)(@leafer-ui/interface@1.7.0))(@leafer-in/interface@1.7.0(@leafer-ui/interface@1.7.0)(@leafer/interface@1.7.0))(@leafer-ui/draw@1.7.0)(@leafer-ui/interface@1.7.0)':
     dependencies:
-      '@leafer-ui/interface': 1.5.1
-      '@leafer/interface': 1.5.1
+      '@leafer-in/color': 1.7.0(@leafer-in/interface@1.7.0(@leafer-ui/interface@1.7.0)(@leafer/interface@1.7.0))(@leafer-ui/draw@1.7.0)(@leafer-ui/interface@1.7.0)
+      '@leafer-in/interface': 1.7.0(@leafer-ui/interface@1.7.0)(@leafer/interface@1.7.0)
+      '@leafer-ui/draw': 1.7.0
+      '@leafer-ui/interface': 1.7.0
 
-  '@leafer-ui/app@1.5.1':
+  '@leafer-in/color@1.7.0(@leafer-in/interface@1.7.0(@leafer-ui/interface@1.7.0)(@leafer/interface@1.7.0))(@leafer-ui/draw@1.7.0)(@leafer-ui/interface@1.7.0)':
     dependencies:
-      '@leafer-ui/data': 1.5.1
-      '@leafer-ui/display': 1.5.1
-      '@leafer/core': 1.5.1
+      '@leafer-in/interface': 1.7.0(@leafer-ui/interface@1.7.0)(@leafer/interface@1.7.0)
+      '@leafer-ui/draw': 1.7.0
+      '@leafer-ui/interface': 1.7.0
 
-  '@leafer-ui/bounds@1.5.1':
+  '@leafer-in/interface@1.7.0(@leafer-ui/interface@1.7.0)(@leafer/interface@1.7.0)':
     dependencies:
-      '@leafer/core': 1.5.1
+      '@leafer-ui/interface': 1.7.0
+      '@leafer/interface': 1.7.0
 
-  '@leafer-ui/color@1.5.1':
+  '@leafer-in/scroll@1.7.0(@leafer-in/interface@1.7.0(@leafer-ui/interface@1.7.0)(@leafer/interface@1.7.0))(@leafer-ui/core@1.7.0)(@leafer-ui/interface@1.7.0)':
     dependencies:
-      '@leafer-ui/draw': 1.5.1
+      '@leafer-in/interface': 1.7.0(@leafer-ui/interface@1.7.0)(@leafer/interface@1.7.0)
+      '@leafer-ui/core': 1.7.0
+      '@leafer-ui/interface': 1.7.0
 
-  '@leafer-ui/core@1.5.1':
+  '@leafer-in/view@1.7.0(@leafer-in/interface@1.7.0(@leafer-ui/interface@1.7.0)(@leafer/interface@1.7.0))(@leafer-ui/draw@1.7.0)(@leafer-ui/interface@1.7.0)':
     dependencies:
-      '@leafer-ui/app': 1.5.1
-      '@leafer-ui/draw': 1.5.1
-      '@leafer-ui/event': 1.5.1
-      '@leafer-ui/hit': 1.5.1
-      '@leafer-ui/interaction': 1.5.1
+      '@leafer-in/interface': 1.7.0(@leafer-ui/interface@1.7.0)(@leafer/interface@1.7.0)
+      '@leafer-ui/draw': 1.7.0
+      '@leafer-ui/interface': 1.7.0
 
-  '@leafer-ui/data@1.5.1':
+  '@leafer-in/viewport@1.7.0(@leafer-in/interface@1.7.0(@leafer-ui/interface@1.7.0)(@leafer/interface@1.7.0))(@leafer-ui/core@1.7.0)(@leafer-ui/interface@1.7.0)':
     dependencies:
-      '@leafer-ui/external': 1.5.1
-      '@leafer/core': 1.5.1
+      '@leafer-in/interface': 1.7.0(@leafer-ui/interface@1.7.0)(@leafer/interface@1.7.0)
+      '@leafer-ui/core': 1.7.0
+      '@leafer-ui/interface': 1.7.0
 
-  '@leafer-ui/decorator@1.5.1':
+  '@leafer-ui/app@1.7.0':
     dependencies:
-      '@leafer/core': 1.5.1
+      '@leafer-ui/data': 1.7.0
+      '@leafer-ui/display': 1.7.0
+      '@leafer/core': 1.7.0
 
-  '@leafer-ui/display-module@1.5.1':
+  '@leafer-ui/bounds@1.7.0':
     dependencies:
-      '@leafer-ui/bounds': 1.5.1
-      '@leafer-ui/data': 1.5.1
-      '@leafer-ui/render': 1.5.1
+      '@leafer/core': 1.7.0
 
-  '@leafer-ui/display@1.5.1':
+  '@leafer-ui/color@1.7.0':
     dependencies:
-      '@leafer-ui/data': 1.5.1
-      '@leafer-ui/decorator': 1.5.1
-      '@leafer-ui/display-module': 1.5.1
-      '@leafer-ui/external': 1.5.1
-      '@leafer/core': 1.5.1
+      '@leafer-ui/draw': 1.7.0
 
-  '@leafer-ui/draw@1.5.1':
+  '@leafer-ui/core@1.7.0':
     dependencies:
-      '@leafer-ui/decorator': 1.5.1
-      '@leafer-ui/display': 1.5.1
-      '@leafer-ui/display-module': 1.5.1
-      '@leafer-ui/external': 1.5.1
-      '@leafer/core': 1.5.1
+      '@leafer-ui/app': 1.7.0
+      '@leafer-ui/draw': 1.7.0
+      '@leafer-ui/event': 1.7.0
+      '@leafer-ui/hit': 1.7.0
+      '@leafer-ui/interaction': 1.7.0
 
-  '@leafer-ui/effect@1.5.1':
+  '@leafer-ui/data@1.7.0':
     dependencies:
-      '@leafer-ui/draw': 1.5.1
-      '@leafer/core': 1.5.1
+      '@leafer-ui/external': 1.7.0
+      '@leafer/core': 1.7.0
 
-  '@leafer-ui/event@1.5.1':
+  '@leafer-ui/decorator@1.7.0':
     dependencies:
-      '@leafer/core': 1.5.1
+      '@leafer/core': 1.7.0
 
-  '@leafer-ui/external@1.5.1':
+  '@leafer-ui/display-module@1.7.0':
     dependencies:
-      '@leafer/core': 1.5.1
+      '@leafer-ui/bounds': 1.7.0
+      '@leafer-ui/data': 1.7.0
+      '@leafer-ui/render': 1.7.0
 
-  '@leafer-ui/hit@1.5.1':
+  '@leafer-ui/display@1.7.0':
     dependencies:
-      '@leafer-ui/draw': 1.5.1
-      '@leafer/core': 1.5.1
+      '@leafer-ui/data': 1.7.0
+      '@leafer-ui/decorator': 1.7.0
+      '@leafer-ui/display-module': 1.7.0
+      '@leafer-ui/external': 1.7.0
+      '@leafer/core': 1.7.0
 
-  '@leafer-ui/interaction-web@1.5.1':
+  '@leafer-ui/draw@1.7.0':
     dependencies:
-      '@leafer-ui/core': 1.5.1
-      '@leafer/core': 1.5.1
+      '@leafer-ui/decorator': 1.7.0
+      '@leafer-ui/display': 1.7.0
+      '@leafer-ui/display-module': 1.7.0
+      '@leafer-ui/external': 1.7.0
+      '@leafer/core': 1.7.0
 
-  '@leafer-ui/interaction@1.5.1':
+  '@leafer-ui/effect@1.7.0':
     dependencies:
-      '@leafer-ui/draw': 1.5.1
-      '@leafer-ui/event': 1.5.1
-      '@leafer/core': 1.5.1
+      '@leafer-ui/draw': 1.7.0
+      '@leafer/core': 1.7.0
 
-  '@leafer-ui/interface@1.5.1':
+  '@leafer-ui/event@1.7.0':
     dependencies:
-      '@leafer/interface': 1.5.1
+      '@leafer/core': 1.7.0
 
-  '@leafer-ui/paint@1.5.1':
+  '@leafer-ui/external@1.7.0':
     dependencies:
-      '@leafer-ui/draw': 1.5.1
-      '@leafer/core': 1.5.1
+      '@leafer/core': 1.7.0
 
-  '@leafer-ui/partner@1.5.1':
+  '@leafer-ui/hit@1.7.0':
     dependencies:
-      '@leafer-ui/color': 1.5.1
-      '@leafer-ui/draw': 1.5.1
-      '@leafer-ui/effect': 1.5.1
-      '@leafer-ui/paint': 1.5.1
-      '@leafer-ui/text': 1.5.1
+      '@leafer-ui/draw': 1.7.0
+      '@leafer/core': 1.7.0
 
-  '@leafer-ui/render@1.5.1':
+  '@leafer-ui/interaction-web@1.7.0':
     dependencies:
-      '@leafer-ui/external': 1.5.1
+      '@leafer-ui/core': 1.7.0
+      '@leafer/core': 1.7.0
 
-  '@leafer-ui/text@1.5.1':
+  '@leafer-ui/interaction@1.7.0':
     dependencies:
-      '@leafer/core': 1.5.1
+      '@leafer-ui/draw': 1.7.0
+      '@leafer-ui/event': 1.7.0
+      '@leafer/core': 1.7.0
 
-  '@leafer-ui/web@1.5.1':
+  '@leafer-ui/interface@1.7.0':
     dependencies:
-      '@leafer-in/interface': 1.5.1(@leafer-ui/interface@1.5.1)(@leafer/interface@1.5.1)
-      '@leafer-ui/core': 1.5.1
-      '@leafer-ui/draw': 1.5.1
-      '@leafer-ui/interaction-web': 1.5.1
-      '@leafer-ui/interface': 1.5.1
-      '@leafer-ui/partner': 1.5.1
-      '@leafer/core': 1.5.1
-      '@leafer/interface': 1.5.1
-      '@leafer/partner': 1.5.1
-      '@leafer/web': 1.5.1
+      '@leafer/interface': 1.7.0
 
-  '@leafer/canvas-web@1.5.1':
+  '@leafer-ui/paint@1.7.0':
     dependencies:
-      '@leafer/core': 1.5.1
+      '@leafer-ui/draw': 1.7.0
+      '@leafer/core': 1.7.0
 
-  '@leafer/canvas@1.5.1':
+  '@leafer-ui/partner@1.7.0':
     dependencies:
-      '@leafer/data': 1.5.1
-      '@leafer/debug': 1.5.1
-      '@leafer/file': 1.5.1
-      '@leafer/list': 1.5.1
-      '@leafer/math': 1.5.1
-      '@leafer/path': 1.5.1
-      '@leafer/platform': 1.5.1
+      '@leafer-ui/color': 1.7.0
+      '@leafer-ui/draw': 1.7.0
+      '@leafer-ui/effect': 1.7.0
+      '@leafer-ui/paint': 1.7.0
+      '@leafer-ui/text': 1.7.0
 
-  '@leafer/core@1.5.1':
+  '@leafer-ui/render@1.7.0':
     dependencies:
-      '@leafer/canvas': 1.5.1
-      '@leafer/data': 1.5.1
-      '@leafer/debug': 1.5.1
-      '@leafer/decorator': 1.5.1
-      '@leafer/display': 1.5.1
-      '@leafer/display-module': 1.5.1
-      '@leafer/event': 1.5.1
-      '@leafer/file': 1.5.1
-      '@leafer/helper': 1.5.1
-      '@leafer/image': 1.5.1
-      '@leafer/layout': 1.5.1
-      '@leafer/list': 1.5.1
-      '@leafer/math': 1.5.1
-      '@leafer/path': 1.5.1
-      '@leafer/platform': 1.5.1
-      '@leafer/task': 1.5.1
+      '@leafer-ui/external': 1.7.0
 
-  '@leafer/data@1.5.1': {}
-
-  '@leafer/debug@1.5.1':
+  '@leafer-ui/text@1.7.0':
     dependencies:
-      '@leafer/math': 1.5.1
+      '@leafer/core': 1.7.0
 
-  '@leafer/decorator@1.5.1':
+  '@leafer-ui/web@1.7.0':
     dependencies:
-      '@leafer/data': 1.5.1
-      '@leafer/debug': 1.5.1
-      '@leafer/platform': 1.5.1
+      '@leafer-in/interface': 1.7.0(@leafer-ui/interface@1.7.0)(@leafer/interface@1.7.0)
+      '@leafer-ui/core': 1.7.0
+      '@leafer-ui/draw': 1.7.0
+      '@leafer-ui/interaction-web': 1.7.0
+      '@leafer-ui/interface': 1.7.0
+      '@leafer-ui/partner': 1.7.0
+      '@leafer/canvas-web': 1.7.0
+      '@leafer/core': 1.7.0
+      '@leafer/image-web': 1.7.0
+      '@leafer/interface': 1.7.0
+      '@leafer/partner': 1.7.0
 
-  '@leafer/display-module@1.5.1':
+  '@leafer/canvas-web@1.7.0':
     dependencies:
-      '@leafer/debug': 1.5.1
-      '@leafer/event': 1.5.1
-      '@leafer/helper': 1.5.1
-      '@leafer/math': 1.5.1
+      '@leafer/core': 1.7.0
 
-  '@leafer/display@1.5.1':
+  '@leafer/canvas@1.7.0':
     dependencies:
-      '@leafer/data': 1.5.1
-      '@leafer/debug': 1.5.1
-      '@leafer/decorator': 1.5.1
-      '@leafer/display-module': 1.5.1
-      '@leafer/event': 1.5.1
-      '@leafer/helper': 1.5.1
-      '@leafer/layout': 1.5.1
-      '@leafer/math': 1.5.1
-      '@leafer/platform': 1.5.1
+      '@leafer/data': 1.7.0
+      '@leafer/debug': 1.7.0
+      '@leafer/file': 1.7.0
+      '@leafer/list': 1.7.0
+      '@leafer/math': 1.7.0
+      '@leafer/path': 1.7.0
+      '@leafer/platform': 1.7.0
 
-  '@leafer/event@1.5.1':
+  '@leafer/core@1.7.0':
     dependencies:
-      '@leafer/decorator': 1.5.1
-      '@leafer/math': 1.5.1
-      '@leafer/platform': 1.5.1
+      '@leafer/canvas': 1.7.0
+      '@leafer/data': 1.7.0
+      '@leafer/debug': 1.7.0
+      '@leafer/decorator': 1.7.0
+      '@leafer/display': 1.7.0
+      '@leafer/display-module': 1.7.0
+      '@leafer/event': 1.7.0
+      '@leafer/file': 1.7.0
+      '@leafer/helper': 1.7.0
+      '@leafer/image': 1.7.0
+      '@leafer/layout': 1.7.0
+      '@leafer/list': 1.7.0
+      '@leafer/math': 1.7.0
+      '@leafer/path': 1.7.0
+      '@leafer/platform': 1.7.0
+      '@leafer/task': 1.7.0
 
-  '@leafer/file@1.5.1':
+  '@leafer/data@1.7.0': {}
+
+  '@leafer/debug@1.7.0':
     dependencies:
-      '@leafer/debug': 1.5.1
+      '@leafer/math': 1.7.0
 
-  '@leafer/helper@1.5.1':
+  '@leafer/decorator@1.7.0':
     dependencies:
-      '@leafer/math': 1.5.1
+      '@leafer/data': 1.7.0
+      '@leafer/debug': 1.7.0
+      '@leafer/platform': 1.7.0
 
-  '@leafer/image-web@1.5.1':
+  '@leafer/display-module@1.7.0':
     dependencies:
-      '@leafer/core': 1.5.1
+      '@leafer/debug': 1.7.0
+      '@leafer/event': 1.7.0
+      '@leafer/helper': 1.7.0
+      '@leafer/math': 1.7.0
 
-  '@leafer/image@1.5.1':
+  '@leafer/display@1.7.0':
     dependencies:
-      '@leafer/file': 1.5.1
-      '@leafer/platform': 1.5.1
-      '@leafer/task': 1.5.1
+      '@leafer/data': 1.7.0
+      '@leafer/debug': 1.7.0
+      '@leafer/decorator': 1.7.0
+      '@leafer/display-module': 1.7.0
+      '@leafer/event': 1.7.0
+      '@leafer/helper': 1.7.0
+      '@leafer/layout': 1.7.0
+      '@leafer/math': 1.7.0
+      '@leafer/platform': 1.7.0
 
-  '@leafer/interface@1.5.1': {}
-
-  '@leafer/layout@1.5.1':
+  '@leafer/event@1.7.0':
     dependencies:
-      '@leafer/helper': 1.5.1
-      '@leafer/math': 1.5.1
-      '@leafer/platform': 1.5.1
+      '@leafer/decorator': 1.7.0
+      '@leafer/math': 1.7.0
+      '@leafer/platform': 1.7.0
 
-  '@leafer/layouter@1.5.1':
+  '@leafer/file@1.7.0':
     dependencies:
-      '@leafer/core': 1.5.1
+      '@leafer/debug': 1.7.0
 
-  '@leafer/list@1.5.1': {}
-
-  '@leafer/math@1.5.1': {}
-
-  '@leafer/partner@1.5.1':
+  '@leafer/helper@1.7.0':
     dependencies:
-      '@leafer/core': 1.5.1
-      '@leafer/layouter': 1.5.1
-      '@leafer/renderer': 1.5.1
-      '@leafer/selector': 1.5.1
-      '@leafer/watcher': 1.5.1
+      '@leafer/math': 1.7.0
 
-  '@leafer/path@1.5.1':
+  '@leafer/image-web@1.7.0':
     dependencies:
-      '@leafer/debug': 1.5.1
-      '@leafer/math': 1.5.1
+      '@leafer/core': 1.7.0
 
-  '@leafer/platform@1.5.1':
+  '@leafer/image@1.7.0':
     dependencies:
-      '@leafer/debug': 1.5.1
-      '@leafer/layouter': 1.5.1
+      '@leafer/data': 1.7.0
+      '@leafer/file': 1.7.0
+      '@leafer/math': 1.7.0
+      '@leafer/platform': 1.7.0
+      '@leafer/task': 1.7.0
 
-  '@leafer/renderer@1.5.1':
-    dependencies:
-      '@leafer/core': 1.5.1
+  '@leafer/interface@1.7.0': {}
 
-  '@leafer/selector@1.5.1':
+  '@leafer/layout@1.7.0':
     dependencies:
-      '@leafer/core': 1.5.1
+      '@leafer/helper': 1.7.0
+      '@leafer/math': 1.7.0
+      '@leafer/platform': 1.7.0
 
-  '@leafer/task@1.5.1':
+  '@leafer/layouter@1.7.0':
     dependencies:
-      '@leafer/debug': 1.5.1
-      '@leafer/math': 1.5.1
+      '@leafer/core': 1.7.0
 
-  '@leafer/watcher@1.5.1':
-    dependencies:
-      '@leafer/data': 1.5.1
-      '@leafer/event': 1.5.1
-      '@leafer/list': 1.5.1
+  '@leafer/list@1.7.0': {}
 
-  '@leafer/web@1.5.1':
+  '@leafer/math@1.7.0': {}
+
+  '@leafer/partner@1.7.0':
     dependencies:
-      '@leafer/canvas-web': 1.5.1
-      '@leafer/core': 1.5.1
-      '@leafer/image-web': 1.5.1
+      '@leafer/core': 1.7.0
+      '@leafer/layouter': 1.7.0
+      '@leafer/renderer': 1.7.0
+      '@leafer/selector': 1.7.0
+      '@leafer/watcher': 1.7.0
+
+  '@leafer/path@1.7.0':
+    dependencies:
+      '@leafer/debug': 1.7.0
+      '@leafer/math': 1.7.0
+
+  '@leafer/platform@1.7.0':
+    dependencies:
+      '@leafer/debug': 1.7.0
+      '@leafer/layouter': 1.7.0
+
+  '@leafer/renderer@1.7.0':
+    dependencies:
+      '@leafer/core': 1.7.0
+
+  '@leafer/selector@1.7.0':
+    dependencies:
+      '@leafer/core': 1.7.0
+
+  '@leafer/task@1.7.0':
+    dependencies:
+      '@leafer/debug': 1.7.0
+      '@leafer/math': 1.7.0
+
+  '@leafer/watcher@1.7.0':
+    dependencies:
+      '@leafer/data': 1.7.0
+      '@leafer/event': 1.7.0
+      '@leafer/list': 1.7.0
 
   '@lezer/common@1.2.3': {}
 
@@ -6189,19 +6262,18 @@ snapshots:
     dependencies:
       json-buffer: 3.0.1
 
-  leafer-ui@1.5.1:
+  leafer-ui@1.7.0:
     dependencies:
-      '@leafer-in/interface': 1.5.1(@leafer-ui/interface@1.5.1)(@leafer/interface@1.5.1)
-      '@leafer-ui/core': 1.5.1
-      '@leafer-ui/draw': 1.5.1
-      '@leafer-ui/interaction-web': 1.5.1
-      '@leafer-ui/interface': 1.5.1
-      '@leafer-ui/partner': 1.5.1
-      '@leafer-ui/web': 1.5.1
-      '@leafer/core': 1.5.1
-      '@leafer/interface': 1.5.1
-      '@leafer/partner': 1.5.1
-      '@leafer/web': 1.5.1
+      '@leafer-in/interface': 1.7.0(@leafer-ui/interface@1.7.0)(@leafer/interface@1.7.0)
+      '@leafer-ui/core': 1.7.0
+      '@leafer-ui/draw': 1.7.0
+      '@leafer-ui/interaction-web': 1.7.0
+      '@leafer-ui/interface': 1.7.0
+      '@leafer-ui/partner': 1.7.0
+      '@leafer-ui/web': 1.7.0
+      '@leafer/core': 1.7.0
+      '@leafer/interface': 1.7.0
+      '@leafer/partner': 1.7.0
 
   levn@0.4.1:
     dependencies:
