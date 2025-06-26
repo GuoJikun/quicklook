@@ -8,11 +8,12 @@ import { convertFileSrc } from '@tauri-apps/api/core'
 import * as PDFJS from 'pdfjs-dist'
 import { CollectionTag } from '@element-plus/icons-vue'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
-import { App, Canvas, PointerEvent } from 'leafer-ui'
+import { App, Canvas, PropertyEvent } from 'leafer-ui'
 // import '@leafer-in/view' // 导入视口插件
 import '@leafer-in/viewport' // 导入视口插件
 import '@leafer-in/animate' // 导入画布插件
 import { ScrollBar } from '@leafer-in/scroll' // 导入滚动条插件  //
+import { useThrottleFn } from '@vueuse/core'
 
 const route = useRoute()
 
@@ -187,9 +188,25 @@ const initLeader = () => {
         minSize: 24,
     })
 
-    leaferInstance.tree.on(PointerEvent.POINTER, ev => {
-        console.log('scroll', ev)
-    })
+    leaferInstance.tree.on(
+        PropertyEvent.LEAFER_CHANGE,
+        useThrottleFn((ev: PropertyEvent) => {
+            const { attrName, newValue } = ev
+            if (attrName === 'y') {
+                const y = Math.abs(Number(newValue) ?? 0)
+                const children = (ev.target as any)?.children || []
+                for (let i = 1; i <= children.length; i++) {
+                    const prevY = children[i - 1].y ?? 0
+                    const currentY = children[i].y ?? 0
+                    if (y > prevY && y < currentY) {
+                        pager.value.current = i
+                        pageNum.value = i
+                        break
+                    }
+                }
+            }
+        }, 80),
+    )
 }
 
 const initPdf = async (src: any) => {
