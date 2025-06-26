@@ -17,6 +17,9 @@ importers:
       '@leafer-in/animate':
         specifier: ^1.7.0
         version: 1.7.0(@leafer-in/color@1.7.0(@leafer-in/interface@1.7.0(@leafer-ui/interface@1.7.0)(@leafer/interface@1.7.0))(@leafer-ui/draw@1.7.0)(@leafer-ui/interface@1.7.0))(@leafer-in/interface@1.7.0(@leafer-ui/interface@1.7.0)(@leafer/interface@1.7.0))(@leafer-ui/draw@1.7.0)(@leafer-ui/interface@1.7.0)
+      '@leafer-in/resize':
+        specifier: ^1.7.0
+        version: 1.7.0(@leafer-in/interface@1.7.0(@leafer-ui/interface@1.7.0)(@leafer/interface@1.7.0))(@leafer-ui/draw@1.7.0)(@leafer-ui/interface@1.7.0)
       '@leafer-in/scroll':
         specifier: ^1.7.0
         version: 1.7.0(@leafer-in/interface@1.7.0(@leafer-ui/interface@1.7.0)(@leafer/interface@1.7.0))(@leafer-ui/core@1.7.0)(@leafer-ui/interface@1.7.0)
@@ -864,6 +867,13 @@ packages:
     peerDependencies:
       '@leafer-ui/interface': ^1.7.0
       '@leafer/interface': ^1.7.0
+
+  '@leafer-in/resize@1.7.0':
+    resolution: {integrity: sha512-f1j+5sB7dyymQU0DGjE0mQgv8pQb0Vc3Ut6lZ5ITOTCcyRJbkXv1uxcBpcwTSfHo1kqQ3rMV9iZSsSUxgIbsGQ==}
+    peerDependencies:
+      '@leafer-in/interface': ^1.7.0
+      '@leafer-ui/draw': ^1.7.0
+      '@leafer-ui/interface': ^1.7.0
 
   '@leafer-in/scroll@1.7.0':
     resolution: {integrity: sha512-awlkKhvs6/jIMBGSlGgjF4benVaYUWQeOidm6erXRcEolHvoZfVpKratHdchqj6um7nJgu+N5TiXNQAdjytmAg==}
@@ -4299,6 +4309,12 @@ snapshots:
     dependencies:
       '@leafer-ui/interface': 1.7.0
       '@leafer/interface': 1.7.0
+
+  '@leafer-in/resize@1.7.0(@leafer-in/interface@1.7.0(@leafer-ui/interface@1.7.0)(@leafer/interface@1.7.0))(@leafer-ui/draw@1.7.0)(@leafer-ui/interface@1.7.0)':
+    dependencies:
+      '@leafer-in/interface': 1.7.0(@leafer-ui/interface@1.7.0)(@leafer/interface@1.7.0)
+      '@leafer-ui/draw': 1.7.0
+      '@leafer-ui/interface': 1.7.0
 
   '@leafer-in/scroll@1.7.0(@leafer-in/interface@1.7.0(@leafer-ui/interface@1.7.0)(@leafer/interface@1.7.0))(@leafer-ui/core@1.7.0)(@leafer-ui/interface@1.7.0)':
     dependencies:

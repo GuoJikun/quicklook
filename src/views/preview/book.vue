@@ -8,10 +8,11 @@ import { convertFileSrc } from '@tauri-apps/api/core'
 import * as PDFJS from 'pdfjs-dist'
 import { CollectionTag } from '@element-plus/icons-vue'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
-import { App, Canvas, PropertyEvent } from 'leafer-ui'
-// import '@leafer-in/view' // 导入视口插件
+import { App, Canvas, PropertyEvent, ResizeEvent } from 'leafer-ui'
+import '@leafer-in/view' // 导入视口插件
 import '@leafer-in/viewport' // 导入视口插件
 import '@leafer-in/animate' // 导入画布插件
+import '@leafer-in/resize' // 导入画布插件
 import { ScrollBar } from '@leafer-in/scroll' // 导入滚动条插件  //
 import { useThrottleFn } from '@vueuse/core'
 
@@ -22,6 +23,7 @@ defineOptions({
 })
 
 let leaferInstance: InstanceType<typeof App> | null = null
+let scrollBarInstance: InstanceType<typeof ScrollBar> | null = null
 const fileInfo = ref<FileInfo>()
 const pager = ref<{ current: number; total: number; scale: number; rotation: number }>({
     current: 1,
@@ -36,7 +38,6 @@ const outlineProps = {
 
 const outline = ref<any[]>([])
 let pdfDoc: PDFDocumentProxy | null = null
-const list = ref<{ id: number; pageNum: number; el: HTMLCanvasElement | null }[]>([])
 
 const loadDocument = (url: string): Promise<PDFDocumentProxy> => {
     return new Promise((resolve, reject) => {
@@ -183,7 +184,7 @@ const initLeader = () => {
             max: 10,
         },
     })
-    new ScrollBar(leaferInstance as any, {
+    scrollBarInstance = new ScrollBar(leaferInstance as any, {
         theme: 'light',
         minSize: 24,
     })
@@ -205,6 +206,15 @@ const initLeader = () => {
                     }
                 }
             }
+        }, 10),
+    )
+
+    leaferInstance.on(
+        ResizeEvent.RESIZE,
+        useThrottleFn((ev: ResizeEvent) => {
+            console.log('resize', ev)
+            leaferInstance?.zoom('fit', 0, 'x')
+            scrollBarInstance?.update()
         }, 80),
     )
 }
@@ -219,13 +229,7 @@ const initPdf = async (src: any) => {
 
     const meta = await getMeta(pdfDoc)
     pager.value.total = meta.count
-    list.value = Array.from({ length: pager.value.total }, (_, i) => {
-        return {
-            id: i + 1,
-            pageNum: i + 1,
-            el: null as HTMLCanvasElement | null,
-        }
-    })
+
     outline.value = meta.outline || []
 }
 
@@ -283,8 +287,8 @@ onMounted(async () => {
                         </el-tree>
                     </el-scrollbar>
                 </div>
-                <div class="book-canvas">
-                    <div id="leafer-canvas" style="height: 100%"></div>
+                <div class="book-canvas" :style="{ width: visible ? 'calc(100% - 300px)' : '100%' }">
+                    <div id="leafer-canvas" style="height: 100%; width: 100%"></div>
                 </div>
             </div>
         </div>
@@ -295,14 +299,6 @@ onMounted(async () => {
 .book {
     width: 100%;
     height: 100%;
-    &-wrap {
-        width: 100%;
-        height: calc(100% - 40px);
-        overflow: auto;
-        font-size: 14px;
-        display: flex;
-        font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
-    }
     &-utils {
         display: flex;
         align-items: center;
@@ -320,20 +316,26 @@ onMounted(async () => {
             font-size: 14px;
         }
     }
+    &-wrap {
+        width: 100%;
+        height: calc(100% - 40px);
+        overflow: auto;
+        font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+        font-size: 0;
+    }
     &-outline {
         width: 300px;
         height: 100%;
         overflow: auto;
         position: relative;
-        display: flex;
-        flex-direction: column;
         box-shadow: 1px 0 2px rgba(0, 0, 0, 0.1);
         background-color: #f9f9f9;
+        display: inline-block;
+        font-size: 14px;
     }
     &-canvas {
-        flex: auto;
         height: 100%;
-        position: relative;
+        display: inline-block;
     }
 }
 </style>

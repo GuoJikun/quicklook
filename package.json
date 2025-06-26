@@ -19,6 +19,7 @@
     "@element-plus/icons-vue": "^2.3.1",
     "@handsontable/vue3": "^15.2.0",
     "@leafer-in/animate": "^1.7.0",
+    "@leafer-in/resize": "^1.7.0",
     "@leafer-in/scroll": "^1.7.0",
     "@leafer-in/view": "^1.7.0",
     "@leafer-in/viewport": "^1.7.0",
