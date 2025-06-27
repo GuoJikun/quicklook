@@ -1,11 +1,51 @@
 use tauri::{
     menu::{MenuBuilder, MenuItem, MenuItemBuilder},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    App, Manager, WebviewUrl, WebviewWindowBuilder,
+    App, AppHandle, Manager, WebviewUrl, WebviewWindowBuilder,
 };
+use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
+use tauri_plugin_updater::UpdaterExt;
 
 #[path = "./helper/mod.rs"]
 mod helper;
+
+async fn updater_check(app: AppHandle) -> tauri_plugin_updater::Result<()> {
+    let checked = app.updater()?.check().await;
+    if let Err(_) = checked {
+        let _ = app
+            .dialog()
+            .message("检查更新失败")
+            .kind(MessageDialogKind::Error)
+            .title("Warning")
+            .blocking_show();
+        return Ok(());
+    }
+
+    let checked = checked.unwrap();
+
+    match checked {
+        Some(_) => {
+            let _ = WebviewWindowBuilder::new(&app, "upgrade", WebviewUrl::App("/upgrade".into()))
+                .center()
+                .title("检查更新")
+                .inner_size(500.0, 500.0)
+                .focused(true)
+                .window_classname("quicklook-upgrade")
+                .auto_resize()
+                .build();
+        }
+        None => {
+            let _ = app
+                .dialog()
+                .message("没有可用的更新")
+                .kind(MessageDialogKind::Info)
+                .title("更新检查")
+                .blocking_show();
+        }
+    }
+
+    Ok(())
+}
 
 pub fn create_tray(app: &mut App) -> tauri::Result<()> {
     let quit = MenuItemBuilder::with_id("quit", "退出").build(app)?;
@@ -33,15 +73,20 @@ pub fn create_tray(app: &mut App) -> tauri::Result<()> {
                 app.exit(0);
             }
             "upgrade" => {
-                let _ =
-                    WebviewWindowBuilder::new(app, "upgrade", WebviewUrl::App("/upgrade".into()))
-                        .center()
-                        .title("检查更新")
-                        .inner_size(400.0, 500.0)
-                        .focused(true)
-                        .window_classname("quicklook-upgrade")
-                        .auto_resize()
-                        .build();
+                let handle = app.clone();
+                tauri::async_runtime::spawn(async move {
+                    let _ = updater_check(handle).await;
+                });
+
+                // let _ =
+                //     WebviewWindowBuilder::new(app, "upgrade", WebviewUrl::App("/upgrade".into()))
+                //         .center()
+                //         .title("检查更新")
+                //         .inner_size(400.0, 500.0)
+                //         .focused(true)
+                //         .window_classname("quicklook-upgrade")
+                //         .auto_resize()
+                //         .build();
             }
             "setting" => {
                 println!("Setting");

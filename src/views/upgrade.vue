@@ -15,12 +15,15 @@ const checkUpgrade = async (): Promise<{ updaterInstance: Update | null; isUpgra
     }
 }
 let md: MarkdownIt | null = null
+const mdLoading = ref(false)
 const renderNotes = async (txt: string) => {
+    mdLoading.value = true
     if (md === null) {
         md = await createMd()
     }
 
     notes.value = md.render(txt)
+    mdLoading.value = false
 }
 let updaterInstance: Update | null = null
 const isUpgrade = ref(false)
@@ -43,9 +46,11 @@ const calcPercentage = (current: number, total: number) => {
     const tmp = (current / total) * 100
     return parseFloat(tmp.toFixed(2))
 }
-
+const isDownloading = ref(false)
 const percentage = ref<number>(0)
 const upgrade = async () => {
+    isDownloading.value = true
+    info('开始下载更新')
     let total: number = 0
     let current: number = 0
     if (isUpgrade.value) {
@@ -63,6 +68,8 @@ const upgrade = async () => {
                     break
                 case 'Finished':
                     info('download finished')
+                    isDownloading.value = false
+                    percentage.value = 100
                     break
             }
         })
@@ -73,7 +80,6 @@ const cancelUpgrade = () => {
     updaterInstance?.close()
 }
 
-const isDownloading = ref(false)
 const handleUpgrade = () => {
     if (isDownloading.value) {
         cancelUpgrade()
@@ -87,11 +93,13 @@ const handleUpgrade = () => {
     <div class="upgrade" v-loading="!checked">
         <template v-if="checked">
             <div v-if="isUpgrade" class="upgrade-yes">
-                <p>更新内容：</p>
-                <MdViewer :content="notes" />
-                <p style="margin-bottom: 12px">更新进度：</p>
-                <el-progress :percentage="percentage" text-inside striped striped-flow :stroke-width="15" />
-                <div style="display: flex; justify-content: center；; margin-top: 12px">
+                <p>更新信息：</p>
+                <MdViewer :content="notes" style="min-height: 200px" v-loading="mdLoading" />
+                <template v-if="isDownloading">
+                    <p style="margin-bottom: 12px">更新进度：</p>
+                    <el-progress :percentage="percentage" text-inside striped striped-flow :stroke-width="15" />
+                </template>
+                <div style="display: flex; justify-content: center; margin-top: 12px">
                     <el-button @click="handleUpgrade" size="small" type="primary">{{
                         isDownloading ? '取消升级' : '现在升级'
                     }}</el-button>

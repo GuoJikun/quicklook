@@ -80,6 +80,7 @@
         }
       ]
     },
-    "log:allow-log"
+    "log:allow-log",
+    "core:resources:allow-close"
   ]
 }
