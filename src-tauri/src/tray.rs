@@ -77,16 +77,6 @@ pub fn create_tray(app: &mut App) -> tauri::Result<()> {
                 tauri::async_runtime::spawn(async move {
                     let _ = updater_check(handle).await;
                 });
-
-                // let _ =
-                //     WebviewWindowBuilder::new(app, "upgrade", WebviewUrl::App("/upgrade".into()))
-                //         .center()
-                //         .title("检查更新")
-                //         .inner_size(400.0, 500.0)
-                //         .focused(true)
-                //         .window_classname("quicklook-upgrade")
-                //         .auto_resize()
-                //         .build();
             }
             "setting" => {
                 println!("Setting");
