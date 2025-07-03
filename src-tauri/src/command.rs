@@ -17,10 +17,27 @@ pub fn show_open_with_dialog(app: AppHandle, path: &str) {
 
 #[command]
 pub fn archive(path: &str, mode: &str) -> Result<Vec<archives::Extract>, String> {
-    match mode {
+    log::info!("开始处理压缩文件: {}, 扩展名: {}", path, mode);
+    let result = match mode {
         "zip" => archives::Extract::zip(path).map_err(|e| e.to_string()),
-        _ => Err("Not Support".to_string()),
+        "tar" => archives::Extract::list_tar_entries(path).map_err(|e| e.to_string()),
+        "gz" | "tgz" => archives::Extract::list_tar_gz_entries(path).map_err(|e| e.to_string()),
+        "bz2" | "tbz2" => archives::Extract::list_tar_bz2_entries(path).map_err(|e| e.to_string()),
+        "xz" | "txz" => archives::Extract::list_tar_xz_entries(path).map_err(|e| e.to_string()),
+        "7z" => archives::Extract::list_7z_entries(path).map_err(|e| e.to_string()),
+        _ => Err("不支持的压缩格式".to_string()),
+    };
+
+    match &result {
+        Ok(entries) => {
+            log::info!("成功处理压缩文件，共{}个条目", entries.len());
+        }
+        Err(e) => {
+            log::error!("压缩文件处理失败: {}", e);
+        }
     }
+
+    result
 }
 
 #[command]

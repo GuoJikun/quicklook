@@ -80,7 +80,8 @@ const content = ref<Array<FileNode>>()
 onMounted(async () => {
     fileInfo.value = route?.query as unknown as FileInfo
     const val = fileInfo.value.path as string
-    const txt: Array<ExtractedFile> = await invoke('archive', { path: val, mode: 'zip' })
+    const mode = fileInfo.value.extension as string
+    const txt: Array<ExtractedFile> = await invoke('archive', { path: val, mode })
     const treeData = buildFileTree(txt)
 
     content.value = treeData.children as Array<FileNode> // 根节点是虚拟的，所以直接取子节点

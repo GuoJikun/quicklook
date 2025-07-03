@@ -155,8 +155,14 @@ fn file_type_mapping() -> HashMap<&'static str, &'static str> {
 
     // 压缩文件
     map.insert("zip", "Archive");
-    // map.insert("rar", "Archive");
-    // map.insert("7z", "Archive");
+    map.insert("tar", "Archive");
+    map.insert("gz", "Archive");
+    map.insert("tgz", "Archive");
+    map.insert("bz2", "Archive");
+    map.insert("tbz2", "Archive");
+    map.insert("xz", "Archive");
+    map.insert("txz", "Archive");
+    map.insert("7z", "Archive");
 
     // 应用程序文件
     // map.insert("exe", "App");
