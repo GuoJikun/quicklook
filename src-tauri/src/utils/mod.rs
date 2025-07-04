@@ -206,6 +206,7 @@ fn file_type_mapping() -> HashMap<&'static str, &'static str> {
         ("pas", "Code"),
         ("scala", "Code"),
         ("m", "Code"),
+        ("log", "Code"),
         // 应用程序文件
         // ("exe", "App"),
         // ("dmg", "App"),
