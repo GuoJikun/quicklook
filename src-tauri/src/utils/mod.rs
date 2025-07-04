@@ -98,131 +98,120 @@ pub fn get_file_info(path: &str) -> Option<File> {
 
 // 返回一个文件扩展名到文件类型的映射
 fn file_type_mapping() -> HashMap<&'static str, &'static str> {
-    let mut map = HashMap::new();
-
-    // 文档文件
-    map.insert("markdown", "Markdown");
-    map.insert("md", "Markdown");
-    // DOC 文件
-    // map.insert("doc", "Doc");
-    map.insert("docx", "Doc");
-    map.insert("xls", "Doc");
-    map.insert("xlsx", "Doc");
-    map.insert("xlsm", "Doc");
-    map.insert("xlsb", "Doc");
-    map.insert("xla", "Doc");
-    map.insert("xlam", "Doc");
-    map.insert("ods", "Doc");
-    map.insert("csv", "Doc");
-    // map.insert("ppt", "Doc");
-    // map.insert("pptx", "Doc");
-
-    // 字体文件
-    map.insert("ttf", "Font");
-    map.insert("otf", "Font");
-    map.insert("woff2", "Font");
-    map.insert("woff", "Font");
-
-    // 图片文件
-    map.insert("jpg", "Image");
-    map.insert("jpeg", "Image");
-    map.insert("png", "Image");
-    map.insert("gif", "Image");
-    map.insert("webp", "Image");
-    map.insert("bmp", "Image");
-    map.insert("ico", "Image");
-    map.insert("svg", "Image");
-    map.insert("apng", "Image");
-
-    // 视频文件
-    map.insert("mp4", "Video");
-    map.insert("webm", "Video");
-    map.insert("mkv", "Video");
-    map.insert("avi", "Video");
-    map.insert("mov", "Video");
-    map.insert("wmv", "Video");
-    map.insert("mpg", "Video");
-    map.insert("mpeg", "Video");
-    map.insert("m4v", "Video");
-    map.insert("3gp", "Video");
-    map.insert("3g2", "Video");
-
-    // 音频文件
-    map.insert("mp3", "Audio");
-    map.insert("3gp", "Audio");
-    map.insert("ogg", "Audio");
-    map.insert("m4a", "Audio");
-
-    // 压缩文件
-    map.insert("zip", "Archive");
-    map.insert("tar", "Archive");
-    map.insert("gz", "Archive");
-    map.insert("tgz", "Archive");
-    map.insert("bz2", "Archive");
-    map.insert("tbz2", "Archive");
-    map.insert("xz", "Archive");
-    map.insert("txz", "Archive");
-    map.insert("7z", "Archive");
-
-    // 应用程序文件
-    // map.insert("exe", "App");
-    // map.insert("dmg", "App");
-    // map.insert("deb", "App");
-    // map.insert("rpm", "App");
-    // map.insert("apk", "App");
-    // map.insert("appimage", "App");
-
-    // 代码文件
-    map.insert("cpp", "Code");
-    map.insert("js", "Code");
-    map.insert("mjs", "Code");
-    map.insert("cjs", "Code");
-    map.insert("ts", "Code");
-    map.insert("mts", "Code");
-    map.insert("tsx", "Code");
-    map.insert("rs", "Code");
-    map.insert("py", "Code");
-    map.insert("java", "Code");
-    map.insert("html", "Code");
-    map.insert("css", "Code");
-    map.insert("scss", "Code");
-    map.insert("sass", "Code");
-    map.insert("less", "Code");
-    map.insert("styl", "Code");
-    map.insert("c", "Code");
-    map.insert("cs", "Code");
-    map.insert("go", "Code");
-    map.insert("vue", "Code");
-    map.insert("svelte", "Code");
-    map.insert("astro", "Code");
-    map.insert("jsx", "Code");
-    map.insert("json", "Code");
-    map.insert("yml", "Code");
-    map.insert("yaml", "Code");
-    map.insert("toml", "Code");
-    map.insert("bat", "Code");
-    map.insert("ps1", "Code");
-    map.insert("ini", "Code");
-    map.insert("swift", "Code");
-    map.insert("kt", "Code");
-    map.insert("php", "Code");
-    map.insert("h", "Code");
-    map.insert("xml", "Code");
-    map.insert("sql", "Code");
-    map.insert("pug", "Code");
-    map.insert("lua", "Code");
-    map.insert("r", "Code");
-    map.insert("d", "Code");
-    map.insert("vb", "Code");
-    map.insert("pas", "Code");
-    map.insert("scala", "Code");
-    map.insert("m", "Code");
-
-    // 书籍文件
-    map.insert("pdf", "Book");
-
-    // 文本文件（默认）
-    map.insert("txt", "Text");
-
-    map
+    HashMap::from([
+        // md
+        ("markdown", "Markdown"),
+        ("md", "Markdown"),
+        // DOC 文件
+        // ("doc", "Doc"),
+        ("docx", "Doc"),
+        ("xls", "Doc"),
+        ("xlsx", "Doc"),
+        ("xlsm", "Doc"),
+        ("xlsb", "Doc"),
+        ("xla", "Doc"),
+        ("xlam", "Doc"),
+        ("ods", "Doc"),
+        ("csv", "Doc"),
+        // ("ppt", "Doc"),
+        // ("pptx", "Doc"),
+        // 字体文件
+        ("ttf", "Font"),
+        ("otf", "Font"),
+        ("woff2", "Font"),
+        ("woff", "Font"),
+        // 图片文件
+        ("jpg", "Image"),
+        ("jpeg", "Image"),
+        ("png", "Image"),
+        ("gif", "Image"),
+        ("webp", "Image"),
+        ("bmp", "Image"),
+        ("ico", "Image"),
+        ("svg", "Image"),
+        ("apng", "Image"),
+        // 视频文件
+        ("mp4", "Video"),
+        ("webm", "Video"),
+        ("mkv", "Video"),
+        ("avi", "Video"),
+        ("mov", "Video"),
+        ("wmv", "Video"),
+        ("mpg", "Video"),
+        ("mpeg", "Video"),
+        ("m4v", "Video"),
+        ("3gp", "Video"),
+        ("3g2", "Video"),
+        // 音频文件
+        ("mp3", "Audio"),
+        ("3gp", "Audio"), // 注意：3gp 可能同时属于视频和音频
+        ("ogg", "Audio"),
+        ("m4a", "Audio"),
+        // 压缩文件
+        ("7z", "Archive"),
+        ("zip", "Archive"),
+        ("tar", "Archive"),
+        ("gz", "Archive"),
+        ("tgz", "Archive"),  // tar.gz 的简写
+        ("bz2", "Archive"),  // bzip2 压缩文件
+        ("tbz2", "Archive"), // tar.bz2 的简写
+        ("xz", "Archive"),   // xz 压缩文件
+        ("txz", "Archive"),  // tar.xz 的简写
+        // 书籍文件
+        ("pdf", "Book"),
+        // 文本文件
+        ("txt", "Text"),
+        // 代码文件
+        ("cpp", "Code"),
+        ("js", "Code"),
+        ("mjs", "Code"),
+        ("cjs", "Code"),
+        ("ts", "Code"),
+        ("mts", "Code"),
+        ("tsx", "Code"),
+        ("rs", "Code"),
+        ("py", "Code"),
+        ("java", "Code"),
+        ("html", "Code"),
+        ("css", "Code"),
+        ("scss", "Code"),
+        ("sass", "Code"),
+        ("less", "Code"),
+        ("styl", "Code"),
+        ("c", "Code"),
+        ("cs", "Code"),
+        ("go", "Code"),
+        ("vue", "Code"),
+        ("svelte", "Code"),
+        ("astro", "Code"),
+        ("jsx", "Code"),
+        ("json", "Code"),
+        ("yml", "Code"),
+        ("yaml", "Code"),
+        ("toml", "Code"),
+        ("bat", "Code"),
+        ("ps1", "Code"),
+        ("ini", "Code"),
+        ("swift", "Code"),
+        ("kt", "Code"),
+        ("php", "Code"),
+        ("h", "Code"),
+        ("xml", "Code"),
+        ("sql", "Code"),
+        ("pug", "Code"),
+        ("lua", "Code"),
+        ("r", "Code"),
+        ("d", "Code"),
+        ("vb", "Code"),
+        ("pas", "Code"),
+        ("scala", "Code"),
+        ("m", "Code"),
+        // 应用程序文件
+        // ("exe", "App"),
+        // ("dmg", "App"),
+        // ("deb", "App"),
+        // ("rpm", "App"),
+        // ("apk", "App"),
+        // ("appimage", "App"),
+    ])
 }
