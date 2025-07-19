@@ -1,86 +1,17 @@
 {
-  "$schema": "../gen/schemas/desktop-schema.json",
-  "identifier": "default",
-  "description": "enables the default permissions",
-  "windows": [
-    "main",
-    "preview",
-    "upgrade"
+  "identifier": "desktop-capability",
+  "platforms": [
+    "windows"
   ],
-  "local": true,
   "permissions": [
-    "core:window:allow-internal-toggle-maximize",
-    "core:window:allow-toggle-maximize",
-    "core:window:allow-minimize",
-    "core:window:allow-start-dragging",
-    "core:window:allow-get-all-windows",
-    "core:window:allow-close",
-    "core:window:allow-create",
-    "core:window:allow-is-visible",
-    "core:window:allow-set-focus",
-    "core:window:allow-show",
-    "core:window:allow-hide",
-    "core:window:allow-set-title",
-    "core:window:allow-set-size",
-    "core:window:allow-set-position",
-    "core:window:allow-set-always-on-top",
-    "core:window:allow-set-resizable",
-    "core:event:allow-listen",
-    "core:path:allow-extname",
-    "core:app:allow-version",
-    {
-      "identifier": "fs:allow-lstat",
-      "allow": [
-        {
-          "path": "**"
-        }
-      ]
-    },
-    {
-      "identifier": "fs:allow-read-text-file",
-      "allow": [
-        {
-          "path": "**"
-        }
-      ]
-    },
-    {
-      "identifier": "fs:allow-read-file",
-      "allow": [
-        {
-          "path": "**"
-        }
-      ]
-    },
-    {
-      "identifier": "shell:allow-open",
-      "allow": [
-        {
-          "name": "open",
-          "args": [
-            "**"
-          ],
-          "cmd": ""
-        }
-      ]
-    },
-    {
-      "identifier": "updater:allow-check",
-      "allow": [
-        {
-          "path": "/upgrade"
-        }
-      ]
-    },
-    {
-      "identifier": "updater:allow-download-and-install",
-      "allow": [
-        {
-          "path": "/upgrade"
-        }
-      ]
-    },
-    "log:allow-log",
-    "core:resources:allow-close"
+    "autostart:default",
+    "core:default",
+    "fs:default",
+    "updater:default",
+    "dialog:default",
+    "shell:default",
+    "log:default",
+    "store:default",
+    "opener:default"
   ]
 }

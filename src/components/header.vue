@@ -9,7 +9,7 @@ import {
 } from '@vicons/fluent'
 import { ref, watch } from 'vue'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { open } from '@tauri-apps/plugin-shell'
+import { openPath } from '@tauri-apps/plugin-opener'
 import type { FileInfo } from '@/utils/typescript'
 import { invoke } from '@tauri-apps/api/core'
 
@@ -41,7 +41,7 @@ const handleMax = () => {
 const openByDefault = async () => {
     const path = props.file?.path
     if (path) {
-        const result = await open(path)
+        const result = await openPath(path)
         console.log(result)
     }
 }

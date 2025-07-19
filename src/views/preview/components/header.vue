@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Dismiss20Regular, Maximize20Regular } from "@vicons/fluent"
+import { Dismiss20Regular, Maximize20Regular } from '@vicons/fluent'
 
 import { getCurrentWindow } from '@tauri-apps/api/window'
 
@@ -8,7 +8,7 @@ interface LayoutHeaderProps {
     title?: string
 }
 const props = withDefaults(defineProps<LayoutHeaderProps>(), {
-    title: '文件预览'
+    title: '文件预览',
 })
 
 const handleClose = () => {
@@ -16,10 +16,10 @@ const handleClose = () => {
     curWindow.hide()
 }
 
-const handleMin = () => {
-    const curWindow = getCurrentWindow()
-    curWindow.minimize()
-}
+// const handleMin = () => {
+//     const curWindow = getCurrentWindow()
+//     curWindow.minimize()
+// }
 
 const handleMax = () => {
     const curWindow = getCurrentWindow()
