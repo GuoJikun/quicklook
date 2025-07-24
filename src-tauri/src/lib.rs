@@ -10,7 +10,8 @@ mod tray;
 #[path = "./command.rs"]
 mod command;
 use command::{
-    archive, document, get_default_program_name, get_monitor_info, show_open_with_dialog,
+    archive, decode_video, document, get_default_program_name, get_monitor_info,
+    show_open_with_dialog,
 };
 use tauri_plugin_store::StoreExt;
 
@@ -98,7 +99,8 @@ pub fn run() {
             archive,
             document,
             get_monitor_info,
-            get_default_program_name
+            get_default_program_name,
+            decode_video
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");

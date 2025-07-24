@@ -1,11 +1,12 @@
-use tauri::{command, AppHandle, Manager};
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use tauri::{command, ipc::Channel, AppHandle, Manager};
 use windows::Win32::Foundation::HWND;
 // use log::info;
 
 #[path = "helper/mod.rs"]
 mod helper;
-use helper::{archives, docs, monitor, win};
-// use helper::{archives, docs, ffmp, monitor, win};
+use helper::{archives, docs, ffmpeg, monitor, win};
 
 #[command]
 pub fn show_open_with_dialog(app: AppHandle, path: &str) {
@@ -62,12 +63,35 @@ pub fn get_default_program_name(path: &str) -> Result<String, String> {
     win::get_default_program_name(path)
 }
 
-// #[allow(unused)]
-// #[command]
-// pub fn decode_video(app: AppHandle, path: String, label: String) -> Result<(), String> {
-//     info!("Decoding video: {}", path);
-//     ffmp::decode_video_stream(app, &path, label)
-// }
+#[command]
+pub async fn decode_video(path: String, on_chunk: Channel) -> Result<String, String> {
+    // 生成唯一的任务 ID
+    let task_id = format!(
+        "video_stream_{}",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos()
+    );
+
+    // 使用静态链接的视频流处理器开始转码
+    ffmpeg::VideoStreamProcessor::start_stream(path, on_chunk, task_id.clone()).await?;
+
+    // 返回任务 ID，供前端用于取消操作
+    Ok(task_id)
+}
+
+/// Tauri 命令：取消视频流
+#[command]
+pub async fn cancel_task(task_id: String) -> Result<(), String> {
+    ffmpeg::get_task_manager().cancel_task(&task_id)
+}
+
+/// Tauri 命令：获取正在运行的任务数量
+#[command]
+pub async fn get_active_tasks_count() -> Result<usize, String> {
+    Ok(ffmpeg::get_task_manager().active_tasks_count())
+}
 
 // use windows::{
 //     core::s,
