@@ -38,14 +38,7 @@ onMounted(async () => {
         // 监听 Channel 传来的数据
         onChunk.onmessage = (data: unknown) => {
             console.log('✅ Channel onmessage triggered!')
-            console.log('Data received:', {
-                type: typeof data,
-                isUint8Array: data instanceof Uint8Array,
-                isArrayBuffer: data instanceof ArrayBuffer,
-                isArray: Array.isArray(data),
-                constructor: data?.constructor?.name,
-                data: data,
-            })
+            console.log('Data received:', data)
 
             // 尝试不同的数据类型处理
             let chunk: Uint8Array
