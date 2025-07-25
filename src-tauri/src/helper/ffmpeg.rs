@@ -82,11 +82,11 @@ impl VideoStreamProcessor {
         let task_id_clone = task_id.clone();
 
         tauri::async_runtime::spawn(async move {
-            // 在异步任务中执行转码
-            let result = Self::transcode_video(&file_path, sink, cancel_receiver).await;
+            // 在异步任务中执行处理
+            let result = Self::process_video(&file_path, sink, cancel_receiver).await;
 
             if let Err(e) = result {
-                log::error!("视频转码失败: {}", e);
+                log::error!("视频处理失败: {}", e);
             }
 
             // 任务完成或被取消，从管理器中移除
@@ -96,52 +96,44 @@ impl VideoStreamProcessor {
         Ok(())
     }
 
-    /// 执行视频转码为 MP4 格式（使用 FFmpeg 静态链接库）
-    async fn transcode_video(
+    /// 处理视频文件（根据是否需要转码选择不同的处理方式）
+    async fn process_video(
         input_path: &str,
         sink: Channel,
         mut cancel_receiver: oneshot::Receiver<()>,
     ) -> Result<(), String> {
         let input_path = input_path.to_string();
 
-        // 使用 tokio::task::spawn_blocking 来运行 FFmpeg 转码
+        // 使用 tokio::task::spawn_blocking 来运行 FFmpeg 处理
         let handle = tokio::task::spawn_blocking(move || -> Result<Vec<Vec<u8>>, String> {
             // 初始化 FFmpeg
             ffmpeg::init().map_err(|e| format!("FFmpeg 初始化失败: {}", e))?;
 
-            log::info!("开始转码视频文件: {}", input_path);
+            log::info!("开始处理视频文件: {}", input_path);
 
             // 验证输入文件并获取基本信息
             let input_context = ffmpeg::format::input(&input_path)
                 .map_err(|e| format!("无法打开输入文件 {}: {}", input_path, e))?;
 
             // 查找视频流
-            let video_stream = input_context
+            let _video_stream = input_context
                 .streams()
                 .best(ffmpeg::media::Type::Video)
                 .ok_or("未找到视频流")?;
 
-            log::info!("找到视频流，索引: {}", video_stream.index());
-
-            // 对于静态链接版本，我们采用更简单但有效的方法：
-            // 1. 如果输入已经是 MP4 且参数合适，直接分块传输
-            // 2. 否则，使用基本的转码逻辑
-
             // 检查是否需要转码
             let needs_transcode = Self::needs_transcoding(&input_context)?;
 
-            if !needs_transcode {
-                log::info!("文件格式适合直接流式传输，跳过转码");
-                // 直接读取原文件并分块
-                Self::stream_original_file(&input_path)
+            if needs_transcode {
+                log::info!("需要转码，使用转码流程");
+                Self::transcode(&input_path)
             } else {
-                log::info!("需要转码，使用简化转码流程");
-                // 执行基本转码
-                Self::basic_transcode(&input_path)
+                log::info!("文件格式适合直接流式传输，跳过转码");
+                Self::stream_original_file(&input_path)
             }
         });
 
-        // 同时等待转码完成和取消信号
+        // 同时等待处理完成和取消信号
         tokio::select! {
             result = handle => {
                 match result {
@@ -151,7 +143,7 @@ impl VideoStreamProcessor {
                         for (i, chunk) in chunks.iter().enumerate() {
                             // 检查是否收到取消信号
                             if cancel_receiver.try_recv().is_ok() {
-                                log::info!("视频转码任务被取消");
+                                log::info!("视频处理任务被取消");
                                 return Ok(());
                             }
 
@@ -175,17 +167,17 @@ impl VideoStreamProcessor {
                         Ok(())
                     }
                     Ok(Err(e)) => Err(e),
-                    Err(e) => Err(format!("转码任务执行失败: {}", e))
+                    Err(e) => Err(format!("处理任务执行失败: {}", e))
                 }
             }
             _ = &mut cancel_receiver => {
-                log::info!("视频转码任务被取消");
+                log::info!("视频处理任务被取消");
                 Ok(())
             }
         }
     }
 
-    /// 检查是否需要转码
+    /// 检查是否是 MP4 格式
     fn needs_transcoding(input_context: &ffmpeg::format::context::Input) -> Result<bool, String> {
         // 获取文件格式信息
         let format = input_context.format();
@@ -194,7 +186,7 @@ impl VideoStreamProcessor {
 
         log::info!("输入格式: {} ({})", format_name, format_long_name);
 
-        // 检查容器格式
+        // 检查容器格式是否为MP4
         let is_mp4_container = format_name.contains("mp4") || format_name.contains("mov");
 
         if !is_mp4_container {
@@ -228,6 +220,44 @@ impl VideoStreamProcessor {
 
         log::info!("检测到标准MP4格式(H.264+AAC)，跳过转码");
         Ok(false)
+    }
+
+    /// 将视频转码为MP4格式并作为流返回给前端
+    fn transcode(input_path: &str) -> Result<Vec<Vec<u8>>, String> {
+        log::info!("开始转码视频文件为MP4格式: {}", input_path);
+
+        // 创建临时输出文件
+        let temp_dir = std::env::temp_dir();
+        let temp_output = temp_dir.join(format!("quicklook_transcode_{}.mp4", std::process::id()));
+        let temp_output_str = temp_output.to_string_lossy().to_string();
+
+        // 使用 ffmpeg-next 进行转码
+        let result = Self::transcode_with_ffmpeg_next(input_path, &temp_output_str);
+
+        // 如果转码成功，读取输出文件
+        let chunks_result = match result {
+            Ok(_) => {
+                log::info!("转码完成，读取输出文件");
+                let chunks = Self::read_file_in_chunks(&temp_output_str);
+
+                // 清理临时文件
+                if let Err(e) = std::fs::remove_file(&temp_output) {
+                    log::warn!("清理临时文件失败: {}", e);
+                }
+
+                chunks
+            }
+            Err(e) => {
+                log::error!("转码失败: {}, 回退到直接传输原文件", e);
+                // 清理临时文件
+                let _ = std::fs::remove_file(&temp_output);
+
+                // 回退到直接传输原文件
+                Self::stream_original_file(input_path)
+            }
+        };
+
+        chunks_result
     }
 
     /// 直接流式传输原文件
@@ -295,87 +325,54 @@ impl VideoStreamProcessor {
         Ok(chunks)
     }
 
-    /// 基本转码功能（使用 ffmpeg-next 库实现）
-    fn basic_transcode(input_path: &str) -> Result<Vec<Vec<u8>>, String> {
-        log::info!("开始使用 ffmpeg-next 进行MP4转码");
+    /// 查找可用的视频编码器
+    fn find_available_video_encoder() -> Result<ffmpeg::codec::Id, String> {
+        // 直接使用libx264编码器
+        if let Some(_encoder) = ffmpeg::encoder::find_by_name("libx264") {
+            log::info!("找到可用的视频编码器: libx264");
+            return Ok(ffmpeg::codec::Id::H264);
+        }
 
-        // 由于 ffmpeg-next API 的复杂性，我们使用一个简化的方法
-        // 首先尝试验证视频，如果失败则回退到原文件传输
-        match Self::validate_and_convert_video(input_path) {
-            Ok(chunks) => {
-                log::info!("视频转码成功，返回数据块");
-                Ok(chunks)
-            }
-            Err(e) => {
-                log::warn!("ffmpeg-next 转码失败: {}, 回退到原文件传输", e);
-                Self::stream_original_file(input_path)
+        // 如果libx264不可用，按优先级顺序尝试其他编码器
+        let encoder_ids = [
+            ffmpeg::codec::Id::MPEG4, // MPEG-4备选
+            ffmpeg::codec::Id::H265,  // H.265/HEVC
+            ffmpeg::codec::Id::VP8,   // VP8
+            ffmpeg::codec::Id::VP9,   // VP9
+        ];
+
+        for codec_id in encoder_ids.iter() {
+            if let Some(_encoder) = ffmpeg::encoder::find(*codec_id) {
+                log::info!("找到可用的视频编码器: {:?}", codec_id);
+                return Ok(*codec_id);
+            } else {
+                log::debug!("视频编码器不可用: {:?}", codec_id);
             }
         }
+
+        Err("未找到任何可用的视频编码器".to_string())
     }
 
-    /// 验证并转换视频文件
-    fn validate_and_convert_video(input_path: &str) -> Result<Vec<Vec<u8>>, String> {
-        // 首先验证输入文件
-        let input_context =
-            ffmpeg::format::input(&input_path).map_err(|e| format!("无法打开输入文件: {}", e))?;
+    /// 查找可用的音频编码器
+    fn find_available_audio_encoder() -> Result<ffmpeg::codec::Id, String> {
+        // 按优先级顺序尝试不同的音频编码器
+        let encoder_ids = [
+            ffmpeg::codec::Id::AAC,    // 首选AAC
+            ffmpeg::codec::Id::MP3,    // MP3备选
+            ffmpeg::codec::Id::VORBIS, // Vorbis
+            ffmpeg::codec::Id::OPUS,   // Opus
+        ];
 
-        // 查找视频流
-        let video_stream = input_context
-            .streams()
-            .best(ffmpeg::media::Type::Video)
-            .ok_or("未找到视频流")?;
-
-        // 获取视频信息
-        let video_context =
-            ffmpeg::codec::context::Context::from_parameters(video_stream.parameters())
-                .map_err(|e| format!("获取视频参数失败: {}", e))?;
-        let decoder = video_context
-            .decoder()
-            .video()
-            .map_err(|e| format!("创建解码器失败: {}", e))?;
-
-        let width = decoder.width();
-        let height = decoder.height();
-        let format = decoder.format();
-
-        log::info!("视频信息: {}x{}, 格式: {:?}", width, height, format);
-
-        Self::transcode_with_external_ffmpeg(input_path)
-    }
-
-    /// 使用 ffmpeg-next 库进行转码
-    fn transcode_with_external_ffmpeg(input_path: &str) -> Result<Vec<Vec<u8>>, String> {
-        log::info!("开始使用 ffmpeg-next 库进行转码");
-
-        // 创建临时输出文件
-        let temp_dir = std::env::temp_dir();
-        let temp_output = temp_dir.join(format!("quicklook_transcode_{}.mp4", std::process::id()));
-        let temp_output_str = temp_output.to_string_lossy().to_string();
-
-        // 使用 ffmpeg-next 进行转码
-        let result = Self::transcode_with_ffmpeg_next(input_path, &temp_output_str);
-
-        // 如果转码成功，读取输出文件
-        let chunks_result = match result {
-            Ok(_) => {
-                log::info!("ffmpeg-next 转码完成，读取输出文件");
-                let chunks = Self::read_file_in_chunks(&temp_output_str);
-
-                // 清理临时文件
-                if let Err(e) = std::fs::remove_file(&temp_output) {
-                    log::warn!("清理临时文件失败: {}", e);
-                }
-
-                chunks
+        for codec_id in encoder_ids.iter() {
+            if let Some(_encoder) = ffmpeg::encoder::find(*codec_id) {
+                log::info!("找到可用的音频编码器: {:?}", codec_id);
+                return Ok(*codec_id);
+            } else {
+                log::debug!("音频编码器不可用: {:?}", codec_id);
             }
-            Err(e) => {
-                // 清理临时文件
-                let _ = std::fs::remove_file(&temp_output);
-                Err(e)
-            }
-        };
+        }
 
-        chunks_result
+        Err("未找到任何可用的音频编码器".to_string())
     }
 
     /// 使用 ffmpeg-next 进行实际的转码操作
@@ -416,9 +413,23 @@ impl VideoStreamProcessor {
                 .video()
                 .map_err(|e| format!("创建视频解码器失败: {}", e))?;
 
-            // 创建视频编码器
-            let encoder_codec =
-                ffmpeg::encoder::find(ffmpeg::codec::Id::H264).ok_or("找不到H264编码器")?;
+            // 尝试查找可用的视频编码器
+            let encoder_codec_id = Self::find_available_video_encoder()?;
+
+            // 如果是H.264，直接使用libx264编码器
+            let encoder_codec = if encoder_codec_id == ffmpeg::codec::Id::H264 {
+                ffmpeg::encoder::find_by_name("libx264")
+                    .ok_or("无法找到libx264编码器".to_string())?
+            } else {
+                ffmpeg::encoder::find(encoder_codec_id)
+                    .ok_or(format!("无法找到视频编码器: {:?}", encoder_codec_id))?
+            };
+
+            log::info!(
+                "使用视频编码器: {:?} ({})",
+                encoder_codec_id,
+                encoder_codec.name()
+            );
 
             let mut output_video_stream = output_context
                 .add_stream(encoder_codec)
@@ -437,17 +448,109 @@ impl VideoStreamProcessor {
             // 配置编码器参数
             encoder.set_width(target_width);
             encoder.set_height(target_height);
-            encoder.set_format(ffmpeg::format::Pixel::YUV420P);
-            encoder.set_time_base(input_video_stream.time_base());
+
+            // 根据编码器类型设置像素格式
+            if encoder_codec_id == ffmpeg::codec::Id::H264 {
+                // 直接使用libx264，设置YUV420P像素格式
+                log::info!("使用 libx264 编码器，设置 YUV420P 像素格式");
+                encoder.set_format(ffmpeg::format::Pixel::YUV420P);
+            } else {
+                // 对于非H.264编码器，使用默认格式
+                encoder.set_format(ffmpeg::format::Pixel::YUV420P);
+            }
+
+            // 根据编码器类型设置合适的时间基
+            let input_time_base = input_video_stream.time_base();
+            match encoder_codec_id {
+                ffmpeg::codec::Id::MPEG4 => {
+                    // MPEG4标准要求时间基分母不超过65535
+                    // 检查输入时间基是否符合MPEG4标准
+                    if input_time_base.1 > 65535 {
+                        encoder.set_time_base((1, 30)); // 使用30fps标准时间基
+                        log::info!(
+                            "输入时间基 {}/{} 超过MPEG4限制，使用标准时间基: 1/30",
+                            input_time_base.0,
+                            input_time_base.1
+                        );
+                    } else {
+                        encoder.set_time_base(input_time_base);
+                        log::info!(
+                            "使用输入时间基: {}/{}",
+                            input_time_base.0,
+                            input_time_base.1
+                        );
+                    }
+                }
+                _ => {
+                    // 其他编码器使用输入时间基
+                    encoder.set_time_base(input_time_base);
+                    log::info!(
+                        "使用输入时间基: {}/{}",
+                        input_time_base.0,
+                        input_time_base.1
+                    );
+                }
+            }
 
             // 设置质量参数
             encoder.set_bit_rate(2000000); // 2Mbps
             encoder.set_max_bit_rate(4000000); // 4Mbps max
 
-            // 打开编码器
-            let encoder = encoder
-                .open_as(encoder_codec)
-                .map_err(|e| format!("打开视频编码器失败: {}", e))?;
+            // 尝试打开编码器，如果失败则尝试降低质量设置
+            let encoder = match encoder.open_as(encoder_codec) {
+                Ok(enc) => enc,
+                Err(e) => {
+                    log::warn!("使用默认设置打开编码器失败: {}, 尝试简化设置", e);
+
+                    // 重新创建编码器并使用更保守的设置
+                    let encoder_context =
+                        ffmpeg::codec::context::Context::new_with_codec(encoder_codec);
+                    let mut encoder = encoder_context
+                        .encoder()
+                        .video()
+                        .map_err(|e| format!("重新创建视频编码器失败: {}", e))?;
+
+                    // 使用更保守的设置
+                    encoder.set_width(target_width);
+                    encoder.set_height(target_height);
+
+                    // 在重试时也要设置正确的像素格式
+                    if encoder_codec_id == ffmpeg::codec::Id::H264 {
+                        // 使用libx264，设置YUV420P像素格式
+                        encoder.set_format(ffmpeg::format::Pixel::YUV420P);
+                    } else {
+                        encoder.set_format(ffmpeg::format::Pixel::YUV420P);
+                    }
+
+                    // 根据编码器类型设置合适的时间基
+                    match encoder_codec_id {
+                        ffmpeg::codec::Id::MPEG4 => {
+                            // MPEG4标准要求时间基分母不超过65535
+                            encoder.set_time_base((1, 30)); // 30fps标准时间基
+                            log::info!("为MPEG4编码器设置时间基: 1/30");
+                        }
+                        ffmpeg::codec::Id::H264 => {
+                            encoder.set_time_base((1, 25)); // H.264常用时间基
+                            log::info!("为H.264编码器设置时间基: 1/25");
+                        }
+                        ffmpeg::codec::Id::H265 => {
+                            encoder.set_time_base((1, 25)); // H.265常用时间基
+                            log::info!("为H.265编码器设置时间基: 1/25");
+                        }
+                        _ => {
+                            // 其他编码器使用通用时间基
+                            encoder.set_time_base((1, 25));
+                            log::info!("为编码器 {:?} 设置通用时间基: 1/25", encoder_codec_id);
+                        }
+                    }
+
+                    encoder.set_bit_rate(1000000); // 降低码率到1Mbps
+
+                    encoder
+                        .open_as(encoder_codec)
+                        .map_err(|e| format!("使用简化设置打开视频编码器失败: {}", e))?
+                }
+            };
 
             output_video_stream.set_parameters(&encoder);
 
@@ -473,9 +576,12 @@ impl VideoStreamProcessor {
                 .audio()
                 .map_err(|e| format!("创建音频解码器失败: {}", e))?;
 
-            // 创建音频编码器
-            let encoder_codec =
-                ffmpeg::encoder::find(ffmpeg::codec::Id::AAC).ok_or("找不到AAC编码器")?;
+            // 尝试查找可用的音频编码器
+            let encoder_codec_id = Self::find_available_audio_encoder()?;
+            let encoder_codec = ffmpeg::encoder::find(encoder_codec_id)
+                .ok_or(format!("无法找到音频编码器: {:?}", encoder_codec_id))?;
+
+            log::info!("使用音频编码器: {:?}", encoder_codec_id);
 
             let mut output_audio_stream = output_context
                 .add_stream(encoder_codec)
@@ -491,38 +597,37 @@ impl VideoStreamProcessor {
             encoder.set_rate(decoder.rate() as i32);
             encoder.set_channel_layout(decoder.channel_layout());
 
-            // 配置音频格式（AAC编码器支持的格式）
-            let supported_formats = [
-                ffmpeg::format::Sample::F32(ffmpeg::format::sample::Type::Planar), // fltp - AAC首选格式
-                ffmpeg::format::Sample::I16(ffmpeg::format::sample::Type::Planar), // s16p
-                ffmpeg::format::Sample::F32(ffmpeg::format::sample::Type::Packed), // flt
-                ffmpeg::format::Sample::I16(ffmpeg::format::sample::Type::Packed), // s16
-            ];
+            // 根据编码器类型设置音频格式
+            if encoder_codec_id == ffmpeg::codec::Id::AAC {
+                let decoder_format = decoder.format();
+                log::info!("原始音频格式: {:?}", decoder_format);
 
-            log::info!("原始音频格式: {:?}", decoder.format());
-
-            // 尝试设置支持的格式
-            let mut format_set = false;
-            for (i, format) in supported_formats.iter().enumerate() {
-                encoder.set_format(*format);
-                log::debug!("尝试设置音频格式 {}: {:?}", i + 1, format);
+                // AAC编码器只支持fltp格式，直接设置
+                let aac_format = ffmpeg::format::Sample::F32(ffmpeg::format::sample::Type::Planar);
+                encoder.set_format(aac_format);
 
                 // 验证格式是否被接受
-                if encoder.format() == *format {
-                    log::info!("成功设置音频格式: {:?}", format);
-                    format_set = true;
-                    break;
+                if encoder.format() == aac_format {
+                    log::info!("成功设置AAC编码器格式: {:?} (fltp)", aac_format);
+                } else {
+                    log::error!(
+                        "AAC编码器格式设置失败，期望: {:?}, 实际: {:?}",
+                        aac_format,
+                        encoder.format()
+                    );
+                    return Err("AAC编码器不支持所需的音频格式".to_string());
                 }
-            }
-
-            if !format_set {
-                return Err("无法设置AAC编码器支持的音频格式".to_string());
+            } else {
+                // 对于其他编码器，使用更通用的格式
+                encoder.set_format(ffmpeg::format::Sample::I16(
+                    ffmpeg::format::sample::Type::Packed,
+                ));
             }
 
             encoder.set_bit_rate(128000); // 128kbps
             encoder.set_time_base((1, decoder.rate() as i32));
 
-            // 打开编码器
+            // 尝试打开编码器
             let encoder = encoder.open_as(encoder_codec).map_err(|e| {
                 log::error!("打开音频编码器失败: {}", e);
                 format!("打开音频编码器失败: {}", e)
@@ -552,7 +657,7 @@ impl VideoStreamProcessor {
             ) = (video_stream_mapping, &mut video_decoder, &mut video_encoder)
             {
                 if stream.index() == input_index {
-                    Self::process_video_packet_simple(
+                    Self::process_video_packet(
                         &packet,
                         decoder,
                         encoder,
@@ -570,7 +675,7 @@ impl VideoStreamProcessor {
             ) = (audio_stream_mapping, &mut audio_decoder, &mut audio_encoder)
             {
                 if stream.index() == input_index {
-                    Self::process_audio_packet_simple(
+                    Self::process_audio_packet(
                         &packet,
                         decoder,
                         encoder,
@@ -596,7 +701,7 @@ impl VideoStreamProcessor {
     }
 
     /// 简化的视频包处理
-    fn process_video_packet_simple(
+    fn process_video_packet(
         packet: &ffmpeg::packet::Packet,
         decoder: &mut ffmpeg::decoder::Video,
         encoder: &mut ffmpeg::encoder::Video,
@@ -613,7 +718,6 @@ impl VideoStreamProcessor {
             decoded_frame.set_pts(Some(*frame_count));
             *frame_count += 1;
 
-            // 这里可以添加缩放逻辑，但为了简化，我们直接编码
             encoder
                 .send_frame(&decoded_frame)
                 .map_err(|e| format!("发送帧到编码器失败: {}", e))?;
@@ -638,8 +742,8 @@ impl VideoStreamProcessor {
         Ok(())
     }
 
-    /// 简化的音频包处理
-    fn process_audio_packet_simple(
+    /// 改进的音频包处理，支持AAC编码器的帧大小限制和格式转换
+    fn process_audio_packet(
         packet: &ffmpeg::packet::Packet,
         decoder: &mut ffmpeg::decoder::Audio,
         encoder: &mut ffmpeg::encoder::Audio,
@@ -653,7 +757,6 @@ impl VideoStreamProcessor {
 
         let mut decoded_frame = ffmpeg::frame::Audio::empty();
         while decoder.receive_frame(&mut decoded_frame).is_ok() {
-            // 检查解码帧格式是否与编码器匹配
             let decoder_format = decoded_frame.format();
             let encoder_format = encoder.format();
             let decoder_rate = decoded_frame.rate();
@@ -661,71 +764,647 @@ impl VideoStreamProcessor {
             let decoder_layout = decoded_frame.channel_layout();
             let encoder_layout = encoder.channel_layout();
 
-            log::debug!("音频帧格式检查:");
-            log::debug!(
-                "  解码器格式: {:?}, 编码器格式: {:?}",
-                decoder_format,
-                encoder_format
-            );
-            log::debug!(
-                "  解码器采样率: {}, 编码器采样率: {}",
-                decoder_rate,
-                encoder_rate
-            );
-            log::debug!(
-                "  解码器声道: {:?}, 编码器声道: {:?}",
-                decoder_layout,
-                encoder_layout
-            );
-
-            // 如果格式不匹配，跳过此帧并记录警告
-            if decoder_format != encoder_format
+            // 检查是否需要重采样
+            let needs_resampling = decoder_format != encoder_format
                 || decoder_rate != encoder_rate
-                || decoder_layout != encoder_layout
-            {
-                log::warn!(
-                    "音频格式不匹配，跳过此帧 - 解码器: {:?}@{}Hz {:?}, 编码器: {:?}@{}Hz {:?}",
-                    decoder_format,
-                    decoder_rate,
-                    decoder_layout,
+                || decoder_layout != encoder_layout;
+
+            let processed_frame = if needs_resampling {
+                log::info!(
+                    "音频参数不匹配，启用重采样 - 格式: {:?}->{:?}, 采样率: {}->{}, 声道: {:?}->{:?}",
+                    decoder_format, encoder_format, decoder_rate, encoder_rate, decoder_layout, encoder_layout
+                );
+
+                // 使用重采样器进行格式转换
+                match Self::resample_audio_frame(
+                    &decoded_frame,
                     encoder_format,
                     encoder_rate,
-                    encoder_layout
-                );
-                continue;
-            }
-
-            decoded_frame.set_pts(Some(*frame_count));
-            *frame_count += decoded_frame.samples() as i64;
-
-            // 尝试发送帧到编码器
-            match encoder.send_frame(&decoded_frame) {
-                Ok(_) => {
-                    let mut encoded_packet = ffmpeg::packet::Packet::empty();
-                    while encoder.receive_packet(&mut encoded_packet).is_ok() {
-                        encoded_packet.set_stream(output_stream_index);
-                        encoded_packet.rescale_ts(
-                            encoder.time_base(),
-                            output_context
-                                .stream(output_stream_index)
-                                .unwrap()
-                                .time_base(),
-                        );
-
-                        encoded_packet
-                            .write_interleaved(output_context)
-                            .map_err(|e| format!("写入音频包失败: {}", e))?;
+                    encoder_layout,
+                ) {
+                    Ok(resampled_frame) => {
+                        // 检查重采样后的帧是否有效
+                        if resampled_frame.samples() == 0 {
+                            log::debug!("重采样产生空帧，跳过此帧");
+                            continue;
+                        }
+                        resampled_frame
+                    }
+                    Err(e) => {
+                        log::warn!("音频重采样失败: {}, 跳过此帧", e);
+                        continue;
                     }
                 }
-                Err(e) => {
-                    log::warn!("发送音频帧到编码器失败: {}, 跳过此帧", e);
-                    // 不返回错误，而是继续处理下一帧
-                    continue;
-                }
+            } else {
+                // 无需重采样，克隆原始帧以避免移动问题
+                decoded_frame.clone()
+            };
+
+            // 处理音频帧大小限制，特别是针对AAC编码器
+            let input_samples = processed_frame.samples();
+            let max_encoder_samples = 1024; // AAC编码器的标准帧大小限制
+
+            log::debug!(
+                "输入音频帧: {} 采样点, 编码器最大支持: {} 采样点",
+                input_samples,
+                max_encoder_samples
+            );
+
+            if input_samples <= max_encoder_samples {
+                // 帧大小在限制范围内，直接编码
+                Self::encode_audio_frame(
+                    &processed_frame,
+                    encoder,
+                    output_context,
+                    output_stream_index,
+                    frame_count,
+                )?;
+            } else {
+                // 帧过大，需要分割处理
+                log::debug!("音频帧过大，需要分割成多个子帧");
+                Self::split_and_encode_audio_frame(
+                    &processed_frame,
+                    encoder,
+                    output_context,
+                    output_stream_index,
+                    frame_count,
+                    max_encoder_samples,
+                )?;
             }
         }
 
         Ok(())
+    }
+
+    /// 使用重采样器进行音频格式转换
+    fn resample_audio_frame(
+        input_frame: &ffmpeg::frame::Audio,
+        target_format: ffmpeg::format::Sample,
+        target_rate: u32,
+        target_layout: ffmpeg::channel_layout::ChannelLayout,
+    ) -> Result<ffmpeg::frame::Audio, String> {
+        // 检查是否真的需要重采样
+        if input_frame.format() == target_format
+            && input_frame.rate() == target_rate
+            && input_frame.channel_layout() == target_layout
+        {
+            log::debug!("音频参数完全匹配，直接返回原始帧");
+            return Ok(input_frame.clone());
+        }
+
+        // 创建重采样器上下文
+        let mut resampler = ffmpeg::software::resampling::Context::get(
+            input_frame.format(),
+            input_frame.channel_layout(),
+            input_frame.rate(),
+            target_format,
+            target_layout,
+            target_rate,
+        )
+        .map_err(|e| format!("创建重采样器失败: {}", e))?;
+
+        // 估算输出采样数（稍微多估算一些以确保足够的空间）
+        let input_samples = input_frame.samples();
+        let estimated_output_samples = if input_frame.rate() != target_rate {
+            ((input_samples as u64 * target_rate as u64) / input_frame.rate() as u64) as usize
+                + 2048 // 增加更多缓冲空间
+        } else {
+            input_samples + 2048
+        };
+
+        // 创建输出帧
+        let mut output_frame =
+            ffmpeg::frame::Audio::new(target_format, estimated_output_samples, target_layout);
+        output_frame.set_rate(target_rate);
+
+        // 复制时间戳
+        if let Some(pts) = input_frame.pts() {
+            // 调整时间戳以适应新的采样率
+            let adjusted_pts = if input_frame.rate() != target_rate {
+                (pts * target_rate as i64) / input_frame.rate() as i64
+            } else {
+                pts
+            };
+            output_frame.set_pts(Some(adjusted_pts));
+        }
+
+        // 执行重采样
+        let result = resampler.run(input_frame, &mut output_frame);
+
+        match result {
+            Ok(Some(delay)) => {
+                log::debug!("重采样完成，延迟信息: {:?}", delay);
+                Self::handle_resampler_output(
+                    output_frame,
+                    input_samples,
+                    estimated_output_samples,
+                    target_format,
+                    target_rate,
+                    target_layout,
+                    &mut resampler,
+                )
+            }
+            Ok(None) => {
+                log::debug!("重采样完成但无延迟信息");
+                Self::handle_resampler_output(
+                    output_frame,
+                    input_samples,
+                    estimated_output_samples,
+                    target_format,
+                    target_rate,
+                    target_layout,
+                    &mut resampler,
+                )
+            }
+            Err(e) => Err(format!("重采样执行失败: {}", e)),
+        }
+    }
+
+    /// 处理重采样器输出的通用逻辑
+    fn handle_resampler_output(
+        mut output_frame: ffmpeg::frame::Audio,
+        input_samples: usize,
+        estimated_output_samples: usize,
+        target_format: ffmpeg::format::Sample,
+        target_rate: u32,
+        target_layout: ffmpeg::channel_layout::ChannelLayout,
+        resampler: &mut ffmpeg::software::resampling::Context,
+    ) -> Result<ffmpeg::frame::Audio, String> {
+        let mut actual_samples = output_frame.samples();
+
+        // 如果没有输出，尝试刷新缓冲区
+        if actual_samples == 0 {
+            log::debug!("重采样器暂无输出，尝试刷新缓冲区");
+            let flush_result = resampler.flush(&mut output_frame);
+            match flush_result {
+                Ok(Some(_)) => {
+                    actual_samples = output_frame.samples();
+                    if actual_samples == 0 {
+                        log::debug!("刷新后仍无输出，可能需要更多输入数据");
+                        // 对于某些重采样器，可能需要多次输入才能产生输出
+                        // 返回一个空帧，但不算作错误
+                        let empty_frame =
+                            ffmpeg::frame::Audio::new(target_format, 0, target_layout);
+                        return Ok(empty_frame);
+                    }
+                    log::debug!("刷新缓冲区后获得 {} 采样点", actual_samples);
+                }
+                Ok(None) => {
+                    log::debug!("刷新缓冲区无输出，返回空帧");
+                    let empty_frame = ffmpeg::frame::Audio::new(target_format, 0, target_layout);
+                    return Ok(empty_frame);
+                }
+                Err(e) => {
+                    log::warn!("刷新重采样器缓冲区失败: {}", e);
+                    let empty_frame = ffmpeg::frame::Audio::new(target_format, 0, target_layout);
+                    return Ok(empty_frame);
+                }
+            }
+        }
+
+        // 如果有输出，处理帧大小调整
+        if actual_samples > 0 {
+            if actual_samples != estimated_output_samples {
+                // 创建正确大小的帧
+                let mut final_frame =
+                    ffmpeg::frame::Audio::new(target_format, actual_samples, target_layout);
+                final_frame.set_rate(target_rate);
+                if let Some(pts) = output_frame.pts() {
+                    final_frame.set_pts(Some(pts));
+                }
+
+                // 复制音频数据
+                let source_data = output_frame.data(0);
+                let dest_data = final_frame.data_mut(0);
+                let channels = target_layout.channels() as usize;
+                let bytes_per_sample = match target_format {
+                    ffmpeg::format::Sample::I16(_) => 2,
+                    ffmpeg::format::Sample::I32(_) => 4,
+                    ffmpeg::format::Sample::F32(_) => 4,
+                    ffmpeg::format::Sample::F64(_) => 8,
+                    _ => 4, // 默认4字节
+                };
+                let bytes_to_copy = actual_samples * channels * bytes_per_sample;
+                let copy_size = std::cmp::min(
+                    bytes_to_copy,
+                    std::cmp::min(source_data.len(), dest_data.len()),
+                );
+
+                if copy_size > 0 {
+                    unsafe {
+                        std::ptr::copy_nonoverlapping(
+                            source_data.as_ptr(),
+                            dest_data.as_mut_ptr(),
+                            copy_size,
+                        );
+                    }
+                }
+
+                log::debug!("重采样完成: {} -> {} 采样点", input_samples, actual_samples);
+                Ok(final_frame)
+            } else {
+                log::debug!("重采样完成: {} -> {} 采样点", input_samples, actual_samples);
+                Ok(output_frame)
+            }
+        } else {
+            // 如果最终还是没有输出，返回空帧
+            log::debug!("重采样最终无输出，返回空帧");
+            let empty_frame = ffmpeg::frame::Audio::new(target_format, 0, target_layout);
+            Ok(empty_frame)
+        }
+    }
+
+    /// 编码单个音频帧
+    fn encode_audio_frame(
+        frame: &ffmpeg::frame::Audio,
+        encoder: &mut ffmpeg::encoder::Audio,
+        output_context: &mut ffmpeg::format::context::Output,
+        output_stream_index: usize,
+        frame_count: &mut i64,
+    ) -> Result<(), String> {
+        let frame_samples = frame.samples();
+
+        // 检查帧大小是否符合编码器要求
+        if frame_samples != 1024 {
+            log::warn!(
+                "音频帧大小不符合AAC编码器要求: {} samples，期望 1024 samples，跳过此帧",
+                frame_samples
+            );
+            return Ok(());
+        }
+
+        let mut audio_frame = frame.clone();
+        audio_frame.set_pts(Some(*frame_count));
+        *frame_count += audio_frame.samples() as i64;
+
+        match encoder.send_frame(&audio_frame) {
+            Ok(_) => {
+                let mut encoded_packet = ffmpeg::packet::Packet::empty();
+                while encoder.receive_packet(&mut encoded_packet).is_ok() {
+                    encoded_packet.set_stream(output_stream_index);
+                    encoded_packet.rescale_ts(
+                        encoder.time_base(),
+                        output_context
+                            .stream(output_stream_index)
+                            .unwrap()
+                            .time_base(),
+                    );
+
+                    encoded_packet
+                        .write_interleaved(output_context)
+                        .map_err(|e| format!("写入音频包失败: {}", e))?;
+                }
+                log::debug!("成功编码音频帧: {} 采样点", frame_samples);
+                Ok(())
+            }
+            Err(e) => {
+                log::warn!("发送音频帧到编码器失败: {}, 跳过此帧", e);
+                Ok(())
+            }
+        }
+    }
+
+    /// 分割大音频帧并编码
+    fn split_and_encode_audio_frame(
+        frame: &ffmpeg::frame::Audio,
+        encoder: &mut ffmpeg::encoder::Audio,
+        output_context: &mut ffmpeg::format::context::Output,
+        output_stream_index: usize,
+        frame_count: &mut i64,
+        max_samples: usize,
+    ) -> Result<(), String> {
+        let total_samples = frame.samples();
+        let channels = frame.channels();
+        let format = frame.format();
+        let rate = frame.rate();
+        let channel_layout = frame.channel_layout();
+
+        // 计算需要分割成多少个子帧
+        let num_subframes = (total_samples + max_samples - 1) / max_samples;
+        log::debug!(
+            "将 {} 采样点的帧分割成 {} 个子帧，音频格式: {:?}, 声道数: {}",
+            total_samples,
+            num_subframes,
+            format,
+            channels
+        );
+
+        // 检查音频格式类型
+        let is_planar = match format {
+            ffmpeg::format::Sample::I16(ffmpeg::format::sample::Type::Planar) => true,
+            ffmpeg::format::Sample::I32(ffmpeg::format::sample::Type::Planar) => true,
+            ffmpeg::format::Sample::F32(ffmpeg::format::sample::Type::Planar) => true,
+            ffmpeg::format::Sample::F64(ffmpeg::format::sample::Type::Planar) => true,
+            _ => false,
+        };
+
+        // 计算每个采样点的字节数
+        let bytes_per_sample = match format {
+            ffmpeg::format::Sample::I16(_) => 2,
+            ffmpeg::format::Sample::I32(_) => 4,
+            ffmpeg::format::Sample::F32(_) => 4,
+            ffmpeg::format::Sample::F64(_) => 8,
+            _ => {
+                log::warn!("不支持的音频格式: {:?}, 跳过分割", format);
+                return Ok(());
+            }
+        };
+
+        // 验证原始帧的数据完整性并检测实际声道配置
+        let actual_channels = if is_planar {
+            // 对于平面格式，检查每个声道的数据并检测实际可用声道数
+            let mut detected_channels = 0u16;
+            let mut has_valid_data = false;
+
+            for ch in 0..channels {
+                let channel_data = frame.data(ch as usize);
+                let expected_bytes = total_samples * bytes_per_sample;
+
+                if !channel_data.is_empty() && channel_data.len() >= expected_bytes {
+                    detected_channels = ch + 1;
+                    has_valid_data = true;
+                    log::debug!(
+                        "声道 {} 数据大小: {} bytes (期望: {} bytes) ✓",
+                        ch,
+                        channel_data.len(),
+                        expected_bytes
+                    );
+                } else if !channel_data.is_empty() {
+                    log::warn!(
+                        "声道 {} 数据不足: {} bytes < {} bytes (期望)",
+                        ch,
+                        channel_data.len(),
+                        expected_bytes
+                    );
+                } else {
+                    log::debug!("声道 {} 数据为空", ch);
+                    // 如果遇到空的声道，停止检查后续声道
+                    break;
+                }
+            }
+
+            if !has_valid_data {
+                log::error!("所有声道都没有数据，无法进行音频分割");
+                return Ok(());
+            }
+
+            if detected_channels != channels {
+                log::info!(
+                    "检测到实际声道数 {} 与声道布局声道数 {} 不匹配",
+                    detected_channels,
+                    channels
+                );
+            }
+
+            detected_channels
+        } else {
+            // 对于交错格式，所有声道数据在data(0)中
+            let frame_data = frame.data(0);
+            let expected_bytes = total_samples * bytes_per_sample * channels as usize;
+
+            if frame_data.is_empty() {
+                log::error!("交错音频数据为空，无法进行音频分割");
+                return Ok(());
+            }
+
+            if frame_data.len() < expected_bytes {
+                log::warn!(
+                    "交错音频数据不足: {} bytes < {} bytes (期望)",
+                    frame_data.len(),
+                    expected_bytes
+                );
+            } else {
+                log::debug!(
+                    "交错音频数据大小: {} bytes (期望: {} bytes) ✓",
+                    frame_data.len(),
+                    expected_bytes
+                );
+            }
+
+            // 对于交错格式，假设声道数是正确的
+            channels
+        };
+
+        // 根据实际声道数调整声道布局
+        let actual_channel_layout = if actual_channels == 1 {
+            ffmpeg::channel_layout::ChannelLayout::MONO
+        } else if actual_channels == 2 {
+            ffmpeg::channel_layout::ChannelLayout::STEREO
+        } else {
+            // 保持原有声道布局
+            channel_layout
+        };
+
+        log::debug!(
+            "使用实际声道配置: {} 声道, 布局: {:?}",
+            actual_channels,
+            actual_channel_layout
+        );
+        for i in 0..num_subframes {
+            let start_sample = i * max_samples;
+            let end_sample = std::cmp::min(start_sample + max_samples, total_samples);
+            let subframe_samples = end_sample - start_sample;
+
+            if subframe_samples == 0 {
+                break;
+            }
+
+            // 创建新的音频帧，使用实际的声道配置
+            let mut subframe =
+                ffmpeg::frame::Audio::new(format, subframe_samples, actual_channel_layout);
+            subframe.set_rate(rate);
+            subframe.set_pts(Some(*frame_count));
+
+            log::debug!(
+                "处理子帧 {}/{}: 采样点范围 {}-{} ({} 采样点), 使用 {} 声道",
+                i + 1,
+                num_subframes,
+                start_sample,
+                end_sample,
+                subframe_samples,
+                actual_channels
+            );
+
+            // 复制音频数据
+            let copy_success = if is_planar {
+                // 平面格式：每个声道分别复制
+                Self::copy_planar_audio_data(
+                    frame,
+                    &mut subframe,
+                    start_sample,
+                    subframe_samples,
+                    actual_channels, // 使用实际声道数
+                    bytes_per_sample,
+                )
+            } else {
+                // 交错格式：所有声道数据在一起
+                Self::copy_interleaved_audio_data(
+                    frame,
+                    &mut subframe,
+                    start_sample,
+                    subframe_samples,
+                    actual_channels, // 使用实际声道数
+                    bytes_per_sample,
+                )
+            };
+
+            if copy_success {
+                log::debug!(
+                    "编码子帧 {}/{}: {} 采样点",
+                    i + 1,
+                    num_subframes,
+                    subframe_samples
+                );
+
+                // 编码这个子帧
+                Self::encode_audio_frame(
+                    &subframe,
+                    encoder,
+                    output_context,
+                    output_stream_index,
+                    frame_count,
+                )?;
+            } else {
+                log::warn!("音频数据复制失败，跳过子帧 {}", i + 1);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// 复制平面音频数据
+    fn copy_planar_audio_data(
+        src_frame: &ffmpeg::frame::Audio,
+        dst_frame: &mut ffmpeg::frame::Audio,
+        start_sample: usize,
+        samples: usize,
+        channels: u16,
+        bytes_per_sample: usize,
+    ) -> bool {
+        // 复制指定数量的声道数据
+        for ch in 0..channels {
+            let src_data = src_frame.data(ch as usize);
+            let dst_data = dst_frame.data_mut(ch as usize);
+
+            // 检查源数据是否存在
+            if src_data.is_empty() {
+                log::warn!("声道 {} 源数据为空，跳过", ch);
+                continue;
+            }
+
+            let start_byte = start_sample * bytes_per_sample;
+            let length_bytes = samples * bytes_per_sample;
+
+            // 检查源数据边界
+            if start_byte + length_bytes > src_data.len() {
+                log::warn!(
+                    "声道 {} 数据越界: 需要 {} bytes (起始: {}, 长度: {})，但只有 {} bytes",
+                    ch,
+                    start_byte + length_bytes,
+                    start_byte,
+                    length_bytes,
+                    src_data.len()
+                );
+                return false;
+            }
+
+            // 检查目标缓冲区大小
+            if length_bytes > dst_data.len() {
+                log::warn!(
+                    "声道 {} 目标缓冲区不足: 需要 {} bytes，但只有 {} bytes",
+                    ch,
+                    length_bytes,
+                    dst_data.len()
+                );
+                return false;
+            }
+
+            // 安全复制数据
+            unsafe {
+                let src_ptr = src_data.as_ptr().add(start_byte);
+                let dst_ptr = dst_data.as_mut_ptr();
+                std::ptr::copy_nonoverlapping(src_ptr, dst_ptr, length_bytes);
+            }
+
+            log::debug!(
+                "声道 {} 复制完成: {} bytes (采样点 {}-{})",
+                ch,
+                length_bytes,
+                start_sample,
+                start_sample + samples
+            );
+        }
+
+        true
+    }
+
+    /// 复制交错音频数据
+    fn copy_interleaved_audio_data(
+        src_frame: &ffmpeg::frame::Audio,
+        dst_frame: &mut ffmpeg::frame::Audio,
+        start_sample: usize,
+        samples: usize,
+        channels: u16,
+        bytes_per_sample: usize,
+    ) -> bool {
+        let src_data = src_frame.data(0);
+        let dst_data = dst_frame.data_mut(0);
+
+        if src_data.is_empty() {
+            log::warn!("交错音频源数据为空");
+            return false;
+        }
+
+        let bytes_per_frame = bytes_per_sample * channels as usize;
+        let start_byte = start_sample * bytes_per_frame;
+        let length_bytes = samples * bytes_per_frame;
+
+        log::debug!(
+            "交错音频复制参数: 起始采样点={}, 采样点数={}, 声道数={}, 每采样点字节数={}, 每帧字节数={}",
+            start_sample,
+            samples,
+            channels,
+            bytes_per_sample,
+            bytes_per_frame
+        );
+
+        // 检查源数据边界
+        if start_byte + length_bytes > src_data.len() {
+            log::warn!(
+                "交错音频数据越界: 需要 {} bytes (起始: {}, 长度: {})，但只有 {} bytes",
+                start_byte + length_bytes,
+                start_byte,
+                length_bytes,
+                src_data.len()
+            );
+            return false;
+        }
+
+        // 检查目标缓冲区大小
+        if length_bytes > dst_data.len() {
+            log::warn!(
+                "交错音频目标缓冲区不足: 需要 {} bytes，但只有 {} bytes",
+                length_bytes,
+                dst_data.len()
+            );
+            return false;
+        }
+
+        // 安全复制数据
+        unsafe {
+            let src_ptr = src_data.as_ptr().add(start_byte);
+            let dst_ptr = dst_data.as_mut_ptr();
+            std::ptr::copy_nonoverlapping(src_ptr, dst_ptr, length_bytes);
+        }
+
+        log::debug!(
+            "交错音频复制完成: {} bytes (采样点 {}-{}, 覆盖 {} 个声道)",
+            length_bytes,
+            start_sample,
+            start_sample + samples,
+            channels
+        );
+        true
     }
 
     /// 分块读取文件
@@ -801,115 +1480,4 @@ impl VideoStreamProcessor {
             (target_width, target_height)
         }
     }
-
-    /// 验证视频文件格式和编码信息
-    pub fn analyze_video_info(file_path: &str) -> Result<VideoInfo, String> {
-        ffmpeg::init().map_err(|e| format!("FFmpeg 初始化失败: {}", e))?;
-
-        let input_context = ffmpeg::format::input(&file_path)
-            .map_err(|e| format!("无法打开文件 {}: {}", file_path, e))?;
-
-        let format = input_context.format();
-        let mut video_info = VideoInfo {
-            format_name: format.name().to_string(),
-            format_long_name: format.description().to_string(),
-            duration_seconds: input_context.duration() as f64 / ffmpeg::ffi::AV_TIME_BASE as f64,
-            file_size: std::fs::metadata(file_path).map(|m| m.len()).unwrap_or(0),
-            video_stream: None,
-            audio_stream: None,
-            needs_transcode: false,
-        };
-
-        // 分析视频流
-        if let Some(video_stream) = input_context.streams().best(ffmpeg::media::Type::Video) {
-            let video_codec_id = video_stream.parameters().id();
-            let mut video_stream_info = VideoStreamInfo {
-                codec_name: format!("{:?}", video_codec_id),
-                width: 0,
-                height: 0,
-                frame_rate: video_stream.rate(),
-                bit_rate: 0, // 暂时设为0，避免API问题
-                pixel_format: "unknown".to_string(),
-            };
-
-            if let Ok(video_context) =
-                ffmpeg::codec::context::Context::from_parameters(video_stream.parameters())
-            {
-                if let Ok(decoder) = video_context.decoder().video() {
-                    video_stream_info.width = decoder.width();
-                    video_stream_info.height = decoder.height();
-                    video_stream_info.pixel_format = format!("{:?}", decoder.format());
-                }
-            }
-
-            video_info.video_stream = Some(video_stream_info);
-        }
-
-        // 分析音频流
-        if let Some(audio_stream) = input_context.streams().best(ffmpeg::media::Type::Audio) {
-            let audio_codec_id = audio_stream.parameters().id();
-            let mut audio_stream_info = AudioStreamInfo {
-                codec_name: format!("{:?}", audio_codec_id),
-                sample_rate: 0, // 暂时设为0，避免API问题
-                channels: 0,    // 暂时设为0，避免API问题
-                bit_rate: 0,    // 暂时设为0，避免API问题
-            };
-
-            // 尝试从解码器获取音频参数
-            if let Ok(audio_context) =
-                ffmpeg::codec::context::Context::from_parameters(audio_stream.parameters())
-            {
-                if let Ok(decoder) = audio_context.decoder().audio() {
-                    audio_stream_info.sample_rate = decoder.rate();
-                    audio_stream_info.channels = decoder.channels() as u32;
-                }
-            }
-
-            video_info.audio_stream = Some(audio_stream_info);
-        }
-
-        // 判断是否需要转码
-        video_info.needs_transcode = Self::needs_transcoding(&input_context)?;
-
-        log::info!("视频文件分析完成: {:?}", video_info);
-        Ok(video_info)
-    }
-
-    /// 测试转码功能
-    pub fn test_transcode(input_path: &str, output_path: &str) -> Result<(), String> {
-        log::info!("开始测试转码功能: {} -> {}", input_path, output_path);
-        Self::transcode_with_ffmpeg_next(input_path, output_path)
-    }
-}
-
-/// 视频信息结构体
-#[derive(Debug)]
-pub struct VideoInfo {
-    pub format_name: String,
-    pub format_long_name: String,
-    pub duration_seconds: f64,
-    pub file_size: u64,
-    pub video_stream: Option<VideoStreamInfo>,
-    pub audio_stream: Option<AudioStreamInfo>,
-    pub needs_transcode: bool,
-}
-
-/// 视频流信息
-#[derive(Debug)]
-pub struct VideoStreamInfo {
-    pub codec_name: String,
-    pub width: u32,
-    pub height: u32,
-    pub frame_rate: ffmpeg::Rational,
-    pub bit_rate: u64,
-    pub pixel_format: String,
-}
-
-/// 音频流信息
-#[derive(Debug)]
-pub struct AudioStreamInfo {
-    pub codec_name: String,
-    pub sample_rate: u32,
-    pub channels: u32,
-    pub bit_rate: u64,
 }
