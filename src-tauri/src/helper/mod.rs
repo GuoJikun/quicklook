@@ -5,6 +5,7 @@ use tauri::{
 pub mod archives;
 pub mod config;
 pub mod docs;
+pub mod ffm;
 pub mod ffmpeg;
 pub mod monitor;
 pub mod win;
