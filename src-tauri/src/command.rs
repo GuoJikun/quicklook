@@ -6,7 +6,7 @@ use windows::Win32::Foundation::HWND;
 
 #[path = "helper/mod.rs"]
 mod helper;
-use helper::{archives, docs, ffmpeg, monitor, win};
+use helper::{archives, docs, ffm, ffmpeg, monitor, win};
 
 #[command]
 pub fn show_open_with_dialog(app: AppHandle, path: &str) {
@@ -91,6 +91,11 @@ pub async fn cancel_task(task_id: String) -> Result<(), String> {
 #[command]
 pub async fn get_active_tasks_count() -> Result<usize, String> {
     Ok(ffmpeg::get_task_manager().active_tasks_count())
+}
+
+#[command]
+pub fn start_hls_process(input: String) -> Result<String, String> {
+    ffm::start_hls_process(input)
 }
 
 // use windows::{

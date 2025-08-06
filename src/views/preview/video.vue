@@ -27,7 +27,7 @@ const videoData = ref<Uint8Array[]>([])
 
 onMounted(async () => {
     fileInfo.value = route.query as unknown as FileInfo
-
+    await invoke('start_hls_process', { input: fileInfo.value.path })
     try {
         console.log('🚀 Starting video streaming for:', fileInfo.value.path)
 

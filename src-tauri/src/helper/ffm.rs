@@ -6,34 +6,75 @@ fn generate_hls(input_file: &str, output_dir: &PathBuf) -> Result<(), Box<dyn st
     std::fs::create_dir_all(&output_dir)?;
     let m3u8_path = output_dir.join("playlist.m3u8");
 
-    // 使用 ez-ffmpeg 库配置 HLS 输出，支持边切边输出
-    let output = Output::new(m3u8_path.to_str().unwrap())
-        .set_format("hls")
-        .set_video_codec("libx264")
-        .set_audio_codec("aac")
-        .set_format_opt("hls_time", "4") // 4秒一个切片，更短的延迟
-        .set_format_opt("hls_list_size", "0") // 保留所有切片
-        .set_format_opt("hls_flags", "independent_segments+append_list") // 支持实时追加
-        .set_format_opt(
-            "hls_segment_filename",
-            output_dir.join("segment_%03d.ts").to_str().unwrap(),
-        );
+    // 尝试不同的编码器配置，按优先级顺序
+    let video_codecs = ["libx264", "h264", "h264_nvenc", "copy"]; // copy 表示不重新编码
+    let audio_codecs = ["aac", "libfdk_aac", "copy"];
 
-    let context = FfmpegContext::builder()
-        .input(input_file)
-        .output(output)
-        .build()?;
+    let mut last_error: Option<Box<dyn std::error::Error>> = None;
 
-    // 启动 ffmpeg，边切边输出（不等待完成）
-    let scheduler = FfmpegScheduler::new(context).start()?;
+    for video_codec in &video_codecs {
+        for audio_codec in &audio_codecs {
+            // 使用 ez-ffmpeg 库配置 HLS 输出，支持边切边输出
+            let output = Output::new(m3u8_path.to_str().unwrap())
+                .set_format("hls")
+                .set_video_codec(*video_codec)
+                .set_audio_codec(*audio_codec)
+                .set_format_opt("hls_time", "4") // 4秒一个切片，更短的延迟
+                .set_format_opt("hls_list_size", "0") // 保留所有切片
+                .set_format_opt("hls_flags", "independent_segments+append_list") // 支持实时追加
+                .set_format_opt(
+                    "hls_segment_filename",
+                    output_dir.join("segment_%03d.ts").to_str().unwrap(),
+                );
 
-    // 在后台线程中等待完成，不阻塞主线程
-    thread::spawn(move || match scheduler.wait() {
-        Ok(_) => println!("✅ HLS 转码完成"),
-        Err(e) => eprintln!("❌ HLS 转码错误: {:?}", e),
-    });
+            let context_result = FfmpegContext::builder()
+                .input(input_file)
+                .output(output)
+                .build();
 
-    Ok(())
+            match context_result {
+                Ok(context) => {
+                    println!("✅ 使用编码器: 视频={}, 音频={}", video_codec, audio_codec);
+
+                    // 启动 ffmpeg，边切边输出（不等待完成）
+                    match FfmpegScheduler::new(context).start() {
+                        Ok(scheduler) => {
+                            // 在后台线程中等待完成，不阻塞主线程
+                            thread::spawn(move || match scheduler.wait() {
+                                Ok(_) => println!("✅ HLS 转码完成"),
+                                Err(e) => eprintln!("❌ HLS 转码错误: {:?}", e),
+                            });
+                            return Ok(());
+                        }
+                        Err(e) => {
+                            last_error = Some(Box::new(e));
+                            println!(
+                                "⚠️ 编码器 {}+{} 启动失败，尝试下一个",
+                                video_codec, audio_codec
+                            );
+                            continue;
+                        }
+                    }
+                }
+                Err(e) => {
+                    last_error = Some(Box::new(e));
+                    println!(
+                        "⚠️ 编码器 {}+{} 构建失败，尝试下一个",
+                        video_codec, audio_codec
+                    );
+                    continue;
+                }
+            }
+        }
+    }
+
+    // 如果所有编码器都失败了，返回最后一个错误
+    Err(last_error.unwrap_or_else(|| {
+        Box::new(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "所有编码器都不可用",
+        ))
+    }))
 }
 
 fn start_http_server(hls_dir: PathBuf) {
