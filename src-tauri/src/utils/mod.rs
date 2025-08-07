@@ -142,9 +142,10 @@ fn file_type_mapping() -> HashMap<&'static str, &'static str> {
         ("m4v", "Video"),
         ("3gp", "Video"),
         ("3g2", "Video"),
+        ("flv", "Video"),
         // 音频文件
         ("mp3", "Audio"),
-        ("3gp", "Audio"), // 注意：3gp 可能同时属于视频和音频
+        // ("3gp", "Audio"), // 注意：3gp 可能同时属于视频和音频
         ("ogg", "Audio"),
         ("m4a", "Audio"),
         // 压缩文件

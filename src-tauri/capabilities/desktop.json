@@ -8,6 +8,11 @@
     "upgrade"
   ],
   "local": true,
+  "remote": {
+    "urls": [
+      "http://127.0.0.1:17878/**"
+    ]
+  },
   "permissions": [
     "core:window:allow-internal-toggle-maximize",
     "core:window:allow-toggle-maximize",
