@@ -3,15 +3,15 @@ use tauri_plugin_autostart::MacosLauncher;
 #[cfg(not(debug_assertions))]
 use tauri_plugin_autostart::ManagerExt;
 
-mod helper;
+pub mod helper; // 调试需要从 bin 访问
 mod preview;
 mod tray;
 
 #[path = "./command.rs"]
 mod command;
 use command::{
-    archive, decode_video, document, get_default_program_name, get_monitor_info,
-    show_open_with_dialog, start_hls_process,
+    archive, document, get_default_program_name, get_monitor_info, show_open_with_dialog,
+    start_hls_process,
 };
 use tauri_plugin_store::StoreExt;
 
@@ -100,8 +100,7 @@ pub fn run() {
             document,
             get_monitor_info,
             get_default_program_name,
-            decode_video,
-            start_hls_process
+            start_hls_process,
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");

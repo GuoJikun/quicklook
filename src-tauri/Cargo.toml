@@ -1,5 +1,6 @@
 [package]
 name = "app"
+default-run = "app"
 version = "0.11.0"
 description = "Windows 平台的文件预览工具"
 authors = ["GuoJikun <guojikun486546@163.com>"]
@@ -17,8 +18,6 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
-# vcpkg = "0.2"
-# bindgen = { version = "0.71.1", features = ["default"] }
 
 [dependencies]
 serde_json = "1.0"
@@ -56,10 +55,8 @@ chrono = { version = "0.4.38", features = ["serde"] }
 calamine = "0.26.1"
 csv = "1.3.1"
 regex = "1.11.1"
-# ffmpeg-next = { version = "7.1.0", features = ["default"] }
 mp4 = "0.14.0"
 tauri-plugin-store = "2.3.0"
-# libarchive = "0.1.1"  # 这个库需要系统依赖，暂时注释掉
 tar = "0.4.43"
 flate2 = { version = "1.0", default-features = false, features = [
     "rust_backend",
