@@ -160,7 +160,8 @@ const renderPage = async () => {
         })
 
         await page.render({
-            canvasContext: canvasNode.context as CanvasRenderingContext2D,
+            canvasContext: canvasNode.context as unknown as CanvasRenderingContext2D,
+            canvas: null,
             viewport,
         }).promise
 

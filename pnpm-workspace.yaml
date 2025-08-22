@@ -1,0 +1,6 @@
+onlyBuiltDependencies:
+  - '@sentry/cli'
+  - core-js
+  - es5-ext
+  - esbuild
+  - vue-demi
