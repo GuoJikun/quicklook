@@ -52,26 +52,19 @@ tauri-plugin-fs = "2.4.0"
 tauri-plugin-dialog = "2.3.3"
 urlencoding = "2.1.3"
 tauri-plugin-shell = "2.3.0"
-zip = { version = "2.2.1", features = [] }
 chrono = { version = "0.4.38", features = ["serde"] }
 calamine = "0.26.1"
 csv = "1.3.1"
 regex = "1.11.1"
 mp4 = "0.14.0"
 tauri-plugin-store = "2.4.0"
-# libarchive = "0.1.1"  # 这个库需要系统依赖，暂时注释掉
-tar = "0.4.43"
-flate2 = { version = "1.0", default-features = false, features = [
-    "rust_backend",
-] }
-bzip2 = { version = "0.5.0", default-features = false }
-xz2 = { version = "0.1.0", default-features = false }
-sevenz-rust = "0.6.0"
 ffmpeg-next = { version = "7.1.0", features = ["default"] }
 tokio = { version = "1.0", features = ["full"] }
 tempfile = "3.8.0"
 ez-ffmpeg = "0.5.3"
 tiny_http = "0.12.0"
+# Archive handling library
+quicklook-archive = { path = "../crates/archive" }
 tauri-plugin-opener = "2.5.0"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]

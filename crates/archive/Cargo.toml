@@ -1,0 +1,36 @@
+[package]
+name = "quicklook-archive"
+version = "0.1.0"
+description = "Archive handling library for QuickLook"
+authors = ["GuoJikun <guojikun486546@163.com>"]
+license = ""
+repository = "https://github.com/GuoJikun/quicklook.git"
+homepage = "https://github.com/GuoJikun/quicklook"
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+name = "quicklook_archive"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = { version = "0.4.38", features = ["serde"] }
+zip = { version = "2.2.1", features = [] }
+tar = "0.4.43"
+flate2 = { version = "1.0", default-features = false, features = [
+    "rust_backend",
+] }
+bzip2 = { version = "0.5.0", default-features = false }
+xz2 = { version = "0.1.0", default-features = false }
+sevenz-rust = "0.6.0"
+# libarchive = "0.1.1"  # 这个库需要系统依赖，暂时注释掉
+log = "0.4"
+
+[features]
+default = ["zip", "tar", "sevenz"]
+zip = []
+tar = []
+sevenz = []
+libarchive = []
