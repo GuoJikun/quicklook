@@ -131,6 +131,7 @@ dependencies = [
  "tiny_http",
  "tokio",
  "urlencoding",
+ "vcpkg",
  "windows",
 ]
 

@@ -24,30 +24,40 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      
       - name: Add Rust targets window aarch64
         if: matrix.settings.target == 'windows-aarch64'
         run: rustup target add aarch64-pc-windows-msvc
+      
       - name: Set up vcpkg
         run: |
           git clone https://github.com/microsoft/vcpkg.git
           .\vcpkg\bootstrap-vcpkg.bat
-      - name: Install ffmpeg static md (x64)
-        if: matrix.settings.target == 'windows'
-        run: |
-          .\vcpkg\vcpkg install ffmpeg:x64-windows-static-md
-      - name: Install ffmpeg static md (aarch64)
-        if: matrix.settings.target == 'windows-aarch64'
-        run: |
-          .\vcpkg\vcpkg install ffmpeg:aarch64-windows-static-md
-      - name: Cache vcpkg
+      
+      - name: Cache vcpkg packages and installed dependencies
         uses: actions/cache@v4
         with:
           path: |
-            ~/.cache/vcpkg
-            ~/.vcpkg
-          key: vcpkg-${{ runner.os }}-${{ hashFiles('**/vcpkg.json') }}
+            .\vcpkg\installed
+            .\vcpkg\packages
+            .\vcpkg\buildtrees
+          key: vcpkg-${{ runner.os }}-${{ matrix.settings.target }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
           restore-keys: |
+            vcpkg-${{ runner.os }}-${{ matrix.settings.target }}-
             vcpkg-${{ runner.os }}-
+      
+      - name: Set VCPKG_ROOT environment variable
+        run: echo "VCPKG_ROOT=${{ github.workspace }}\vcpkg" >> $env:GITHUB_ENV
+        
+      - name: Install ffmpeg static md (x64)
+        if: matrix.settings.target == 'windows'
+        run: |
+          .\vcpkg\vcpkg install --triplet x64-windows-static-md
+      
+      - name: Install ffmpeg static md (aarch64)
+        if: matrix.settings.target == 'windows-aarch64'
+        run: |
+          .\vcpkg\vcpkg install --triplet aarch64-windows-static-md
 
       - name: Get latest release
         id: get_release

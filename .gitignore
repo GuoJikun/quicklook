@@ -31,4 +31,7 @@ coverage
 
 #vcpkg
 vcpkg_installed
+vcpkg/
+!vcpkg.json
+!vcpkg-configuration.json
 target

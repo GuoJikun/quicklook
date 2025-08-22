@@ -27,12 +27,52 @@ QuickLook 是一个 windows 平台的快速预览工具。
 - Rust [官方网站](https://www.rust-lang.org/tools/install)
 - Tauri [官方网站](https://tauri.app/start/prerequisites/)
 - NodeJS [官方网站](https://nodejs.org/)
-<!-- - ffmpeg 使用 vcpkg 安装 -->
+- vcpkg (Windows 平台需要，用于管理 FFmpeg 等 C++ 依赖)
 
-<!-- ### 安装 Ffmpeg
+### 安装 C++ 依赖 (Windows)
 
-- vcpkg [官方网站](https://github.com/microsoft/vcpkg)
-- llvm 使用 choco、scoop 任何方法安装 -->
+#### 使用 vcpkg 安装 FFmpeg
+
+**自动安装 (推荐)**:
+
+运行项目提供的自动安装脚本:
+
+```bash
+# Windows (PowerShell - 推荐)
+.\scripts\setup-vcpkg.ps1
+
+# Windows (Command Prompt)
+.\scripts\setup-vcpkg.bat
+
+# Linux/macOS
+./scripts/setup-vcpkg.sh
+```
+
+**手动安装**:
+
+1. 安装 vcpkg：
+```bash
+git clone https://github.com/microsoft/vcpkg.git
+cd vcpkg
+.\bootstrap-vcpkg.bat
+```
+
+2. 设置环境变量：
+```bash
+# 设置 VCPKG_ROOT 环境变量指向 vcpkg 安装目录
+set VCPKG_ROOT=C:\path\to\vcpkg
+```
+
+3. 安装 FFmpeg 依赖：
+```bash
+# x64 系统
+vcpkg install --triplet x64-windows-static-md
+
+# ARM64 系统
+vcpkg install --triplet aarch64-windows-static-md
+```
+
+> **注意**: vcpkg 会根据项目根目录的 `vcpkg.json` 文件自动安装所需的包。首次安装可能需要较长时间，但后续构建会利用缓存加速。
 
 ### 拉取项目代码
 
@@ -54,6 +94,34 @@ pnpm tauri dev 运行项目
 ```bash
 pnpm tauri build
 ```
+
+## 故障排除
+
+### Windows 构建问题
+
+如果在 Windows 上遇到 FFmpeg 相关的链接错误，请检查：
+
+1. **VCPKG_ROOT 环境变量是否设置**：
+   ```cmd
+   echo %VCPKG_ROOT%
+   ```
+
+2. **FFmpeg 是否通过 vcpkg 正确安装**：
+   ```cmd
+   vcpkg list | findstr ffmpeg
+   ```
+
+3. **使用正确的 triplet**：
+   - x64 系统使用 `x64-windows-static-md`
+   - ARM64 系统使用 `aarch64-windows-static-md`
+
+4. **清理并重建**：
+   ```bash
+   cargo clean
+   pnpm tauri build
+   ```
+
+更多详细的 vcpkg 配置和故障排除信息，请参阅 [VCPKG.md](VCPKG.md)。
 
 ## TODO
 
