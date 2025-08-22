@@ -29,10 +29,28 @@ jobs:
         if: matrix.settings.target == 'windows-aarch64'
         run: rustup target add aarch64-pc-windows-msvc
       
+      - name: Cache vcpkg repository
+        uses: actions/cache@v4
+        id: vcpkg-cache
+        with:
+          path: vcpkg
+          key: vcpkg-repo-${{ hashFiles('vcpkg-configuration.json') }}
+          restore-keys: |
+            vcpkg-repo-
+      
       - name: Set up vcpkg
+        if: steps.vcpkg-cache.outputs.cache-hit != 'true'
         run: |
           git clone https://github.com/microsoft/vcpkg.git
           .\vcpkg\bootstrap-vcpkg.bat
+      
+      - name: Bootstrap vcpkg (if cached)
+        if: steps.vcpkg-cache.outputs.cache-hit == 'true'
+        run: |
+          if (-not (Test-Path ".\vcpkg\vcpkg.exe")) {
+            .\vcpkg\bootstrap-vcpkg.bat
+          }
+        shell: pwsh
       
       - name: Cache vcpkg packages and installed dependencies
         uses: actions/cache@v4
@@ -48,6 +66,17 @@ jobs:
       
       - name: Set VCPKG_ROOT environment variable
         run: echo "VCPKG_ROOT=${{ github.workspace }}\vcpkg" >> $env:GITHUB_ENV
+        
+      - name: Validate vcpkg manifest
+        run: |
+          Write-Host "Validating vcpkg.json syntax..."
+          $manifest = Get-Content vcpkg.json | ConvertFrom-Json
+          Write-Host "✓ vcpkg.json is valid - Project: $($manifest.name) v$($manifest.version)"
+          
+          Write-Host "Validating vcpkg-configuration.json syntax..."
+          $config = Get-Content vcpkg-configuration.json | ConvertFrom-Json
+          Write-Host "✓ vcpkg-configuration.json is valid"
+        shell: pwsh
         
       - name: Install ffmpeg static md (x64)
         if: matrix.settings.target == 'windows'

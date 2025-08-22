@@ -40,6 +40,53 @@ vcpkg 是 Microsoft 开发的跨平台 C/C++ 包管理器，用于获取和管�
 }
 ```
 
+## 环境变量配置
+
+为了让 vcpkg 正常工作，需要配置以下环境变量：
+
+### Windows
+
+**临时设置 (当前会话)**:
+```cmd
+# Command Prompt
+set VCPKG_ROOT=C:\path\to\vcpkg
+
+# PowerShell  
+$env:VCPKG_ROOT = "C:\path\to\vcpkg"
+```
+
+**永久设置**:
+```powershell
+# PowerShell (管理员权限)
+[Environment]::SetEnvironmentVariable("VCPKG_ROOT", "C:\path\to\vcpkg", [EnvironmentVariableTarget]::User)
+```
+
+或通过系统属性 > 环境变量手动添加。
+
+### Linux/macOS
+
+**临时设置 (当前会话)**:
+```bash
+export VCPKG_ROOT=/path/to/vcpkg
+```
+
+**永久设置**:
+```bash
+# 添加到 ~/.bashrc 或 ~/.zshrc
+echo 'export VCPKG_ROOT=/path/to/vcpkg' >> ~/.bashrc
+source ~/.bashrc
+```
+
+### 验证配置
+
+```bash
+# Windows
+echo %VCPKG_ROOT%
+
+# Linux/macOS  
+echo $VCPKG_ROOT
+```
+
 ## 本地开发设置
 
 ### 1. 安装 vcpkg
@@ -125,6 +172,31 @@ vcpkg remove --recurse
 rmdir /s vcpkg\buildtrees
 rmdir /s vcpkg\packages
 ```
+
+### 二进制缓存 (Binary Caching)
+
+vcpkg 支持二进制缓存，可以显著减少重复构建的时间。
+
+#### 本地二进制缓存
+
+```bash
+# 启用文件系统二进制缓存
+vcpkg install --binarysource=files,C:\vcpkg-cache,readwrite
+
+# 或者在环境变量中设置
+set VCPKG_BINARY_SOURCES=files,C:\vcpkg-cache,readwrite
+```
+
+#### Azure 或其他云端缓存
+
+对于团队开发，可以配置云端二进制缓存：
+
+```bash
+# Azure Blob Storage 示例
+vcpkg install --binarysource=x-azurl,https://[account].blob.core.windows.net/[container],readwrite
+```
+
+详见 [vcpkg 二进制缓存文档](https://learn.microsoft.com/en-us/vcpkg/users/binarycaching)。
 
 ## 集成与 Rust
 

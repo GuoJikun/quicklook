@@ -80,6 +80,15 @@ vcpkg install --triplet aarch64-windows-static-md
 git clone https://github.com/GuoJikun/quicklook.git 
 ```
 
+### 验证 vcpkg 配置
+
+在构建项目之前，可以运行验证脚本检查 vcpkg 配置：
+
+```powershell
+# Windows PowerShell
+.\scripts\validate-vcpkg.ps1
+```
+
 ### 运行项目
 
 > 推荐使用 pnpm
