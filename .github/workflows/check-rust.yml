@@ -12,12 +12,12 @@ concurrency:
 jobs:
   cargo-check:
     name: cargo check
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     timeout-minutes: 20
 
     defaults:
       run:
-        shell: bash
+        shell: pwsh
         working-directory: src-tauri
 
     steps:
@@ -33,7 +33,7 @@ jobs:
           workspaces: |
             src-tauri -> target
 
-      - name: Cargo check (compile test only)
+      - name: Cargo check
         run: |
           cargo --version
           cargo check --locked --all-targets
