@@ -60,6 +60,7 @@
     "vue-router": "^4.5.0",
     "vue-virtual-scroller": "2.0.0-beta.8",
     "xgplayer": "^3.0.23",
+    "xgplayer-hls.js": "^3.0.23",
     "xgplayer-music": "^3.0.23"
   },
   "devDependencies": {

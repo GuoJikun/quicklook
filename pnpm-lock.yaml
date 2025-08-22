@@ -140,6 +140,9 @@ importers:
       xgplayer:
         specifier: ^3.0.23
         version: 3.0.23(core-js@3.45.1)
+      xgplayer-hls.js:
+        specifier: ^3.0.23
+        version: 3.0.23(core-js@3.45.1)(xgplayer@3.0.23(core-js@3.45.1))
       xgplayer-music:
         specifier: ^3.0.23
         version: 3.0.23(core-js@3.45.1)(xgplayer@3.0.23(core-js@3.45.1))
@@ -2210,6 +2213,10 @@ packages:
   deep-is@0.1.4:
     resolution: {integrity: sha512-oIPzksmTg4/MriiaYGO+okXDT7ztn/w3Eptv/+gSIdMdKsJo0u4CfYNFJPy+4SKMuCqGw2wxnA+URMg3t8a/bQ==}
 
+  deepmerge@2.0.1:
+    resolution: {integrity: sha512-VIPwiMJqJ13ZQfaCsIFnp5Me9tnjURiaIFxfz7EH0Ci0dTSQpZtSLrqOicXqEd/z2r+z+Klk9GzmnRsgpgbOsQ==}
+    engines: {node: '>=0.10.0'}
+
   deepmerge@2.2.1:
     resolution: {integrity: sha512-R9hc1Xa/NOBi9WRVUWg19rl1UB7Tt4kuPd+thNJgFZoxXsTz7ncaPaeIm+40oSGuP33DfMb4sZt1QIGiJzC4EA==}
     engines: {node: '>=0.10.0'}
@@ -2529,6 +2536,9 @@ packages:
   highlight.js@11.11.1:
     resolution: {integrity: sha512-Xwwo44whKBVCYoliBQwaPvtd/2tYFkRQtXDWj1nackaV2JPXx3L0+Jvd8/qCJ2p+ML0/XVkJ2q+Mr+UVdpJK5w==}
     engines: {node: '>=12.0.0'}
+
+  hls.js@1.6.8:
+    resolution: {integrity: sha512-oifhtMNYRpB1VmzH/hWd4NXziMJ1hCeA15XG1ET4jh6u4khXsYsqqvpEFWmNWS+8J6tbsv10wYq5ZiY21HG2Gg==}
 
   hookable@5.5.3:
     resolution: {integrity: sha512-Yc+BQe8SvoXH1643Qez1zqLRmbA5rCL+sSmk6TVos0LWVfNIB7PGncdlId77WzLGSIB5KaWgTaNTs2lNVEI6VQ==}
@@ -3701,6 +3711,12 @@ packages:
         optional: true
       utf-8-validate:
         optional: true
+
+  xgplayer-hls.js@3.0.23:
+    resolution: {integrity: sha512-oJR9m4+Bcjzdl4irpUszByt8xP/irCzFpV3Q/bePp8WG5uBnPHa8ApMNkau/EuggvsrS71Tnp4DMfxOZxeVLGQ==}
+    peerDependencies:
+      core-js: '>=3.12.1'
+      xgplayer: '>=3.0.13'
 
   xgplayer-music@3.0.23:
     resolution: {integrity: sha512-+yzSS3jjbBSrU0yywfk+xaVnYcVBq2yGLtLKQIwthT5R6XX/e691yT5yW17A5LZOK4G94I3goInoJlTztCXJuQ==}
@@ -5830,6 +5846,8 @@ snapshots:
 
   deep-is@0.1.4: {}
 
+  deepmerge@2.0.1: {}
+
   deepmerge@2.2.1: {}
 
   delayed-stream@1.0.0: {}
@@ -6239,6 +6257,8 @@ snapshots:
   he@1.2.0: {}
 
   highlight.js@11.11.1: {}
+
+  hls.js@1.6.8: {}
 
   hookable@5.5.3: {}
 
@@ -7342,6 +7362,14 @@ snapshots:
       strip-ansi: 7.1.0
 
   ws@8.18.0: {}
+
+  xgplayer-hls.js@3.0.23(core-js@3.45.1)(xgplayer@3.0.23(core-js@3.45.1)):
+    dependencies:
+      core-js: 3.45.1
+      deepmerge: 2.0.1
+      event-emitter: 0.3.5
+      hls.js: 1.6.8
+      xgplayer: 3.0.23(core-js@3.45.1)
 
   xgplayer-music@3.0.23(core-js@3.45.1)(xgplayer@3.0.23(core-js@3.45.1)):
     dependencies:

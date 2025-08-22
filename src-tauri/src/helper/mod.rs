@@ -5,9 +5,9 @@ use tauri::{
 pub mod archives;
 pub mod config;
 pub mod docs;
+pub mod ffm;
 pub mod monitor;
 pub mod win;
-// pub mod ffmp;
 
 #[allow(unused)]
 pub fn get_webview_window(
