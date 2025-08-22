@@ -12,8 +12,8 @@ importers:
         specifier: ^2.3.2
         version: 2.3.2(vue@3.5.13(typescript@5.7.2))
       '@handsontable/vue3':
-        specifier: ^15.2.0
-        version: 15.2.0(handsontable@15.2.0)(vue@3.5.13(typescript@5.7.2))
+        specifier: ^16.0.1
+        version: 16.0.1(handsontable@16.0.1)(vue@3.5.13(typescript@5.7.2))
       '@leafer-in/animate':
         specifier: ^1.9.4
         version: 1.9.4(@leafer-in/color@1.7.0(@leafer-in/interface@1.9.4(@leafer-ui/interface@1.9.4)(@leafer/interface@1.9.4))(@leafer-ui/draw@1.9.4)(@leafer-ui/interface@1.9.4))(@leafer-in/interface@1.9.4(@leafer-ui/interface@1.9.4)(@leafer/interface@1.9.4))(@leafer-ui/draw@1.9.4)(@leafer-ui/interface@1.9.4)
@@ -78,8 +78,8 @@ importers:
         specifier: ^2.10.7
         version: 2.10.7(vue@3.5.13(typescript@5.7.2))
       handsontable:
-        specifier: ^15.2.0
-        version: 15.2.0
+        specifier: ^16.0.1
+        version: 16.0.1
       leafer-ui:
         specifier: ^1.9.4
         version: 1.9.4
@@ -139,10 +139,10 @@ importers:
         version: 2.0.0-beta.8(vue@3.5.13(typescript@5.7.2))
       xgplayer:
         specifier: ^3.0.23
-        version: 3.0.23(core-js@3.41.0)
+        version: 3.0.23(core-js@3.45.1)
       xgplayer-music:
         specifier: ^3.0.23
-        version: 3.0.23(core-js@3.41.0)(xgplayer@3.0.23(core-js@3.41.0))
+        version: 3.0.23(core-js@3.45.1)(xgplayer@3.0.23(core-js@3.45.1))
     devDependencies:
       '@sentry/vite-plugin':
         specifier: ^4.1.1
@@ -834,10 +834,10 @@ packages:
   '@handsontable/pikaday@1.0.0':
     resolution: {integrity: sha512-1VN6N38t5/DcjJ7y7XUYrDx1LuzvvzlrFdBdMG90Qo1xc8+LXHqbWbsTEm5Ec5gXTEbDEO53vUT35R+2COmOyg==}
 
-  '@handsontable/vue3@15.2.0':
-    resolution: {integrity: sha512-hwFqNYXuG3nS+KeAtJFv1Yz/wC9AXY+B1+0uk9wSWoBv55f0GqKM1tbTitBOtE9oZUbeOyHPUAQTrTuLkHkl/A==}
+  '@handsontable/vue3@16.0.1':
+    resolution: {integrity: sha512-NYjL4P47+/Wb3zD89iN7BG8ihwD85kKgl2i3ds6GQhl+Fei2cG1W7Fq2mHUnTrG+rjoOf9n65vuLtNybhoVRAg==}
     peerDependencies:
-      handsontable: '>=15.0.0'
+      handsontable: '>=16.0.0'
       vue: ^3.2.22
 
   '@humanfs/core@0.19.1':
@@ -1992,8 +1992,8 @@ packages:
   balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
 
-  bignumber.js@9.1.2:
-    resolution: {integrity: sha512-2/mKyZH9K85bzOEfhXDBFZTGd1CTs+5IHpeFQo9luiBG7hghdC851Pj2WAhb6E3R6b9tZj/XKhbg4fum+Kepug==}
+  bignumber.js@9.3.1:
+    resolution: {integrity: sha512-Ko0uX15oIUS7wJ3Rb30Fs6SkVbLmPBAKdlm7q9+ak9bbIeFf0MwuBsQV6z7+X768/cHsfg+WlysDWJcmthjsjQ==}
 
   binary-extensions@2.3.0:
     resolution: {integrity: sha512-Ceh+7ox5qe7LJuLHoY0feh3pHuUDHAcRUeyL2VYghZwfpkNIy/+8Ocg0a3UuSoYzavmylwuLWQOf3hl0jjMMIw==}
@@ -2122,8 +2122,8 @@ packages:
     resolution: {integrity: sha512-yCEafptTtb4bk7GLEQoM8KVJpxAfdBJYaXyzQEgQQQgYrZiDp8SJmGKlYza6CYjEDNstAdNdKA3UuoULlEbS6w==}
     engines: {node: '>=12.13'}
 
-  core-js@3.41.0:
-    resolution: {integrity: sha512-SJ4/EHwS36QMJd6h/Rg+GyR4A5xE0FSI3eZ+iBVpfqf1x0eTSg1smWLHrA+2jQThZSh97fmSgFSU8B61nxosxA==}
+  core-js@3.45.1:
+    resolution: {integrity: sha512-L4NPsJlCfZsPeXukyzHFlg/i7IIVwHSItR0wg0FLNqYClJ4MQYTYLbC7EkjKYRLZF2iof2MUgN0EGy7MdQFChg==}
 
   core-util-is@1.0.3:
     resolution: {integrity: sha512-ZQBvi1DcpJ4GDqanjucZ2Hj3wEO5pZDS89BWbkcrvdxksJorwUDDZamX9ldFkp9aw2lmBDLgkObEA4DWNJ9FYQ==}
@@ -2236,8 +2236,8 @@ packages:
   docx-preview@0.3.6:
     resolution: {integrity: sha512-gKVPE18hlpfuhQHiptsw1rbOwzQeGSwK10/w7hv1ZMEqHmjtCuTpz6AUMfu1twIPGxgpcsMXThKI6B6WsP3L1w==}
 
-  dompurify@3.2.4:
-    resolution: {integrity: sha512-ysFSFEDVduQpyhzAob/kkuJjf5zWkZD8/A9ywSp1byueyuCfHamrCBa14/Oc2iiB0e51B+NpxSl5gmzn+Ms/mg==}
+  dompurify@3.2.6:
+    resolution: {integrity: sha512-/2GogDQlohXPZe6D6NOgQvXLPSYBqIWMnZ8zzOhn09REE4eyAzb+Hed3jhoM9OkuaJ8P6ZGTTVWQKAi8ieIzfQ==}
 
   dotenv@16.6.1:
     resolution: {integrity: sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow==}
@@ -2508,8 +2508,8 @@ packages:
   graphemer@1.4.0:
     resolution: {integrity: sha512-EtKwoO6kxCL9WO5xipiHTZlSzBm7WLT627TqC/uVRd0HKmq8NXyebnNYxDoBi7wt8eTWrUrKXCOVaFq9x1kgag==}
 
-  handsontable@15.2.0:
-    resolution: {integrity: sha512-QccHZkowqciFgyUyG/BUidatHpDkkUgx1O6v6czpU/ZgT3blmEpNFhErblC/JsWb6uVxbDfgW2vpW5eQNsU8GA==}
+  handsontable@16.0.1:
+    resolution: {integrity: sha512-YkfSYVP+5JaD8/hJfXAvVLTQhDx7flynRwCs4YFQYKGZ/Frkf1J/vCF1rvDUPGtEBJGWT+LTmJFW08cn6SsjoQ==}
 
   has-flag@3.0.0:
     resolution: {integrity: sha512-sKJf1+ceQBr4SMkvQnBDNDtf4TXpVhVGateu0t918bl30FnbE2m4vNLX+VWe/dpjlb+HugGYzW7uQXH98HPEYw==}
@@ -2559,8 +2559,8 @@ packages:
     resolution: {integrity: sha512-1e4Wqeblerz+tMKPIq2EMGiiWW1dIjZOksyHWSUm1rmuvw/how9hBHZ38lAGj5ID4Ik6EdkOw7NmWPy6LAwalw==}
     engines: {node: '>= 14'}
 
-  hyperformula@3.0.0:
-    resolution: {integrity: sha512-fAmwxQnbo405llUZiLcnrQTWA26kmbWZk+Cn58PJrANJ/xHBk7ls0ilcNJRIJdti5Z6AqPVi0hZSKvHLbTYtyQ==}
+  hyperformula@3.0.1:
+    resolution: {integrity: sha512-SFH8fOPtL7uHnYhVrd6u0g0Jp2UQyDprcRfdQh5dmLgwtCg397J3QkwGCCWuQi17WRWF1Z2+gB44WO8h+DK7dA==}
 
   iconv-lite@0.6.3:
     resolution: {integrity: sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw==}
@@ -4337,9 +4337,9 @@ snapshots:
 
   '@handsontable/pikaday@1.0.0': {}
 
-  '@handsontable/vue3@15.2.0(handsontable@15.2.0)(vue@3.5.13(typescript@5.7.2))':
+  '@handsontable/vue3@16.0.1(handsontable@16.0.1)(vue@3.5.13(typescript@5.7.2))':
     dependencies:
-      handsontable: 15.2.0
+      handsontable: 16.0.1
       vue: 3.5.13(typescript@5.7.2)
 
   '@humanfs/core@0.19.1': {}
@@ -5620,7 +5620,7 @@ snapshots:
 
   balanced-match@1.0.2: {}
 
-  bignumber.js@9.1.2: {}
+  bignumber.js@9.3.1: {}
 
   binary-extensions@2.3.0: {}
 
@@ -5762,7 +5762,7 @@ snapshots:
     dependencies:
       is-what: 4.1.16
 
-  core-js@3.41.0: {}
+  core-js@3.45.1: {}
 
   core-util-is@1.0.3: {}
 
@@ -5852,7 +5852,7 @@ snapshots:
     dependencies:
       jszip: 3.10.1
 
-  dompurify@3.2.4:
+  dompurify@3.2.6:
     optionalDependencies:
       '@types/trusted-types': 2.0.7
 
@@ -6209,15 +6209,15 @@ snapshots:
 
   graphemer@1.4.0: {}
 
-  handsontable@15.2.0:
+  handsontable@16.0.1:
     dependencies:
       '@handsontable/pikaday': 1.0.0
-      core-js: 3.41.0
-      dompurify: 3.2.4
+      core-js: 3.45.1
+      dompurify: 3.2.6
       moment: 2.30.1
       numbro: 2.5.0
     optionalDependencies:
-      hyperformula: 3.0.0
+      hyperformula: 3.0.1
 
   has-flag@3.0.0: {}
 
@@ -6276,7 +6276,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  hyperformula@3.0.0:
+  hyperformula@3.0.1:
     dependencies:
       chevrotain: 6.5.0
       tiny-emitter: 2.1.0
@@ -6701,7 +6701,7 @@ snapshots:
 
   numbro@2.5.0:
     dependencies:
-      bignumber.js: 9.1.2
+      bignumber.js: 9.3.1
 
   nwsapi@2.2.13: {}
 
@@ -7349,26 +7349,26 @@ snapshots:
 
   ws@8.18.0: {}
 
-  xgplayer-music@3.0.23(core-js@3.41.0)(xgplayer@3.0.23(core-js@3.41.0)):
+  xgplayer-music@3.0.23(core-js@3.45.1)(xgplayer@3.0.23(core-js@3.45.1)):
     dependencies:
-      core-js: 3.41.0
+      core-js: 3.45.1
       deepmerge: 2.2.1
       eventemitter3: 4.0.7
-      xgplayer: 3.0.23(core-js@3.41.0)
+      xgplayer: 3.0.23(core-js@3.45.1)
 
-  xgplayer-subtitles@3.0.23(core-js@3.41.0):
+  xgplayer-subtitles@3.0.23(core-js@3.45.1):
     dependencies:
-      core-js: 3.41.0
+      core-js: 3.45.1
       eventemitter3: 4.0.7
 
-  xgplayer@3.0.23(core-js@3.41.0):
+  xgplayer@3.0.23(core-js@3.45.1):
     dependencies:
-      core-js: 3.41.0
+      core-js: 3.45.1
       danmu.js: 1.1.13
       delegate: 3.2.0
       downloadjs: 1.4.7
       eventemitter3: 4.0.7
-      xgplayer-subtitles: 3.0.23(core-js@3.41.0)
+      xgplayer-subtitles: 3.0.23(core-js@3.45.1)
 
   xml-name-validator@4.0.0: {}
 
