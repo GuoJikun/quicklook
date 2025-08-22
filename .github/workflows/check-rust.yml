@@ -1,0 +1,39 @@
+name: Rust Check
+
+on:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: rust-check-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  cargo-check:
+    name: cargo check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: src-tauri
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            src-tauri -> target
+
+      - name: Cargo check (compile test only)
+        run: |
+          cargo --version
+          cargo check --locked --all-targets
