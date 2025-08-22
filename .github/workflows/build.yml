@@ -54,7 +54,7 @@ jobs:
       - name: setup pnpm
         uses: pnpm/action-setup@v2
         with:
-          version: 9.15.3
+          version: 10.15.0
       - name: Install frontend dependencies
         run: pnpm install
 
