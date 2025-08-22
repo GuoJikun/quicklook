@@ -24,20 +24,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 使用 winget 安装 vcpkg 和 pkg-config
-      - name: Install vcpkg and pkg-config
+      - name: Download and set up vcpkg
         run: |
-          winget install --id=Microsoft.vcpkg -e --accept-package-agreements --accept-source-agreements
-          winget install --id=GnuWin32.pkg-config -e --accept-package-agreements --accept-source-agreements
-
-      # 设置 VCPKG_ROOT 环境变量（根据实际路径调整）
-      - name: Set VCPKG_ROOT
-        run: echo "VCPKG_ROOT=C:\Program Files\vcpkg" >> $GITHUB_ENV
-
-      # 安装 ffmpeg
-      - name: Install ffmpeg with vcpkg
+          git clone https://github.com/microsoft/vcpkg.git
+          cd vcpkg
+          .\bootstrap-vcpkg.bat
+      - name: Install ffmpeg
         run: |
-          "C:\Program Files\vcpkg\vcpkg.exe" install ffmpeg
+          cd vcpkg
+          .\vcpkg.exe install ffmpeg
+      - name: Add vcpkg to PATH
+        run: |
+          echo "$env:GITHUB_WORKSPACE\\vcpkg" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          echo "VCPKG_ROOT=$env:GITHUB_WORKSPACE\\vcpkg" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
