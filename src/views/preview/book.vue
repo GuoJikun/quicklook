@@ -8,6 +8,7 @@ import { convertFileSrc } from '@tauri-apps/api/core'
 import * as PDFJS from 'pdfjs-dist'
 import { CollectionTag } from '@element-plus/icons-vue'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?url'
 import { App, Canvas, PropertyEvent, ResizeEvent } from 'leafer-ui'
 import '@leafer-in/view' // 导入视口插件
 import '@leafer-in/viewport' // 导入视口插件
@@ -43,7 +44,7 @@ const loadDocument = (url: string): Promise<PDFDocumentProxy> => {
     return new Promise((resolve, reject) => {
         PDFJS.getDocument({
             url,
-            cMapUrl: '/pdf/cmaps/',
+            cMapUrl: '/pdfjs/cmaps/',
             cMapPacked: true,
         })
             .promise.then((pdf: PDFDocumentProxy) => {
@@ -224,7 +225,8 @@ const initPdf = async (src: any) => {
     if (pdfDoc) {
         return
     }
-    PDFJS.GlobalWorkerOptions.workerSrc = '/pdf/pdf.worker.mjs'
+    PDFJS.GlobalWorkerOptions.workerSrc = pdfWorker
+
     pager.value.current = 1
     pdfDoc = await loadDocument(src)
 
