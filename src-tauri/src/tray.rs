@@ -99,7 +99,8 @@ pub fn create_tray(app: &mut App) -> tauri::Result<()> {
             "setting" => {
                 println!("Setting");
                 // 打开设置窗口
-                if let Ok(webview_window) = helper::get_webview_window(app, "main", "/settings") {
+                if let Ok(webview_window) = helper::get_webview_window(app, "settings", "/settings")
+                {
                     let _ = webview_window.set_title("设置");
                     let _ = webview_window.show();
                 }

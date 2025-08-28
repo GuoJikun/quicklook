@@ -2,6 +2,7 @@ use tauri::{Listener, Manager};
 use tauri_plugin_autostart::MacosLauncher;
 #[cfg(not(debug_assertions))]
 use tauri_plugin_autostart::ManagerExt;
+use tauri_plugin_store::StoreExt;
 
 mod helper;
 mod preview;
@@ -10,9 +11,9 @@ mod tray;
 #[path = "./command.rs"]
 mod command;
 use command::{
-    archive, document, get_default_program_name, get_monitor_info, show_open_with_dialog,
+    archive, document, get_default_program_name, get_monitor_info, set_log_level,
+    show_open_with_dialog,
 };
-use tauri_plugin_store::StoreExt;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -34,7 +35,7 @@ pub fn run() {
         ))
         .plugin(
             tauri_plugin_log::Builder::default()
-                .level(log::LevelFilter::Info) // 默认日志级别为 Info
+                .level(log::LevelFilter::Off) // 默认日志级别为 Off
                 .max_file_size(10000)
                 .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
                 .timezone_strategy(tauri_plugin_log::TimezoneStrategy::UseLocal)
@@ -45,7 +46,6 @@ pub fn run() {
     let app = builder
         .setup(|app| {
             let handle = app.handle();
-            let store = app.store("config.data")?;
 
             let config = helper::config::read_config(handle)?;
             app.manage(config);
@@ -60,6 +60,17 @@ pub fn run() {
                 }
             });
 
+            // 初始化 store
+            let store = app.store("config.data")?;
+
+            // 设置日志级别
+            let level_str = store.get("logLevel");
+            let level = level_str
+                .and_then(|v| v.as_u64())
+                .map(|v| v as usize)
+                .unwrap_or(0); // 默认日志级别为 Off
+            let _ = set_log_level(level);
+            println!("当前日志级别: {:?}", level);
             // 自动启动
             #[cfg(not(debug_assertions))]
             {
@@ -98,7 +109,8 @@ pub fn run() {
             archive,
             document,
             get_monitor_info,
-            get_default_program_name
+            get_default_program_name,
+            set_log_level
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");

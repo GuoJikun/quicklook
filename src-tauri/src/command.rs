@@ -1,6 +1,6 @@
+use log::{set_max_level, LevelFilter};
 use tauri::{command, AppHandle, Manager};
 use windows::Win32::Foundation::HWND;
-// use log::info;
 
 #[path = "helper/mod.rs"]
 mod helper;
@@ -18,15 +18,23 @@ pub fn show_open_with_dialog(app: AppHandle, path: &str) {
 #[command]
 pub fn archive(path: &str, mode: &str) -> Result<Vec<archives::Extract>, String> {
     log::info!("开始处理压缩文件: {}, 扩展名: {}", path, mode);
-    let result = match mode {
-        "zip" => quicklook_archive::extractors::zip::zip_extract(path).map_err(|e| e.to_string()),
-        "tar" => quicklook_archive::extractors::tar::list_tar_entries(path).map_err(|e| e.to_string()),
-        "gz" | "tgz" => quicklook_archive::extractors::tar::list_tar_gz_entries(path).map_err(|e| e.to_string()),
-        "bz2" | "tbz2" => quicklook_archive::extractors::tar::list_tar_bz2_entries(path).map_err(|e| e.to_string()),
-        "xz" | "txz" => quicklook_archive::extractors::tar::list_tar_xz_entries(path).map_err(|e| e.to_string()),
-        "7z" => quicklook_archive::extractors::sevenz::list_7z_entries(path).map_err(|e| e.to_string()),
-        _ => Err("不支持的压缩格式".to_string()),
-    };
+    let result =
+        match mode {
+            "zip" => {
+                quicklook_archive::extractors::zip::zip_extract(path).map_err(|e| e.to_string())
+            }
+            "tar" => quicklook_archive::extractors::tar::list_tar_entries(path)
+                .map_err(|e| e.to_string()),
+            "gz" | "tgz" => quicklook_archive::extractors::tar::list_tar_gz_entries(path)
+                .map_err(|e| e.to_string()),
+            "bz2" | "tbz2" => quicklook_archive::extractors::tar::list_tar_bz2_entries(path)
+                .map_err(|e| e.to_string()),
+            "xz" | "txz" => quicklook_archive::extractors::tar::list_tar_xz_entries(path)
+                .map_err(|e| e.to_string()),
+            "7z" => quicklook_archive::extractors::sevenz::list_7z_entries(path)
+                .map_err(|e| e.to_string()),
+            _ => Err("不支持的压缩格式".to_string()),
+        };
 
     match &result {
         Ok(entries) => {
@@ -60,6 +68,20 @@ pub fn get_monitor_info() -> monitor::MonitorInfo {
 #[command]
 pub fn get_default_program_name(path: &str) -> Result<String, String> {
     win::get_default_program_name(path)
+}
+
+#[command]
+pub fn set_log_level(level: usize) -> Result<(), String> {
+    let level_filter = match level {
+        1 => LevelFilter::Error,
+        2 => LevelFilter::Warn,
+        3 => LevelFilter::Info,
+        4 => LevelFilter::Debug,
+        5 => LevelFilter::Trace,
+        _ => LevelFilter::Off,
+    };
+    set_max_level(level_filter);
+    Ok(())
 }
 
 // #[allow(unused)]

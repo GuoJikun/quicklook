@@ -5,7 +5,8 @@
   "windows": [
     "main",
     "preview",
-    "upgrade"
+    "upgrade",
+    "settings"
   ],
   "local": true,
   "permissions": [
