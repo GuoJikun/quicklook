@@ -2,7 +2,6 @@ use tauri::{
     webview::WebviewWindow, AppHandle, Error as TError, Manager, WebviewUrl, WebviewWindowBuilder,
 };
 
-pub mod archives;
 pub mod config;
 pub mod docs;
 pub mod monitor;

@@ -130,6 +130,7 @@ fn file_type_mapping() -> HashMap<&'static str, &'static str> {
         ("ico", "Image"),
         ("svg", "Image"),
         ("apng", "Image"),
+        ("psd", "Image"),
         // 视频文件
         ("mp4", "Video"),
         ("webm", "Video"),

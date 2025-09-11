@@ -64,3 +64,4 @@ regex = "1.11.1"
 # Archive handling library
 quicklook-archive = { path = "../crates/archive" }
 psd = "0.3.5"
+image = { version = "0.25.6", features = ["png", "webp"] }

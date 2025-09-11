@@ -7,7 +7,7 @@ import '@leafer-in/viewport'
 import { useRoute } from 'vue-router'
 import type { FileInfo } from '@/utils/typescript'
 import LayoutPreview from '@/components/layout-preview.vue'
-import { convertFileSrc } from '@tauri-apps/api/core'
+import { convertFileSrc, invoke} from '@tauri-apps/api/core'
 import { ElMessage } from 'element-plus'
 
 defineOptions({
@@ -55,9 +55,14 @@ const init = (path: string) => {
         loading.value = false
     })
 }
-onMounted(() => {
+onMounted(async() => {
+    loading.value = true
     fileInfo.value = route.query as unknown as FileInfo
-    init(convertFileSrc(fileInfo.value.path))
+    let path = fileInfo.value.path;
+    if(fileInfo.value.extension == 'psd'){
+        path = await invoke('psd_to_png', { path})
+    }
+    init(convertFileSrc(path))
 })
 </script>
 

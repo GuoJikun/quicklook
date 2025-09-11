@@ -12,7 +12,7 @@ mod tray;
 mod command;
 use command::{
     archive, document, get_default_program_name, get_monitor_info, set_log_level,
-    show_open_with_dialog,
+    show_open_with_dialog, psd_to_png,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -110,7 +110,8 @@ pub fn run() {
             document,
             get_monitor_info,
             get_default_program_name,
-            set_log_level
+            set_log_level,
+            psd_to_png
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");
