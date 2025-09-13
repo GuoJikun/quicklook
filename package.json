@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",
-    "@handsontable/vue3": "^16.0.1",
+    "@handsontable/vue3": "^15.3.0",
     "@leafer-in/animate": "^1.9.4",
     "@leafer-in/resize": "^1.9.4",
     "@leafer-in/scroll": "^1.9.4",
@@ -39,7 +39,7 @@
     "codemirror": "^6.0.1",
     "docx-preview": "^0.3.6",
     "element-plus": "^2.10.7",
-    "handsontable": "^16.0.1",
+    "handsontable": "^15.3.0",
     "leafer-ui": "^1.9.4",
     "markdown-it": "^14.1.0",
     "markdown-it-abbr": "^2.0.0",

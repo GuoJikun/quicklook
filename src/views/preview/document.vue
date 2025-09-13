@@ -52,7 +52,7 @@ onMounted(async () => {
     const val = fileInfo.value.path as string
     const docs: Docs = await invoke('document', { path: val, mode: fileInfo.value.extension })
     type.value = docs.Excel ? DocType.Excel : docs.Docx ? DocType.Docx : DocType.Pptx
-
+    console.log(docs);
     switch (type.value) {
         case DocType.Excel:
             content.value = docs.Excel as Array<Sheet>

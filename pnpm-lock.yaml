@@ -12,8 +12,8 @@ importers:
         specifier: ^2.3.2
         version: 2.3.2(vue@3.5.13(typescript@5.7.2))
       '@handsontable/vue3':
-        specifier: ^16.0.1
-        version: 16.0.1(handsontable@16.0.1)(vue@3.5.13(typescript@5.7.2))
+        specifier: ^15.3.0
+        version: 15.3.0(handsontable@15.3.0)(vue@3.5.13(typescript@5.7.2))
       '@leafer-in/animate':
         specifier: ^1.9.4
         version: 1.9.4(@leafer-in/color@1.7.0(@leafer-in/interface@1.9.4(@leafer-ui/interface@1.9.4)(@leafer/interface@1.9.4))(@leafer-ui/draw@1.9.4)(@leafer-ui/interface@1.9.4))(@leafer-in/interface@1.9.4(@leafer-ui/interface@1.9.4)(@leafer/interface@1.9.4))(@leafer-ui/draw@1.9.4)(@leafer-ui/interface@1.9.4)
@@ -78,8 +78,8 @@ importers:
         specifier: ^2.10.7
         version: 2.10.7(vue@3.5.13(typescript@5.7.2))
       handsontable:
-        specifier: ^16.0.1
-        version: 16.0.1
+        specifier: ^15.3.0
+        version: 15.3.0
       leafer-ui:
         specifier: ^1.9.4
         version: 1.9.4
@@ -837,10 +837,10 @@ packages:
   '@handsontable/pikaday@1.0.0':
     resolution: {integrity: sha512-1VN6N38t5/DcjJ7y7XUYrDx1LuzvvzlrFdBdMG90Qo1xc8+LXHqbWbsTEm5Ec5gXTEbDEO53vUT35R+2COmOyg==}
 
-  '@handsontable/vue3@16.0.1':
-    resolution: {integrity: sha512-NYjL4P47+/Wb3zD89iN7BG8ihwD85kKgl2i3ds6GQhl+Fei2cG1W7Fq2mHUnTrG+rjoOf9n65vuLtNybhoVRAg==}
+  '@handsontable/vue3@15.3.0':
+    resolution: {integrity: sha512-T/jBVSwBbNMUTmdXwXPveRTA3XBzPB5HCZM195YWzT3iPu8am3TdWpwl0oG3443pFw+2SDvW4Lqg7PCUedD/tg==}
     peerDependencies:
-      handsontable: '>=16.0.0'
+      handsontable: '>=15.0.0'
       vue: ^3.2.22
 
   '@humanfs/core@0.19.1':
@@ -2524,8 +2524,8 @@ packages:
   graphemer@1.4.0:
     resolution: {integrity: sha512-EtKwoO6kxCL9WO5xipiHTZlSzBm7WLT627TqC/uVRd0HKmq8NXyebnNYxDoBi7wt8eTWrUrKXCOVaFq9x1kgag==}
 
-  handsontable@16.0.1:
-    resolution: {integrity: sha512-YkfSYVP+5JaD8/hJfXAvVLTQhDx7flynRwCs4YFQYKGZ/Frkf1J/vCF1rvDUPGtEBJGWT+LTmJFW08cn6SsjoQ==}
+  handsontable@15.3.0:
+    resolution: {integrity: sha512-3ZnrLv53Aw7LPdJz9gBJEspnrE7LyjXeYV55hN1+5M8XmNJcROaYaMAwPYztH6MGCV2OQ/njDxWs5LDb+fSOAg==}
 
   has-flag@3.0.0:
     resolution: {integrity: sha512-sKJf1+ceQBr4SMkvQnBDNDtf4TXpVhVGateu0t918bl30FnbE2m4vNLX+VWe/dpjlb+HugGYzW7uQXH98HPEYw==}
@@ -4378,9 +4378,9 @@ snapshots:
 
   '@handsontable/pikaday@1.0.0': {}
 
-  '@handsontable/vue3@16.0.1(handsontable@16.0.1)(vue@3.5.13(typescript@5.7.2))':
+  '@handsontable/vue3@15.3.0(handsontable@15.3.0)(vue@3.5.13(typescript@5.7.2))':
     dependencies:
-      handsontable: 16.0.1
+      handsontable: 15.3.0
       vue: 3.5.13(typescript@5.7.2)
 
   '@humanfs/core@0.19.1': {}
@@ -6260,7 +6260,7 @@ snapshots:
 
   graphemer@1.4.0: {}
 
-  handsontable@16.0.1:
+  handsontable@15.3.0:
     dependencies:
       '@handsontable/pikaday': 1.0.0
       core-js: 3.45.1
