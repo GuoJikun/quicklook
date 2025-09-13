@@ -112,15 +112,14 @@ checksum = "b0674a1ddeecb70197781e945de4b3b8ffb61fa939a5597bcf48503737663100"
 
 [[package]]
 name = "app"
-version = "0.15.0"
+version = "0.15.1"
 dependencies = [
- "calamine",
  "chrono",
- "csv",
  "image",
  "log",
  "psd",
  "quicklook-archive",
+ "quicklook-docs",
  "regex",
  "serde",
  "serde_json",
@@ -3841,6 +3840,16 @@ dependencies = [
  "tar",
  "xz2",
  "zip 2.4.2",
+]
+
+[[package]]
+name = "quicklook-docs"
+version = "0.1.0"
+dependencies = [
+ "calamine",
+ "csv",
+ "log",
+ "serde",
 ]
 
 [[package]]

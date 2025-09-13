@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "src-tauri",
-    "crates/archive"
+    "crates/archive",
+    "crates/docs"
 ]
 resolver = "2"

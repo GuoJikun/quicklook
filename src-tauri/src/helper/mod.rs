@@ -3,7 +3,6 @@ use tauri::{
 };
 
 pub mod config;
-pub mod docs;
 pub mod monitor;
 pub mod win;
 // pub mod ffmp;

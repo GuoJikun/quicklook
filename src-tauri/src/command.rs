@@ -1,12 +1,13 @@
 use log::{set_max_level, LevelFilter};
 use quicklook_archive::{extractors, Extract};
+use quicklook_docs as docs;
 use std::path::PathBuf;
 use tauri::{command, AppHandle, Manager};
 use windows::Win32::Foundation::HWND;
 
 #[path = "helper/mod.rs"]
 mod helper;
-use helper::{docs, monitor, win};
+use helper::{monitor, win};
 // use helper::{archives, docs, ffmp, monitor, win};
 
 #[command]

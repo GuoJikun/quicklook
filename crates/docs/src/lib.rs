@@ -8,16 +8,19 @@ pub enum Docs {
     Excel(Vec<DSheet>),
     Docx(String),
 }
+
 #[allow(unused)]
 impl Docs {
     pub fn excel(file_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
         let target = excel(file_path)?;
         Ok(Docs::Excel(target))
     }
+
     pub fn csv(file_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
         let target = csv(file_path)?;
         Ok(Docs::Excel(target))
     }
+
     pub fn docx(file_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
         // let target = docx(file_path)?;
         // todo 解析工作目前由 web 端解析
@@ -52,6 +55,7 @@ fn excel(file_path: &str) -> Result<Vec<DSheet>, Box<dyn std::error::Error>> {
     }
     Ok(target)
 }
+
 fn csv(file_path: &str) -> Result<Vec<DSheet>, Box<dyn std::error::Error>> {
     let file = File::open(file_path)?;
     let mut rdr = csv::ReaderBuilder::new()
