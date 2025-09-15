@@ -1,4 +1,4 @@
-use crate::{Extract, ArchiveError};
+use crate::{ArchiveError, Extract};
 use std::{fs::File, path::Path};
 use zip::{DateTime, ZipArchive};
 
@@ -29,7 +29,7 @@ pub fn zip_extract(zip_path: &str) -> Result<Vec<Extract>, ArchiveError> {
     let file = File::open(zip_path)?;
     let mut archive = ZipArchive::new(file)?;
     let mut target = Vec::new();
-    
+
     for i in 0..archive.len() {
         let file = archive.by_index(i)?;
         let dir = file.is_dir();

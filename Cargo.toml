@@ -5,3 +5,5 @@ members = [
     "crates/docs"
 ]
 resolver = "2"
+[workspace.metadata.rustfmt]
+config-path = "rustfmt.toml"

@@ -11,8 +11,8 @@ mod tray;
 #[path = "./command.rs"]
 mod command;
 use command::{
-    archive, document, get_default_program_name, get_monitor_info, set_log_level,
-    show_open_with_dialog, psd_to_png,
+    archive, document, get_default_program_name, get_monitor_info, psd_to_png, set_log_level,
+    show_open_with_dialog,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -122,7 +122,7 @@ pub fn run() {
             if code.is_none() {
                 api.prevent_exit();
             }
-        }
-        _ => {}
+        },
+        _ => {},
     });
 }

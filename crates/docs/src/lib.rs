@@ -71,9 +71,6 @@ fn csv(file_path: &str) -> Result<Vec<DSheet>, Box<dyn std::error::Error>> {
         }
         rows.push(cols);
     }
-    let target: Vec<DSheet> = vec![DSheet {
-        name: "sheet1".to_string(),
-        rows,
-    }];
+    let target: Vec<DSheet> = vec![DSheet { name: "sheet1".to_string(), rows }];
     Ok(target)
 }

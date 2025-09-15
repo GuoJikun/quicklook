@@ -34,10 +34,10 @@ pub fn archive(path: &str, mode: &str) -> Result<Vec<Extract>, String> {
     match &result {
         Ok(entries) => {
             log::info!("成功处理压缩文件，共{}个条目", entries.len());
-        }
+        },
         Err(e) => {
             log::error!("压缩文件处理失败: {}", e);
-        }
+        },
     }
 
     result
@@ -49,7 +49,7 @@ pub fn document(path: &str, mode: &str) -> Result<docs::Docs, String> {
         "csv" => docs::Docs::csv(path).map_err(|e| e.to_string()),
         "xlsx" | "xls" | "xlsm" | "xlsb" | "xla" | "xlam" | "ods" => {
             docs::Docs::excel(path).map_err(|e| e.to_string())
-        }
+        },
         "docx" => docs::Docs::docx(path).map_err(|e| e.to_string()),
         _ => Err("Not Support".to_string()),
     }

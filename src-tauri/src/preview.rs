@@ -66,7 +66,7 @@ impl Selected {
             Err(e) => {
                 log::error!("Error: {:?}", e);
                 Err(e)
-            }
+            },
         }
     }
 
@@ -350,7 +350,7 @@ impl Selected {
                         SHCreateItemFromParsingName(&HSTRING::from(lib_file), None)?;
 
                     return Ok(shell_item.GetDisplayName(SIGDN_FILESYSPATH)?.to_string()?);
-                }
+                },
             };
 
             println!("libraries_path: {:?}", folder_id);
@@ -506,10 +506,10 @@ impl PreviewFile {
         match hook_ex {
             Ok(result) => {
                 self.hook_handle = Some(result);
-            }
+            },
             Err(_) => {
                 self.hook_handle = None;
-            }
+            },
         }
     }
 
@@ -624,7 +624,7 @@ impl PreviewFile {
 
                     let _ = window.show();
                     let _ = window.set_focus();
-                }
+                },
                 None => {
                     let result = WebviewWindowBuilder::new(
                         &app,
@@ -653,8 +653,8 @@ impl PreviewFile {
 
                                     let _ = window.show();
                                     let _ = window.set_focus();
-                                }
-                                _ => {}
+                                },
+                                _ => {},
                             }
                         }
                     })
@@ -664,7 +664,7 @@ impl PreviewFile {
                     if let Ok(preview) = result {
                         let _ = preview.show();
                     }
-                }
+                },
             }
         } else {
             log::error!("Error: {:?}", file_path.err().unwrap());
@@ -674,10 +674,7 @@ impl PreviewFile {
     }
 
     pub fn new() -> Self {
-        Self {
-            hook_handle: None,
-            app_handle: None,
-        }
+        Self { hook_handle: None, app_handle: None }
     }
 }
 

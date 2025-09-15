@@ -1,4 +1,4 @@
-use crate::{Extract, ArchiveError};
+use crate::{ArchiveError, Extract};
 use std::{
     fs::File,
     path::Path,
