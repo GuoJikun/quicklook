@@ -1,0 +1,59 @@
+:root {
+    /* ==== 明亮主题 (Light) ==== */
+    --color-bg: #f3f3f3; /* 主背景 */
+    --color-surface: #ffffff; /* 卡片/面板 */
+    --color-accent: #0078d4; /* 强调色 */
+    --color-text-primary: #1a1a1a; /* 主文字 */
+    --color-text-secondary: #555555; /* 次要文字 */
+    --color-text-disabled: #999999; /* 禁用文字 */
+    --color-border: #e1e1e1; /* 边框/分割线 */
+    --elevation-hover: rgba(0, 0, 0, 0.08); /* 悬停阴影 */
+    --color-hover-bg: #e5f1fb; /* 悬停背景 */
+
+    /* ==== 按钮 (Button) ==== */
+    --btn-primary-bg: var(--color-accent);
+    --btn-primary-text: #ffffff;
+    --btn-primary-hover-bg: #106ebe; /* 稍深蓝色 */
+    --btn-primary-active-bg: #005a9e; /* 更深蓝色 */
+    --btn-primary-disabled-bg: #cce4f7;
+    --btn-primary-disabled-text: #7a7a7a;
+
+    --btn-secondary-bg: transparent;
+    --btn-secondary-border: var(--color-accent);
+    --btn-secondary-text: var(--color-accent);
+    --btn-secondary-hover-bg: rgba(0, 120, 212, 0.1);
+    --btn-secondary-active-bg: rgba(0, 120, 212, 0.2);
+    --btn-secondary-disabled-bg: transparent;
+    --btn-secondary-disabled-text: #999999;
+    --btn-secondary-disabled-border: #cccccc;
+}
+
+[data-theme='dark'] {
+    /* ==== 暗黑主题 (Dark) ==== */
+    --color-bg: #1c1c1c;
+    --color-surface: #2b2b2b;
+    --color-accent: #0078d4;
+    --color-text-primary: #ffffff;
+    --color-text-secondary: #cccccc;
+    --color-text-disabled: #777777;
+    --color-border: #3a3a3a;
+    --elevation-hover: rgba(255, 255, 255, 0.05);
+    --color-hover-bg: rgba(0, 120, 212, 0.2);
+
+    /* ==== 按钮 (Button) ==== */
+    --btn-primary-bg: var(--color-accent);
+    --btn-primary-text: #ffffff;
+    --btn-primary-hover-bg: #106ebe;
+    --btn-primary-active-bg: #005a9e;
+    --btn-primary-disabled-bg: #333333;
+    --btn-primary-disabled-text: #555555;
+
+    --btn-secondary-bg: transparent;
+    --btn-secondary-border: var(--color-accent);
+    --btn-secondary-text: var(--color-accent);
+    --btn-secondary-hover-bg: rgba(0, 120, 212, 0.2);
+    --btn-secondary-active-bg: rgba(0, 120, 212, 0.3);
+    --btn-secondary-disabled-bg: transparent;
+    --btn-secondary-disabled-text: #555555;
+    --btn-secondary-disabled-border: #444444;
+}
