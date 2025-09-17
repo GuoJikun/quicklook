@@ -6,12 +6,15 @@ import {
     Apps16Regular,
     Pin16Regular,
     PinOff16Regular,
+    WeatherSunny16Regular,
+    WeatherMoon16Regular,
 } from '@vicons/fluent'
 import { ref, watch } from 'vue'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { openPath } from '@tauri-apps/plugin-opener'
 import type { FileInfo } from '@/utils/typescript'
 import { invoke } from '@tauri-apps/api/core'
+import { isDark, toggleDark } from '@/hooks/theme'
 
 interface LayoutHeaderProps {
     logo?: string
@@ -71,7 +74,7 @@ watch(
         const path = val?.path
         if (path) {
             const name = (await invoke('get_default_program_name', { path: path })) as string
-            defaultProgrameName.value = `使用 ${name} 打开` || '使用默认程序打开'
+            defaultProgrameName.value = name ? `使用 ${name} 打开` : '使用默认程序打开'
         } else {
             defaultProgrameName.value = '使用默认程序打开'
         }
@@ -88,6 +91,13 @@ watch(
             <h1 class="layout-header-title" data-tauri-drag-region>{{ props?.file?.name || props.title }}</h1>
         </div>
         <div class="layout-header-operate no-selected" data-tauri-drag-region>
+            <div
+                class="layout-header-operate-item"
+                @click="toggleDark()"
+                :title="isDark ? '切换为明亮模式' : '切换为暗黑模式'"
+            >
+                <n-icon :size="16"><WeatherMoon16Regular v-if="isDark" /><WeatherSunny16Regular v-else /></n-icon>
+            </div>
             <div class="layout-header-operate-item" @click="pin" :title="`${pined ? '取消固定' : '固定'}`">
                 <n-icon :size="16"><PinOff16Regular v-if="pined" /><Pin16Regular v-else /></n-icon>
             </div>
@@ -116,7 +126,8 @@ watch(
     left: 0;
     height: 28px;
     font-size: 1.2rem;
-    background-color: rgb(239, 244, 249);
+    background-color: var(--color-surface);
+    color: var(--color-text-primary);
     gap: 12px;
     :deep(i.n-icon) {
         cursor: pointer;
@@ -152,13 +163,13 @@ watch(
             flex: 0 1 4rem;
             min-width: 4rem;
             font-size: inherit;
-            color: currentColor;
+            color: var(--color-text-primary);
             display: inline-flex;
             justify-content: center;
             align-items: center;
             height: 100%;
             &:hover {
-                background-color: rgba(0, 0, 0, 0.15);
+                background-color: var(--color-hover-bg);
             }
             &.is-close {
                 &:hover {
