@@ -271,7 +271,7 @@ onMounted(async () => {
                             @keydown.enter="handleJump"
                         ></el-input>
                         /
-                        {{ pager.total }}
+                        <span style="color: var(--color-text-primary)">{{ pager.total }}</span>
                     </div>
                     <el-divider direction="vertical"></el-divider>
                     <!-- <el-button text @click="handleRotate" :icon="RefreshLeft" size="small"></el-button> -->
@@ -309,7 +309,8 @@ onMounted(async () => {
         width: 100%;
         height: 40px;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-        background-color: #fff;
+        background-color: var(--color-bg);
+        color: var(--color-text-primary);
         padding: 0 24px;
         &-operation {
             display: flex;
@@ -332,7 +333,8 @@ onMounted(async () => {
         overflow: auto;
         position: relative;
         box-shadow: 1px 0 2px rgba(0, 0, 0, 0.1);
-        background-color: #f9f9f9;
+        background-color: var(--color-bg);
+        color: var(--color-text-primary);
         display: inline-block;
         font-size: 14px;
     }
