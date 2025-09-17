@@ -5,7 +5,6 @@ import { useRoute } from 'vue-router'
 import type { FileInfo } from '@/utils/typescript'
 import LayoutPreview from '@/components/layout-preview.vue'
 import { convertFileSrc, invoke } from '@tauri-apps/api/core'
-import { ElMessage } from 'element-plus'
 import PreviewImage from './components/preview-image.vue'
 
 defineOptions({
