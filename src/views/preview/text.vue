@@ -41,6 +41,7 @@ onMounted(async () => {
     &-inner {
         width: 100%;
         height: 100%;
+        background-color: var(--color-bg);
         overflow: auto;
         padding: 12px 24px;
         font-size: 14px;
@@ -50,6 +51,8 @@ onMounted(async () => {
             word-wrap: break-word;
             font-family: inherit;
             font-size: inherit;
+            background-color: transparent;
+            color: var(--color-text-primary);
         }
     }
 }
