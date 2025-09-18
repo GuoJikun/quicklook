@@ -5,9 +5,10 @@ import { useRoute } from 'vue-router'
 import type { FileInfo } from '@/utils/typescript'
 import LayoutPreview from '@/components/layout-preview.vue'
 import { readTextFile } from '@/utils'
-import { isDark } from '@/hooks/theme'
+import { useTheme } from '@/hooks/theme'
 
 const route = useRoute()
+const { isDark } = useTheme()
 
 defineOptions({
     name: 'CodeSupport',
