@@ -54,7 +54,6 @@ onMounted(async () => {
     &-inner {
         width: 100%;
         height: 100%;
-        background-color: #efefef;
         overflow: hidden;
     }
 }

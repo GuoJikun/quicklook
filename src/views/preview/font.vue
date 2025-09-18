@@ -69,12 +69,16 @@ onMounted(() => {
     justify-content: center;
     align-items: center;
     align-content: center;
+    background-color: var(--color-bg);
     &-inner {
         font-size: 24px;
+        background-color: transparent;
     }
     & p {
         font-family: inherit;
         font-size: inherit;
+        color: var(--color-text-primary);
+        background-color: transparent;
     }
 }
 </style>
