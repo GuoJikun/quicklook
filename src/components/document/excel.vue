@@ -65,10 +65,11 @@ const activeSheet = computed({
 </script>
 
 <template>
-    <div style="height: 100%">
+    <div style="height: 100%" class="sheet">
         <div style="height: calc(100% - 32px)">
             <template v-for="sheet in props.data" :key="sheet.name">
                 <HotTable
+                    class="handsontable"
                     v-show="sheet.name == activeSheet"
                     :settings="{
                         data: sheet.rows,
@@ -113,6 +114,45 @@ const activeSheet = computed({
             color: var(--el-color-primary);
             cursor: default;
         }
+    }
+    /* 应用到 Handsontable */
+    :deep(.handsontable) {
+        background-color: var(--ht-cell-background-color);
+        color: var(--ht-cell-color);
+    }
+
+    /* 单元格 */
+    :deep(.handsontable td) {
+        background-color: var(--ht-cell-background-color);
+        color: var(--ht-cell-color);
+        border-color: var(--ht-border-color);
+    }
+
+    /* 表头 */
+    :deep(.handsontable th) {
+        background-color: var(--ht-header-background-color);
+        color: var(--ht-header-color);
+        border-color: var(--ht-header-border-color);
+        font-weight: 500;
+    }
+
+    /* 选区 */
+    :deep(.handsontable .area) {
+        background-color: var(--ht-selection-background-color) !important;
+        border: 2px solid var(--ht-selection-border-color) !important;
+    }
+
+    /* 滚动条 */
+    :deep(.handsontable .wtHolder::-webkit-scrollbar) {
+        width: 8px;
+        height: 8px;
+    }
+    :deep(.handsontable .wtHolder::-webkit-scrollbar-track) {
+        background: var(--ht-scrollbar-track-color);
+    }
+    :deep(.handsontable .wtHolder::-webkit-scrollbar-thumb) {
+        background-color: var(--ht-scrollbar-thumb-color);
+        border-radius: 4px;
     }
 }
 </style>

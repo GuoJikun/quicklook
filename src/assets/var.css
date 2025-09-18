@@ -26,9 +26,23 @@
     --btn-secondary-disabled-bg: transparent;
     --btn-secondary-disabled-text: #999999;
     --btn-secondary-disabled-border: #cccccc;
+
+    --ht-cell-background-color: var(--color-surface);
+    --ht-cell-color: var(--color-text-primary);
+    --ht-border-color: var(--color-border);
+
+    --ht-header-background-color: var(--color-bg);
+    --ht-header-color: var(--color-text-secondary);
+    --ht-header-border-color: var(--color-border);
+
+    --ht-selection-background-color: var(--color-hover-bg);
+    --ht-selection-border-color: var(--color-accent);
+
+    --ht-scrollbar-track-color: transparent;
+    --ht-scrollbar-thumb-color: var(--color-border);
 }
 
-[data-theme='dark'] {
+html.dark {
     /* ==== 暗黑主题 (Dark) ==== */
     --color-bg: #1c1c1c;
     --color-surface: #2b2b2b;
@@ -56,4 +70,18 @@
     --btn-secondary-disabled-bg: transparent;
     --btn-secondary-disabled-text: #555555;
     --btn-secondary-disabled-border: #444444;
+
+    --ht-cell-background-color: var(--color-surface);
+    --ht-cell-color: var(--color-text-primary);
+    --ht-border-color: var(--color-border);
+
+    --ht-header-background-color: var(--color-bg);
+    --ht-header-color: var(--color-text-secondary);
+    --ht-header-border-color: var(--color-border);
+
+    --ht-selection-background-color: var(--color-hover-bg);
+    --ht-selection-border-color: var(--color-accent);
+
+    --ht-scrollbar-track-color: transparent;
+    --ht-scrollbar-thumb-color: var(--color-border);
 }

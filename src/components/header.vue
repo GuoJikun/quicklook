@@ -14,7 +14,9 @@ import { getCurrentWindow } from '@tauri-apps/api/window'
 import { openPath } from '@tauri-apps/plugin-opener'
 import type { FileInfo } from '@/utils/typescript'
 import { invoke } from '@tauri-apps/api/core'
-import { isDark, toggleDark } from '@/hooks/theme'
+import { useTheme } from '@/hooks/theme'
+
+const { isDark, toggle } = useTheme()
 
 interface LayoutHeaderProps {
     logo?: string
@@ -93,7 +95,7 @@ watch(
         <div class="layout-header-operate no-selected" data-tauri-drag-region>
             <div
                 class="layout-header-operate-item"
-                @click="toggleDark()"
+                @click="toggle"
                 :title="isDark ? '切换为明亮模式' : '切换为暗黑模式'"
             >
                 <n-icon :size="16"><WeatherMoon16Regular v-if="isDark" /><WeatherSunny16Regular v-else /></n-icon>
