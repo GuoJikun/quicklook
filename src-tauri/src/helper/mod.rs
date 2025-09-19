@@ -4,6 +4,7 @@ use tauri::{
 
 pub mod config;
 pub mod monitor;
+pub mod selected_file;
 pub mod win;
 // pub mod ffmp;
 
