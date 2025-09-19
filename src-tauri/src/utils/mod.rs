@@ -64,6 +64,65 @@ impl File {
     }
 }
 
+/// 无后缀文件名 → Shiki 语言映射
+fn build_name_to_lang() -> HashMap<&'static str, &'static str> {
+    HashMap::from([
+        // --- 文档类 ---
+        ("README", "markdown"),
+        ("CHANGELOG", "markdown"),
+        ("TODO", "markdown"),
+        ("LICENSE", "text"),
+        ("COPYING", "text"),
+        ("AUTHORS", "text"),
+        ("CONTRIBUTORS", "text"),
+        // --- 构建工具 ---
+        ("Makefile", "makefile"),
+        ("Dockerfile", "docker"),
+        ("Jenkinsfile", "groovy"),
+        ("Rakefile", "ruby"),
+        ("Gemfile", "ruby"),
+        ("Capfile", "ruby"),
+        ("Podfile", "ruby"),
+        ("Fastfile", "ruby"),
+        ("Guardfile", "ruby"),
+        ("Brewfile", "ruby"),
+        ("Procfile", "yaml"),
+        ("Vagrantfile", "ruby"),
+        ("Caskfile", "ruby"),
+        ("Appfile", "ruby"),
+        ("Dangerfile", "ruby"),
+        ("Deliverfile", "ruby"),
+        ("Snapfile", "ruby"),
+        // --- 配置/环境 ---
+        (".npmrc", "ini"),
+        (".yarnrc", "ini"),
+        (".editorconfig", "ini"),
+        (".gitconfig", "ini"),
+        (".env", "ini"),
+        // --- Shell 环境 ---
+        (".bashrc", "bash"),
+        (".zshrc", "bash"),
+        (".profile", "bash"),
+        (".bash_profile", "bash"),
+        // --- 其他特殊 ---
+        ("PKGBUILD", "bash"),     // Arch Linux
+        ("Justfile", "makefile"), // just 任务文件
+        ("Snakefile", "python"),  // Snakemake
+        ("BUILD", "python"),      // Bazel
+        ("WORKSPACE", "python"),  // Bazel
+    ])
+}
+
+/// 仅在文件没有后缀时调用
+pub fn detect_language_no_ext(file_name: &str) -> String {
+    println!(
+        "Detecting language for file without extension: {}",
+        file_name
+    );
+    let map = build_name_to_lang();
+    map.get(file_name).copied().unwrap_or("txt").to_string()
+}
+
 pub fn get_file_info(path: &str) -> Option<File> {
     let file_path = Path::new(path);
     let path_str = path.to_string();
@@ -72,16 +131,20 @@ pub fn get_file_info(path: &str) -> Option<File> {
     if file_path.is_file() == false {
         return None;
     }
-    // 获取文件扩展名，如果没有扩展名，默认使用 "txt"
-    let extension = file_path
-        .extension()
-        .map_or("txt".to_string(), |ext| ext.to_string_lossy().into_owned());
-
-    let metadata = file_path.metadata().unwrap();
+    // 获取文件名称
     let name = match file_path.file_name() {
         Some(tmp) => tmp.to_string_lossy().into_owned(),
         None => String::from(""),
     };
+    // 获取文件扩展名，如果没有扩展名，默认使用 "txt"
+    let extension = match file_path.extension() {
+        Some(ext) => ext.to_string_lossy().to_lowercase(),
+        None => detect_language_no_ext(&name),
+    };
+    println!("File extension: {}", extension);
+
+    let metadata = file_path.metadata().unwrap();
+
     // 根据扩展名从映射表中获取文件类型
     match file_type_mapping().get(extension.as_str()) {
         Some(file_type) => Some(File::new(
@@ -160,9 +223,8 @@ fn file_type_mapping() -> HashMap<&'static str, &'static str> {
         ("txz", "Archive"),  // tar.xz 的简写
         // 书籍文件
         ("pdf", "Book"),
-        // 文本文件
-        ("txt", "Text"),
         // 代码文件
+        ("txt", "Code"),
         ("cpp", "Code"),
         ("js", "Code"),
         ("mjs", "Code"),
@@ -208,6 +270,7 @@ fn file_type_mapping() -> HashMap<&'static str, &'static str> {
         ("scala", "Code"),
         ("m", "Code"),
         ("log", "Code"),
+        ("bash", "Code"),
         // 应用程序文件
         // ("exe", "App"),
         // ("dmg", "App"),
