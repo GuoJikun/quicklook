@@ -52,7 +52,6 @@ impl WebRoute {
     pub fn get_route(type_str: &str, file_info: &UFile) -> WebRoute {
         match type_str {
             "Markdown" => WebRoute::new("/preview/md".to_string(), file_info.clone()),
-            "Text" => WebRoute::new("/preview/text".to_string(), file_info.clone()),
             "Image" => WebRoute::new("/preview/image".to_string(), file_info.clone()),
             "Audio" => WebRoute::new("/preview/audio".to_string(), file_info.clone()),
             "Video" => WebRoute::new("/preview/video".to_string(), file_info.clone()),

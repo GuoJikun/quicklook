@@ -51,11 +51,6 @@ const router = createRouter({
                     component: () => import('@/views/preview/md.vue'),
                 },
                 {
-                    path: '/preview/text',
-                    name: 'previewText',
-                    component: () => import('@/views/preview/text.vue'),
-                },
-                {
                     path: '/preview/book',
                     name: 'previewBook',
                     component: () => import('@/views/preview/book.vue'),
