@@ -7,7 +7,7 @@ use windows::Win32::Foundation::HWND;
 
 #[path = "helper/mod.rs"]
 mod helper;
-use helper::{monitor, win};
+use helper::{audio, monitor, win};
 // use helper::{archives, docs, ffmp, monitor, win};
 
 #[command]
@@ -110,4 +110,9 @@ pub fn psd_to_png(path: &str) -> Result<String, String> {
 
     // 返回文件路径给前端
     Ok(temp_path.to_string_lossy().to_string())
+}
+
+#[command]
+pub fn read_audio_info(path: &str) -> Option<audio::MusicInfo> {
+    audio::read_music_info(path)
 }

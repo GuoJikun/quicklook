@@ -15,8 +15,10 @@ import { openPath } from '@tauri-apps/plugin-opener'
 import type { FileInfo } from '@/utils/typescript'
 import { invoke } from '@tauri-apps/api/core'
 import { useTheme } from '@/hooks/theme'
+import { useWindow } from '@/hooks/use-window'
 
 const { isDark, toggle } = useTheme()
+const { handleClose } = useWindow()
 
 interface LayoutHeaderProps {
     logo?: string
@@ -27,16 +29,6 @@ const props = withDefaults(defineProps<LayoutHeaderProps>(), {
     title: '文件预览',
     path: '',
 })
-
-const handleClose = () => {
-    const curWindow = getCurrentWindow()
-    curWindow.close()
-}
-
-// const handleMin = () => {
-//     const curWindow = getCurrentWindow()
-//     curWindow.minimize()
-// }
 
 const handleMax = () => {
     const curWindow = getCurrentWindow()

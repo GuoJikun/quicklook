@@ -2,6 +2,7 @@ use tauri::{Listener, Manager};
 use tauri_plugin_autostart::MacosLauncher;
 #[cfg(not(debug_assertions))]
 use tauri_plugin_autostart::ManagerExt;
+#[cfg(not(debug_assertions))]
 use tauri_plugin_store::StoreExt;
 
 mod helper;
@@ -11,8 +12,8 @@ mod tray;
 #[path = "./command.rs"]
 mod command;
 use command::{
-    archive, document, get_default_program_name, get_monitor_info, psd_to_png, set_log_level,
-    show_open_with_dialog,
+    archive, document, get_default_program_name, get_monitor_info, psd_to_png, read_audio_info,
+    set_log_level, show_open_with_dialog,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -60,20 +61,26 @@ pub fn run() {
                 }
             });
 
-            // 初始化 store
-            let store = app.store("config.data")?;
+            #[cfg(debug_assertions)]
+            {
+                let _ = set_log_level(3);
+            }
 
-            // 设置日志级别
-            let level_str = store.get("logLevel");
-            let level = level_str
-                .and_then(|v| v.as_u64())
-                .map(|v| v as usize)
-                .unwrap_or(0); // 默认日志级别为 Off
-            let _ = set_log_level(level);
-            println!("当前日志级别: {:?}", level);
-            // 自动启动
             #[cfg(not(debug_assertions))]
             {
+                // 初始化 store
+                let store = app.store("config.data")?;
+
+                // 设置日志级别
+                let level_str = store.get("logLevel");
+                let level = level_str
+                    .and_then(|v| v.as_u64())
+                    .map(|v| v as usize)
+                    .unwrap_or(0); // 默认日志级别为 Off
+                let _ = set_log_level(level);
+                println!("当前日志级别: {:?}", level);
+
+                // 自动启动
                 let config_autostart = store
                     .get("autostart")
                     .unwrap_or(serde_json::Value::Bool(true));
@@ -111,7 +118,8 @@ pub fn run() {
             get_monitor_info,
             get_default_program_name,
             set_log_level,
-            psd_to_png
+            psd_to_png,
+            read_audio_info
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");

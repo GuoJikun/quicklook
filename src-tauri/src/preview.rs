@@ -146,8 +146,8 @@ impl PreviewFile {
 
         if monitor_info.width > 0.0 {
             if file_type == "Audio" {
-                width = 600.0;
-                height = 240.0;
+                width = 560.0;
+                height = 200.0;
             } else {
                 width = monitor_info.width * 0.8;
                 height = monitor_info.height * 0.8;
@@ -212,7 +212,7 @@ impl PreviewFile {
                     .skip_taskbar(false)
                     .auto_resize()
                     .inner_size(width, height)
-                    .min_inner_size(300.0, 300.0)
+                    .min_inner_size(300.0, 200.0)
                     .on_page_load(move |window, payload| {
                         let cur_path = payload.url().path();
                         if cur_path == "/preview" {

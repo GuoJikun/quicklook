@@ -35,6 +35,7 @@
     "@tauri-apps/plugin-store": "2.4.0",
     "@tauri-apps/plugin-updater": "^2.9.0",
     "@vicons/fluent": "^0.13.0",
+    "@vicons/ionicons5": "^0.13.0",
     "@vueuse/core": "^13.4.0",
     "codemirror": "^6.0.1",
     "docx-preview": "^0.3.6",
@@ -89,7 +90,7 @@
     "vue-tsc": "^2.2.0"
   },
   "volta": {
-    "node": "22.12.0",
-    "pnpm": "10.15.0"
+    "node": "22.19.0",
+    "pnpm": "10.17.0"
   }
 }
