@@ -116,3 +116,8 @@ pub fn psd_to_png(path: &str) -> Result<String, String> {
 pub fn read_audio_info(path: &str) -> Option<audio::MusicInfo> {
     audio::read_music_info(path)
 }
+
+#[command]
+pub fn parse_lrc(path: &str) -> Result<audio::Lrc, String> {
+    audio::parse_lrc(path)
+}

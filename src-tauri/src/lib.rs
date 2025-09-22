@@ -12,8 +12,8 @@ mod tray;
 #[path = "./command.rs"]
 mod command;
 use command::{
-    archive, document, get_default_program_name, get_monitor_info, psd_to_png, read_audio_info,
-    set_log_level, show_open_with_dialog,
+    archive, document, get_default_program_name, get_monitor_info, parse_lrc, psd_to_png,
+    read_audio_info, set_log_level, show_open_with_dialog,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -36,7 +36,7 @@ pub fn run() {
         ))
         .plugin(
             tauri_plugin_log::Builder::default()
-                .level(log::LevelFilter::Off) // 默认日志级别为 Off
+                .level(log::LevelFilter::Info) // 默认日志级别为 Info
                 .max_file_size(10000)
                 .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
                 .timezone_strategy(tauri_plugin_log::TimezoneStrategy::UseLocal)
@@ -119,7 +119,8 @@ pub fn run() {
             get_default_program_name,
             set_log_level,
             psd_to_png,
-            read_audio_info
+            read_audio_info,
+            parse_lrc,
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");
