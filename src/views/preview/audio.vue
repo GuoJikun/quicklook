@@ -144,13 +144,13 @@ const syncLyrics = (audio: HTMLAudioElement) => {
     let _currentLine: null | number = null
     for (let i = 0; i < len; i++) {
         const line = lrc.value.content[i]
-        console.log(line, 'line.time')
+
         if (line.timestamp <= currentMs) {
             _currentLine = line.timestamp
             continue
         }
         currentLine.value = _currentLine as number
-        console.log(currentLine, 'currentLine')
+
         break
     }
 }
@@ -169,7 +169,7 @@ const handleCurrentTime = () => {
 onMounted(async () => {
     fileInfo.value = route.query as unknown as FileInfo
     await getAudioInfo(fileInfo.value?.path)
-    console.log(audioInfo.value.cover)
+
     await getLrc(fileInfo.value?.path)
 
     const path = convertFileSrc(fileInfo.value.path)
@@ -184,10 +184,7 @@ onMounted(async () => {
     audio.addEventListener('pause', () => {
         isPlaying.value = false
     })
-    // audio.addEventListener('timeupdate', () => {
-    //     currentTime.value = audio.currentTime
-    //     currentTimeStr.value = formatTime(audio.currentTime)
-    // })
+
     audio.addEventListener('loadedmetadata', () => {
         duration.value = audio.duration
         durationStr.value = formatTime(audio.duration)
@@ -249,7 +246,7 @@ watch(duration, val => {
             </div>
             <div class="audio-ui">
                 <div class="audio-info" data-tauri-drag-region>
-                    <div class="audio-title">
+                    <div class="audio-title" data-tauri-drag-region>
                         {{ audioInfo.title || fileInfo?.name }}
                     </div>
                     <el-scrollbar class="audio-lyric">
