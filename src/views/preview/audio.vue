@@ -1,21 +1,12 @@
-<!-- eslint-disable @typescript-eslint/no-unused-vars -->
 <script setup lang="ts">
 import { nextTick } from 'vue'
-// 当前高亮歌词索引
-const currentLrcIndex = ref(0)
 import { computed, onMounted, ref, watch, useTemplateRef } from 'vue'
 import { useRoute } from 'vue-router'
 import { invoke } from '@tauri-apps/api/core'
 
 import { useWindow } from '@/hooks/use-window'
-import {
-    Dismiss16Regular,
-    PauseCircle20Regular,
-    FastForward20Regular,
-    PlayCircle20Regular,
-    Rewind20Regular,
-} from '@vicons/fluent'
-import { VolumeMediumOutline } from '@vicons/ionicons5'
+import { Dismiss16Regular, PauseCircle20Regular, PlayCircle20Regular } from '@vicons/fluent'
+// import { VolumeMediumOutline } from '@vicons/ionicons5'
 
 import type { FileInfo } from '@/utils/typescript'
 import { convertFileSrc } from '@tauri-apps/api/core'
@@ -128,11 +119,11 @@ const seek = () => {
     audio.currentTime = Number(currentTime.value)
 }
 
-const changeVolume = () => {
-    const audio = player.value as HTMLAudioElement
-    if (!audio) return
-    audio.volume = Number(volume.value)
-}
+// const changeVolume = () => {
+//     const audio = player.value as HTMLAudioElement
+//     if (!audio) return
+//     audio.volume = Number(volume.value)
+// }
 
 const currentLine = ref<number>()
 const syncLyrics = (audio: HTMLAudioElement) => {
@@ -270,7 +261,7 @@ watch(duration, val => {
                         :min="0"
                         :max="duration"
                         @input="seek"
-                        :format-tooltip="val => formatTime(val)"
+                        :format-tooltip="(val: number) => formatTime(val)"
                         class="audio-slider"
                     />
                     <span class="audio-progress-time">- {{ remainStr }}</span>
