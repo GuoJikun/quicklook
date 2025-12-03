@@ -2,7 +2,8 @@
 members = [
     "src-tauri",
     "crates/archive",
-    "crates/docs"
+    "crates/docs",
+    "crates/office-converter"
 ]
 resolver = "2"
 [workspace.metadata.rustfmt]
