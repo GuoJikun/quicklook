@@ -77,7 +77,9 @@ const updateOfficeParser = async (val: string) => {
     await localStore?.set('officeParser', val)
     await localStore?.save()
 }
-const handleOfficeParserChange = async (val: string) => {
+const handleOfficeParserChange = async (val: unknown) => {
+    if (!val) return
+    if (typeof val !== 'string') return
     officeParser.value = val
     updateOfficeParser(val)
 }
