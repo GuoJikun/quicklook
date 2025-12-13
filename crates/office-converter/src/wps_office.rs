@@ -1,6 +1,8 @@
 //! WPS Office 文档转换模块
 
-use crate::com_utils::{get_property, invoke_method, set_property, PropertyValue};
+use crate::com_utils::{
+    get_property, invoke_method, invoke_method_named, set_property, PropertyValue,
+};
 use crate::converter::ConvertOptions;
 use crate::error::{Error as InternalError, Result};
 use std::path::Path;
@@ -53,6 +55,7 @@ fn convert_wps_writer_to_html(input_path: &Path, options: &ConvertOptions) -> Re
 
         set_property(&app, "Visible", false)?;
 
+        println!("Debug: Attempting to open document...");
         let documents = get_property(&app, "Documents")?;
         let absolute_path = input_path
             .canonicalize()
@@ -63,7 +66,19 @@ fn convert_wps_writer_to_html(input_path: &Path, options: &ConvertOptions) -> Re
             &[PropertyValue::from(
                 absolute_path.to_str().unwrap().to_string(),
             )],
-        )?;
+        );
+
+        if let Err(e) = &doc {
+            println!("Debug: Failed to open document: {:?}", e);
+            invoke_method(&app, "Quit", &[])?;
+            // Re-map the error since we can't clone it easily
+            return Err(InternalError::ConversionFailed(format!(
+                "Failed to open document: {:?}",
+                e
+            )));
+        }
+        let doc = doc?;
+        println!("Debug: Document opened successfully.");
 
         let output_path = options.output_path.clone().unwrap_or_else(|| {
             let mut path = absolute_path.clone();
@@ -71,19 +86,25 @@ fn convert_wps_writer_to_html(input_path: &Path, options: &ConvertOptions) -> Re
             path
         });
 
-        // WPS Writer 的 SaveAs 方法需要更多参数
-        // SaveAs(FileName, FileFormat, LockComments, Password, AddToRecentFiles, ...)
-        invoke_method(
+        println!("Debug: Attempting to save as HTML...");
+        // WPS Writer 的 SaveAs 方法
+        // 使用命名参数避免参数数量不匹配问题
+        let save_result = invoke_method_named(
             &doc,
             "SaveAs",
+            &["FileName", "FileFormat"],
             &[
                 PropertyValue::from(output_path.to_str().unwrap().to_string()),
-                PropertyValue::from(8),                // wdFormatHTML = 8
-                PropertyValue::from(false),            // LockComments
-                PropertyValue::String("".to_string()), // Password
-                PropertyValue::from(false),            // AddToRecentFiles
+                PropertyValue::from(8), // wdFormatHTML = 8
             ],
-        )?;
+        );
+
+        if let Err(e) = &save_result {
+            println!("Debug: Failed to save document: {:?}", e);
+        } else {
+            println!("Debug: Document saved successfully.");
+        }
+        save_result?;
 
         invoke_method(&doc, "Close", &[PropertyValue::from(false)])?;
         invoke_method(&app, "Quit", &[])?;
@@ -129,10 +150,12 @@ fn convert_wps_spreadsheets_to_html(input_path: &Path, options: &ConvertOptions)
             path
         });
 
-        // WPS Spreadsheets 保存为 HTML 的格式值为 44
-        invoke_method(
+        // WPS Spreadsheets 保存为 HTML
+        // 使用命名参数
+        invoke_method_named(
             &workbook,
             "SaveAs",
+            &["Filename", "FileFormat"],
             &[
                 PropertyValue::from(output_path.to_str().unwrap().to_string()),
                 PropertyValue::from(44), // xlHtml = 44
@@ -185,15 +208,15 @@ fn convert_wps_presentation_to_html(input_path: &Path, options: &ConvertOptions)
             path
         });
 
-        // WPS Presentation 保存为 HTML 的格式值为 12
-        // SaveAs(FileName, FileFormat, EmbedTrueTypeFonts)
-        invoke_method(
+        // WPS Presentation 保存为 HTML
+        // 使用命名参数
+        invoke_method_named(
             &presentation,
             "SaveAs",
+            &["FileName", "FileFormat"],
             &[
                 PropertyValue::from(output_path.to_str().unwrap().to_string()),
                 PropertyValue::from(12), // ppSaveAsHTMLv3 = 12
-                PropertyValue::from(0),  // EmbedTrueTypeFonts: msoFalse
             ],
         )?;
 

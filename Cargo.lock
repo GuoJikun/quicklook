@@ -3310,6 +3310,7 @@ dependencies = [
 name = "office-converter"
 version = "0.1.0"
 dependencies = [
+ "encoding_rs",
  "serde",
  "serde_json",
  "thiserror 2.0.16",

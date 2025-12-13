@@ -84,7 +84,12 @@ fn main() {
         .or_else(|| apps.first())
         .unwrap();
 
-    println!("🔧 使用软件: {:?}", office_app.app);
+    let app_name = match office_app.app {
+        OfficeApp::MsOffice => "Microsoft Office",
+        OfficeApp::Wps => "WPS Office",
+    };
+
+    println!("🔧 使用软件: {} ({})", app_name, office_app.version);
     println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!("开始转换...");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");

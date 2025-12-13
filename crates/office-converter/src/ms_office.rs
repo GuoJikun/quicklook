@@ -1,6 +1,8 @@
 //! Microsoft Office 文档转换模块
 
-use crate::com_utils::{get_property, invoke_method, set_property, PropertyValue};
+use crate::com_utils::{
+    get_property, invoke_method, invoke_method_named, set_property, PropertyValue,
+};
 use crate::converter::ConvertOptions;
 use crate::error::{Error as InternalError, Result};
 use std::path::Path;
@@ -52,7 +54,10 @@ fn convert_word_to_html(input_path: &Path, options: &ConvertOptions) -> Result<S
 
         // 设置 Visible = False
         set_property(&word_app, "Visible", false)?;
+        // 设置 DisplayAlerts = wdAlertsNone (0)
+        set_property(&word_app, "DisplayAlerts", 0)?;
 
+        println!("Debug: Attempting to open document...");
         // 打开文档
         let documents = get_property(&word_app, "Documents")?;
         let absolute_path = input_path
@@ -64,7 +69,18 @@ fn convert_word_to_html(input_path: &Path, options: &ConvertOptions) -> Result<S
             &[PropertyValue::from(
                 absolute_path.to_str().unwrap().to_string(),
             )],
-        )?;
+        );
+
+        if let Err(e) = &doc {
+            println!("Debug: Failed to open document: {:?}", e);
+            invoke_method(&word_app, "Quit", &[])?;
+            return Err(InternalError::ConversionFailed(format!(
+                "Failed to open document: {:?}",
+                e
+            )));
+        }
+        let doc = doc?;
+        println!("Debug: Document opened successfully.");
 
         // 保存为 HTML
         let output_path = options.output_path.clone().unwrap_or_else(|| {
@@ -72,14 +88,42 @@ fn convert_word_to_html(input_path: &Path, options: &ConvertOptions) -> Result<S
             path.set_extension("html");
             path
         });
-        invoke_method(
+
+        let output_path_str = output_path.to_str().unwrap().to_string();
+        let output_path_str = if output_path_str.starts_with("\\\\?\\") {
+            output_path_str[4..].to_string()
+        } else {
+            output_path_str
+        };
+
+        println!("Debug: Attempting to save as HTML to: {}", output_path_str);
+        // 使用命名参数调用 SaveAs2
+        let save_result = invoke_method_named(
             &doc,
             "SaveAs2",
+            &["FileName", "FileFormat"],
             &[
-                PropertyValue::from(output_path.to_str().unwrap().to_string()),
+                PropertyValue::from(output_path_str),
                 PropertyValue::from(8), // wdFormatHTML = 8
             ],
-        )?;
+        );
+
+        if let Err(e) = &save_result {
+            println!("Debug: Failed to save document: {:?}", e);
+            // 如果文件已存在，可能是 SaveAs 返回了错误但实际上保存成功了
+            // 或者是因为文件被占用等原因
+            if output_path.exists() {
+                println!("Debug: Output file exists, ignoring error.");
+            } else {
+                return Err(InternalError::ConversionFailed(format!(
+                    "Failed to save document: {:?}",
+                    e
+                )));
+            }
+        } else {
+            println!("Debug: Document saved successfully.");
+        }
+        // save_result?; // Don't propagate error if we handled it above
 
         // 关闭文档
         invoke_method(&doc, "Close", &[PropertyValue::from(false)])?;
@@ -88,8 +132,18 @@ fn convert_word_to_html(input_path: &Path, options: &ConvertOptions) -> Result<S
         invoke_method(&word_app, "Quit", &[])?;
 
         // 读取生成的 HTML 文件
-        let html_content = std::fs::read_to_string(&output_path)
+        // Word 保存的 HTML 可能是 GBK 或其他编码，尝试使用 encoding_rs 处理
+        let bytes = std::fs::read(&output_path)
             .map_err(|e| InternalError::ConversionFailed(e.to_string()))?;
+
+        let html_content = match String::from_utf8(bytes.clone()) {
+            Ok(s) => s,
+            Err(_) => {
+                // 尝试 GBK 解码
+                let (cow, _, _) = encoding_rs::GBK.decode(&bytes);
+                cow.into_owned()
+            },
+        };
 
         Ok(html_content)
     }
@@ -130,9 +184,12 @@ fn convert_excel_to_html(input_path: &Path, options: &ConvertOptions) -> Result<
             path.set_extension("html");
             path
         });
-        invoke_method(
+
+        // 使用命名参数调用 SaveAs
+        invoke_method_named(
             &workbook,
             "SaveAs",
+            &["Filename", "FileFormat"],
             &[
                 PropertyValue::from(output_path.to_str().unwrap().to_string()),
                 PropertyValue::from(44), // xlHtml = 44
@@ -193,9 +250,11 @@ fn convert_powerpoint_to_html(input_path: &Path, options: &ConvertOptions) -> Re
 
         // PowerPoint SaveAs 需要完整的参数
         // SaveAs(FileName, FileFormat, EmbedTrueTypeFonts)
-        invoke_method(
+        // 使用命名参数
+        invoke_method_named(
             &presentation,
             "SaveAs",
+            &["FileName", "FileFormat", "EmbedTrueTypeFonts"],
             &[
                 PropertyValue::from(output_path.to_str().unwrap().to_string()),
                 PropertyValue::from(12), // ppSaveAsHTMLv3 = 12
