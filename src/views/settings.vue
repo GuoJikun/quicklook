@@ -72,10 +72,23 @@ const handleLogLevelChange = (level: unknown) => {
     updateLogLevel(level as number)
 }
 
+const officeParser = ref<string>('internal')
+const updateOfficeParser = async (val: string) => {
+    await localStore?.set('officeParser', val)
+    await localStore?.save()
+}
+const handleOfficeParserChange = async (val: unknown) => {
+    if (!val) return
+    if (typeof val !== 'string') return
+    officeParser.value = val
+    updateOfficeParser(val)
+}
+
 onMounted(async () => {
     await loadStore()
     config.value = await getConfig()
     version.value = await app.getVersion()
+    officeParser.value = (await localStore?.get<string>('officeParser')) || 'internal'
     const tmpLogLevel: string = (await localStore?.get<string>('logLevel')) || ''
     console.log('当前日志级别:', tmpLogLevel)
     logLevel.value = tmpLogLevel || 'info'
@@ -86,12 +99,19 @@ onMounted(async () => {
     <div class="setting">
         <el-affix>
             <el-anchor direction="horizontal">
+                <el-anchor-link href="#office-parser">Office 解析器</el-anchor-link>
                 <el-anchor-link href="#support">支持的格式</el-anchor-link>
                 <el-anchor-link href="#log">日志</el-anchor-link>
                 <el-anchor-link href="#version">版本</el-anchor-link>
             </el-anchor>
         </el-affix>
-
+        <SettingItem title="Office 解析器" id="office-parser">
+            <el-radio-group v-model="officeParser" @change="handleOfficeParserChange">
+                <el-radio value="office">微软 Office</el-radio>
+                <el-radio value="wps">WPS</el-radio>
+                <el-radio value="internal">内置解析器</el-radio>
+            </el-radio-group>
+        </SettingItem>
         <SettingItem title="支持的格式" id="support">
             <div class="support-item" v-for="type in config" :key="type.code">
                 <div class="support-item-header">
@@ -102,18 +122,13 @@ onMounted(async () => {
                 </div>
             </div>
         </SettingItem>
-        <SettingItem title="日志" id="log">
-            <div class="flex-col-center">
-                <span>日志级别：</span>
-                <el-radio-group v-model="logLevel" @change="handleLogLevelChange" style="margin-left: 16px">
-                    <el-radio v-for="item in logLevelList" :key="item.value" :value="item.value">{{
-                        item.label
-                    }}</el-radio>
-                </el-radio-group>
-            </div>
+        <SettingItem title="日志设置" id="log">
+            <el-radio-group v-model="logLevel" @change="handleLogLevelChange" style="margin-left: 16px">
+                <el-radio v-for="item in logLevelList" :key="item.value" :value="item.value">{{ item.label }}</el-radio>
+            </el-radio-group>
         </SettingItem>
         <SettingItem title="版本" id="version">
-            <span>app 版本：{{ version }}</span>
+            {{ version }}
         </SettingItem>
     </div>
 </template>

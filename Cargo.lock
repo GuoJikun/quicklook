@@ -3307,6 +3307,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "office-converter"
+version = "0.1.0"
+dependencies = [
+ "encoding_rs",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.16",
+ "windows",
+ "winreg 0.55.0",
+]
+
+[[package]]
 name = "ogg_pager"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
