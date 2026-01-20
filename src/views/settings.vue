@@ -4,6 +4,16 @@ import { BaseDirectory } from '@tauri-apps/plugin-fs'
 // import { emit } from '@tauri-apps/api/event'
 import { readTextFile } from '@/utils'
 import { app } from '@tauri-apps/api'
+import { load, type Store } from '@tauri-apps/plugin-store'
+import { invoke } from '@tauri-apps/api/core'
+import { LogLevel } from '@tauri-apps/plugin-log'
+
+import SettingItem from '@/components/setting-item.vue'
+
+let localStore: Store | null = null
+const loadStore = async () => {
+    localStore = await load('config.data', { autoSave: false, defaults: {} })
+}
 
 // // const updateConfig = async (val: string) => {
 // //     const blob = new Blob([val], { type: 'application/json' })
@@ -43,33 +53,68 @@ interface Config {
 
 const config = ref<Array<Config>>()
 const version = ref<string>('')
+
+const logLevel = ref<string>('info')
+const logLevelList = [
+    { label: 'Error', value: LogLevel.Error },
+    { label: 'Warn', value: LogLevel.Warn },
+    { label: 'Info', value: LogLevel.Info },
+    { label: 'Debug', value: LogLevel.Debug },
+    { label: 'Trace', value: LogLevel.Trace },
+    { label: 'Off', value: 0 },
+]
+const updateLogLevel = async (level: number) => {
+    await localStore?.set('logLevel', level)
+    await localStore?.save()
+    await invoke('set_log_level', { level })
+}
+const handleLogLevelChange = (level: unknown) => {
+    updateLogLevel(level as number)
+}
+
 onMounted(async () => {
+    await loadStore()
     config.value = await getConfig()
     version.value = await app.getVersion()
+    const tmpLogLevel: string = (await localStore?.get<string>('logLevel')) || ''
+    console.log('当前日志级别:', tmpLogLevel)
+    logLevel.value = tmpLogLevel || 'info'
 })
 </script>
 
 <template>
     <div class="setting">
-        <div class="setting-item support">
-            <p class="setting-item-title">支持的格式</p>
-            <div>
-                <div class="support-item" v-for="type in config" :key="type.code">
-                    <div class="support-item-header">
-                        <span>{{ type.code }}：</span>
-                    </div>
-                    <div class="support-item-body">
-                        {{ type.data.join('、') }}
-                    </div>
+        <el-affix>
+            <el-anchor direction="horizontal">
+                <el-anchor-link href="#support">支持的格式</el-anchor-link>
+                <el-anchor-link href="#log">日志</el-anchor-link>
+                <el-anchor-link href="#version">版本</el-anchor-link>
+            </el-anchor>
+        </el-affix>
+
+        <SettingItem title="支持的格式" id="support">
+            <div class="support-item" v-for="type in config" :key="type.code">
+                <div class="support-item-header">
+                    <span>{{ type.code }}：</span>
+                </div>
+                <div class="support-item-body">
+                    {{ type.data.join('、') }}
                 </div>
             </div>
-        </div>
-        <div class="setting-item">
-            <p class="setting-item-title">版本</p>
-            <div>
-                <span>app 版本：{{ version }}</span>
+        </SettingItem>
+        <SettingItem title="日志" id="log">
+            <div class="flex-col-center">
+                <span>日志级别：</span>
+                <el-radio-group v-model="logLevel" @change="handleLogLevelChange" style="margin-left: 16px">
+                    <el-radio v-for="item in logLevelList" :key="item.value" :value="item.value">{{
+                        item.label
+                    }}</el-radio>
+                </el-radio-group>
             </div>
-        </div>
+        </SettingItem>
+        <SettingItem title="版本" id="version">
+            <span>app 版本：{{ version }}</span>
+        </SettingItem>
     </div>
 </template>
 
@@ -77,20 +122,13 @@ onMounted(async () => {
 .setting {
     padding: 16px;
     width: 100%;
-    &-item {
-        &-title {
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-    }
+    line-height: 1.6em;
 }
 .support {
     &-item {
         padding: 4px 6px;
         display: flex;
         align-items: flex-start;
-
         &-header {
             display: flex;
             justify-content: space-between;

@@ -14,9 +14,13 @@ html {
     font-size: 10px;
     overflow: hidden;
 }
+html.dark {
+    color-scheme: dark;
+}
 body {
     height: 100vh;
-    color: var(--el-text-color-primary);
+    color: var(--color-text-primary);
+    background: var(--color-bg);
     transition:
         color 0.5s,
         background-color 0.5s;

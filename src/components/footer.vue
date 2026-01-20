@@ -20,7 +20,8 @@ const { file } = defineProps<Props>()
 .footer {
     height: 20px;
     padding: 0 8px;
-    background: #f5f5f5;
+    background-color: var(--color-surface);
+    color: var(--color-text-primary);
     display: flex;
     align-items: center;
     align-content: center;

@@ -35,7 +35,7 @@ async fn updater_check(app: AppHandle) -> tauri_plugin_updater::Result<()> {
                 .window_classname("quicklook-upgrade")
                 .auto_resize()
                 .build();
-        }
+        },
         None => {
             let _ = app
                 .dialog()
@@ -43,7 +43,7 @@ async fn updater_check(app: AppHandle) -> tauri_plugin_updater::Result<()> {
                 .kind(MessageDialogKind::Info)
                 .title("更新检查")
                 .blocking_show();
-        }
+        },
     }
 
     Ok(())
@@ -89,21 +89,22 @@ pub fn create_tray(app: &mut App) -> tauri::Result<()> {
         .on_menu_event(move |app, event| match event.id.as_ref() {
             "quit" => {
                 app.exit(0);
-            }
+            },
             "upgrade" => {
                 let handle = app.clone();
                 tauri::async_runtime::spawn(async move {
                     let _ = updater_check(handle).await;
                 });
-            }
+            },
             "setting" => {
                 println!("Setting");
                 // 打开设置窗口
-                if let Ok(webview_window) = helper::get_webview_window(app, "main", "/settings") {
+                if let Ok(webview_window) = helper::get_webview_window(app, "settings", "/settings")
+                {
                     let _ = webview_window.set_title("设置");
                     let _ = webview_window.show();
                 }
-            }
+            },
             "auto_start" => {
                 let autostart_manager = app.autolaunch();
                 // let is_enabled = autostart_manager.is_enabled();
@@ -126,9 +127,9 @@ pub fn create_tray(app: &mut App) -> tauri::Result<()> {
                         log::info!("自启动设置为开启");
                     }
                 }
-            }
+            },
             // Add more events here
-            _ => {}
+            _ => {},
         })
         .on_tray_icon_event(|tray, event| {
             if let TrayIconEvent::Click {

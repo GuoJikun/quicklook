@@ -2,11 +2,11 @@ use tauri::{
     webview::WebviewWindow, AppHandle, Error as TError, Manager, WebviewUrl, WebviewWindowBuilder,
 };
 
-pub mod archives;
+pub mod audio;
 pub mod config;
-pub mod docs;
 pub mod ffm;
 pub mod monitor;
+pub mod selected_file;
 pub mod win;
 
 #[allow(unused)]

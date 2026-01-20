@@ -132,7 +132,7 @@ pub extern "C" fn archive_list_entries(
                         *result = c_string.into_raw();
                     }
                     0
-                }
+                },
                 Err(_) => -1,
             },
             Err(_) => -1,

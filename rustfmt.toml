@@ -1,0 +1,21 @@
+# === 基础设置 ===
+max_width = 100
+tab_spaces = 4
+hard_tabs = false
+newline_style = "Unix"          # 强制 LF，避免 CRLF 混入
+
+# === 导入与模块 ===
+reorder_imports = true
+reorder_modules = true
+
+# === 函数与表达式 ===
+fn_params_layout = "Tall"       # 参数多时竖排
+
+# === 链式调用 ===
+chain_width = 60
+
+# === match / if / else ===
+match_block_trailing_comma = true
+
+# === 结构体 / 枚举 ===
+struct_lit_width = 40
