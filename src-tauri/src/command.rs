@@ -86,6 +86,20 @@ pub fn set_log_level(level: usize) -> Result<(), String> {
 }
 
 #[command]
+pub fn set_log_level(level: usize) -> Result<(), String> {
+    let level_filter = match level {
+        1 => LevelFilter::Error,
+        2 => LevelFilter::Warn,
+        3 => LevelFilter::Info,
+        4 => LevelFilter::Debug,
+        5 => LevelFilter::Trace,
+        _ => LevelFilter::Off,
+    };
+    set_max_level(level_filter);
+    Ok(())
+}
+
+#[command]
 pub fn psd_to_png(path: &str) -> Result<String, String> {
     let file_bytes = std::fs::read(path);
 
