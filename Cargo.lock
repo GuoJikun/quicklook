@@ -112,7 +112,7 @@ checksum = "b0674a1ddeecb70197781e945de4b3b8ffb61fa939a5597bcf48503737663100"
 
 [[package]]
 name = "app"
-version = "0.15.1"
+version = "0.17.1"
 dependencies = [
  "chrono",
  "image",
