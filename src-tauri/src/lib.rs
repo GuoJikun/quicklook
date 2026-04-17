@@ -5,7 +5,7 @@ use tauri_plugin_autostart::ManagerExt;
 #[cfg(not(debug_assertions))]
 use tauri_plugin_store::StoreExt;
 
-mod helper;
+pub mod helper; // 调试需要从 bin 访问
 mod preview;
 mod tray;
 
@@ -13,7 +13,7 @@ mod tray;
 mod command;
 use command::{
     archive, document, get_default_program_name, get_monitor_info, parse_lrc, psd_to_png,
-    read_audio_info, set_log_level, show_open_with_dialog,
+    read_audio_info, set_log_level, show_open_with_dialog, start_hls_process,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -117,6 +117,7 @@ pub fn run() {
             document,
             get_monitor_info,
             get_default_program_name,
+            start_hls_process,
             set_log_level,
             psd_to_png,
             read_audio_info,

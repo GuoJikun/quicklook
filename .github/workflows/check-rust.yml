@@ -24,6 +24,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Download and set up vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git
+          cd vcpkg
+          .\bootstrap-vcpkg.bat
+      - name: Install ffmpeg
+        run: |
+          cd vcpkg
+          .\vcpkg.exe install ffmpeg
+      - name: Add vcpkg to PATH
+        run: |
+          echo "$env:GITHUB_WORKSPACE\\vcpkg" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          echo "VCPKG_ROOT=$env:GITHUB_WORKSPACE\\vcpkg" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
