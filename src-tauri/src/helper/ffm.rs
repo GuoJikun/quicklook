@@ -1,9 +1,40 @@
 // chrono 仅在多 run 目录方案时需要，恢复固定目录后可移除
+use ez_ffmpeg::core::codec::{get_decoders, get_encoders};
 use ez_ffmpeg::core::context::output::VSyncMethod;
 use ez_ffmpeg::core::stream_info::{find_video_stream_info, StreamInfo};
 use ez_ffmpeg::{AVRational, FfmpegContext, FfmpegScheduler, Output};
-use std::{path::PathBuf, thread};
+use std::{env, fs, path::Path, path::PathBuf, thread};
 use tiny_http::{Response, Server};
+
+pub fn detect_supported_hw_decode() -> Option<String> {
+    let mut names: Vec<String> = get_decoders()
+        .into_iter()
+        .map(|c| c.codec_name.to_ascii_lowercase())
+        .collect();
+    names.extend(
+        get_encoders()
+            .into_iter()
+            .map(|c| c.codec_name.to_ascii_lowercase()),
+    );
+
+    let contains_any = |keys: &[&str]| -> bool {
+        names
+            .iter()
+            .any(|name| keys.iter().any(|key| name.contains(key)))
+    };
+
+    if contains_any(&["cuvid", "nvdec", "nvenc", "nvcodec"]) {
+        return Some("nvcodec".to_string());
+    }
+    if contains_any(&["qsv"]) {
+        return Some("qsv".to_string());
+    }
+    if contains_any(&["amf"]) {
+        return Some("amf".to_string());
+    }
+
+    Some("openh264".to_string())
+}
 
 fn generate_hls(input_file: &str, output_dir: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
     std::fs::create_dir_all(&output_dir)?;
@@ -40,10 +71,7 @@ fn generate_hls(input_file: &str, output_dir: &PathBuf) -> Result<(), Box<dyn st
     }
 
     // 仅在使用 CFR 时设置精确帧率 (整数分数 num/den=round fps /1)
-    let fps_rational = AVRational {
-        num: source_fps.round() as i32,
-        den: 1,
-    };
+    let fps_rational = AVRational { num: source_fps.round() as i32, den: 1 };
 
     let video_codecs = vec!["h264", "mpeg4", "libvpx", "libvpx-vp9"]; // 优先级
     let audio_codecs = vec!["mp3", "aac", "libmp3lame"]; // 音频优先级
@@ -138,7 +166,7 @@ fn generate_hls(input_file: &str, output_dir: &PathBuf) -> Result<(), Box<dyn st
                                 Err(e) => eprintln!("❌ HLS 转码错误: {:?}", e),
                             });
                             return Ok(());
-                        }
+                        },
                         Err(e) => {
                             last_error = Some(Box::new(e));
                             println!(
@@ -146,9 +174,9 @@ fn generate_hls(input_file: &str, output_dir: &PathBuf) -> Result<(), Box<dyn st
                                 video_codec, audio_codec
                             );
                             continue;
-                        }
+                        },
                     }
-                }
+                },
                 Err(e) => {
                     last_error = Some(Box::new(e));
                     println!(
@@ -156,7 +184,7 @@ fn generate_hls(input_file: &str, output_dir: &PathBuf) -> Result<(), Box<dyn st
                         video_codec, audio_codec
                     );
                     continue;
-                }
+                },
             }
         }
     }
@@ -176,11 +204,11 @@ fn start_http_server(hls_dir: PathBuf) {
             Ok(s) => {
                 println!("✅ HLS server at http://127.0.0.1:17878");
                 s
-            }
+            },
             Err(e) => {
                 eprintln!("ℹ️ HLS server already running or cannot bind: {}", e);
                 return; // 不重复启动
-            }
+            },
         };
 
         for request in server.incoming_requests() {
@@ -222,13 +250,13 @@ fn start_http_server(hls_dir: PathBuf) {
                         if let Err(e) = request.respond(response) {
                             eprintln!("Failed to send response: {}", e);
                         }
-                    }
+                    },
                     Err(e) => {
                         eprintln!("Failed to read file {}: {}", full_path.display(), e);
                         let response =
                             Response::from_string("Internal Server Error").with_status_code(500);
                         let _ = request.respond(response);
-                    }
+                    },
                 }
             } else {
                 let response = Response::from_string("Not Found")
