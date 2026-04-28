@@ -82,24 +82,33 @@ pub fn get_default_program_name(path: &str) -> Result<String, String> {
 #[command]
 #[cfg(not(windows))]
 pub fn get_default_program_name(path: &str) -> Result<String, String> {
-    // 在非 Windows 平台通过 xdg-mime 查询默认程序
-    let ext = std::path::Path::new(path)
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("");
-
+    // 先通过 xdg-mime 查询文件的 MIME 类型，再查询对应的默认程序
     let mime_output = std::process::Command::new("xdg-mime")
-        .args(["query", "default", &format!("application/x-{}", ext)])
+        .args(["query", "filetype", path])
         .output()
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| format!("xdg-mime 执行失败: {}", e))?;
 
-    let app_name = String::from_utf8_lossy(&mime_output.stdout).trim().to_string();
-    if app_name.is_empty() {
-        Err("未找到默认程序".to_string())
-    } else {
-        // 去掉 .desktop 后缀
-        Ok(app_name.trim_end_matches(".desktop").to_string())
+    if !mime_output.status.success() {
+        return Err("xdg-mime query filetype 失败".to_string());
     }
+
+    let mime_type = String::from_utf8_lossy(&mime_output.stdout).trim().to_string();
+    if mime_type.is_empty() {
+        return Err("未能确定文件 MIME 类型".to_string());
+    }
+
+    let app_output = std::process::Command::new("xdg-mime")
+        .args(["query", "default", &mime_type])
+        .output()
+        .map_err(|e| format!("xdg-mime query default 执行失败: {}", e))?;
+
+    let app_name = String::from_utf8_lossy(&app_output.stdout).trim().to_string();
+    if app_name.is_empty() {
+        return Err(format!("未找到 {} 的默认程序", mime_type));
+    }
+
+    // 去掉 .desktop 后缀并返回
+    Ok(app_name.trim_end_matches(".desktop").to_string())
 }
 
 #[command]

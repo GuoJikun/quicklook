@@ -523,7 +523,6 @@ impl Selected {
     /// 需要安装 xdotool 和 xclip（或 xsel）：
     ///   `sudo apt install xdotool xclip`
     pub fn new() -> Result<String, String> {
-        Self::get_selected_type().ok_or_else(|| "当前窗口不是支持的文件管理器".to_string())?;
         Self::get_selected_file()
     }
 
