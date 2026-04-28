@@ -29,10 +29,12 @@
   },
   "bundle": {
     "active": true,
-    "shortDescription": "Windows 平台的文件预览工具",
+    "shortDescription": "文件预览工具",
     "createUpdaterArtifacts": true,
     "targets": [
-      "nsis"
+      "nsis",
+      "deb",
+      "appimage"
     ],
     "icon": [
       "icons/32x32.png",

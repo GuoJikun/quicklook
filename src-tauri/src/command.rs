@@ -2,20 +2,33 @@ use log::{set_max_level, LevelFilter};
 use quicklook_archive::{extractors, Extract};
 use quicklook_docs as docs;
 use std::path::PathBuf;
-use tauri::{command, AppHandle, Manager};
+use tauri::{command, AppHandle};
+#[cfg(windows)]
+use tauri::Manager;
+
+#[cfg(windows)]
 use windows::Win32::Foundation::HWND;
 
 #[path = "helper/mod.rs"]
 mod helper;
+#[cfg(windows)]
 use helper::{audio, monitor, win};
-// use helper::{archives, docs, ffmp, monitor, win};
+#[cfg(not(windows))]
+use helper::{audio, monitor};
 
 #[command]
+#[cfg(windows)]
 pub fn show_open_with_dialog(app: AppHandle, path: &str) {
     if let Some(preview_window) = app.get_webview_window("preview") {
         let hwnd = preview_window.hwnd().map_or(HWND::default(), |hwnd| hwnd);
         let _ = win::show_open_with_dialog(path, hwnd);
     }
+}
+
+#[command]
+#[cfg(not(windows))]
+pub fn show_open_with_dialog(_app: AppHandle, path: &str) {
+    let _ = std::process::Command::new("xdg-open").arg(path).spawn();
 }
 
 #[command]
@@ -61,8 +74,32 @@ pub fn get_monitor_info() -> monitor::MonitorInfo {
 }
 
 #[command]
+#[cfg(windows)]
 pub fn get_default_program_name(path: &str) -> Result<String, String> {
     win::get_default_program_name(path)
+}
+
+#[command]
+#[cfg(not(windows))]
+pub fn get_default_program_name(path: &str) -> Result<String, String> {
+    // 在非 Windows 平台通过 xdg-mime 查询默认程序
+    let ext = std::path::Path::new(path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("");
+
+    let mime_output = std::process::Command::new("xdg-mime")
+        .args(["query", "default", &format!("application/x-{}", ext)])
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    let app_name = String::from_utf8_lossy(&mime_output.stdout).trim().to_string();
+    if app_name.is_empty() {
+        Err("未找到默认程序".to_string())
+    } else {
+        // 去掉 .desktop 后缀
+        Ok(app_name.trim_end_matches(".desktop").to_string())
+    }
 }
 
 #[command]
@@ -99,7 +136,7 @@ pub fn psd_to_png(path: &str) -> Result<String, String> {
     let height = psd_obj.height();
     let img = image::RgbaImage::from_raw(width, height, rgba);
 
-    // Windows 临时目录
+    // 临时目录（跨平台）
     let mut temp_path: PathBuf = std::env::temp_dir();
     temp_path.push("quicklook_psd_preview.png"); // 固定文件名
 

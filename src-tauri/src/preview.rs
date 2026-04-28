@@ -3,6 +3,8 @@ use tauri::{
     webview::PageLoadEvent, AppHandle, Error as TauriError, Manager, WebviewUrl,
     WebviewWindowBuilder,
 };
+
+#[cfg(windows)]
 use windows::Win32::{
     Foundation::{LPARAM, LRESULT, WPARAM},
     UI::{Input::KeyboardAndMouse, WindowsAndMessaging},
@@ -16,13 +18,35 @@ use helper::{monitor, selected_file::Selected};
 mod utils;
 use utils::{get_file_info, File as UFile};
 
+// ── Windows-specific fields ──────────────────────────────────────────────────
+
+#[cfg(windows)]
 #[derive(Debug, Clone)]
 pub struct PreviewFile {
-    hook_handle: Option<WindowsAndMessaging::HHOOK>, // 钩子的句柄
+    hook_handle: Option<WindowsAndMessaging::HHOOK>,
     app_handle: Option<AppHandle>,
 }
+
+#[cfg(windows)]
 unsafe impl Send for PreviewFile {}
+#[cfg(windows)]
 unsafe impl Sync for PreviewFile {}
+
+// ── Linux / other platforms ──────────────────────────────────────────────────
+
+#[cfg(not(windows))]
+#[derive(Debug, Clone)]
+pub struct PreviewFile {
+    #[allow(dead_code)]
+    app_handle: Option<AppHandle>,
+}
+
+#[cfg(not(windows))]
+unsafe impl Send for PreviewFile {}
+#[cfg(not(windows))]
+unsafe impl Sync for PreviewFile {}
+
+// ── Shared types ─────────────────────────────────────────────────────────────
 
 pub struct WebRoute {
     path: String,
@@ -65,15 +89,17 @@ impl WebRoute {
     }
 }
 
+// ── Windows implementation ───────────────────────────────────────────────────
+
+#[cfg(windows)]
 #[allow(dead_code)]
 impl PreviewFile {
-    // 注册键盘钩子
     pub fn set_keyboard_hook(&mut self) {
         let hook_ex = unsafe {
             WindowsAndMessaging::SetWindowsHookExW(
                 WindowsAndMessaging::WH_KEYBOARD_LL,
-                Some(Self::keyboard_proc), // 使用结构体的键盘回调
-                None,                      // 当前进程实例句柄
+                Some(Self::keyboard_proc),
+                None,
                 0,
             )
         };
@@ -87,7 +113,6 @@ impl PreviewFile {
         }
     }
 
-    // 取消键盘钩子
     pub fn remove_keyboard_hook(&mut self) {
         if let Some(hook) = self.hook_handle {
             unsafe {
@@ -97,7 +122,6 @@ impl PreviewFile {
         }
     }
 
-    // 按键处理逻辑
     pub fn handle_key_down(&self, vk_code: u32) {
         if vk_code == KeyboardAndMouse::VK_SPACE.0 as u32 {
             let result = Self::preview_file(self.app_handle.clone().unwrap());
@@ -107,9 +131,7 @@ impl PreviewFile {
         }
     }
 
-    // 全局键盘钩子的回调函数
     extern "system" fn keyboard_proc(ncode: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
-        // 确保消息被传递给其他应用程序
         let next_hook_result =
             unsafe { WindowsAndMessaging::CallNextHookEx(None, ncode, wparam, lparam) };
         #[cfg(debug_assertions)]
@@ -128,7 +150,6 @@ impl PreviewFile {
                     return next_hook_result;
                 }
 
-                // 获取 PreviewFile 实例并处理按键事件
                 if let Some(app) = get_global_instance() {
                     app.handle_key_down(vk_code);
                 }
@@ -137,6 +158,7 @@ impl PreviewFile {
 
         next_hook_result
     }
+
     fn calc_window_size(file_type: &str) -> (f64, f64) {
         let monitor_info = monitor::get_monitor_info();
 
@@ -252,15 +274,160 @@ impl PreviewFile {
     }
 }
 
+#[cfg(windows)]
+impl Drop for PreviewFile {
+    fn drop(&mut self) {
+        println!("Dropping PreviewFile instance");
+        self.remove_keyboard_hook();
+    }
+}
+
+#[cfg(windows)]
+impl Default for PreviewFile {
+    fn default() -> Self {
+        PreviewFile::new()
+    }
+}
+
+// ── Linux / other platforms implementation ───────────────────────────────────
+
+#[cfg(not(windows))]
+#[allow(dead_code)]
+impl PreviewFile {
+    pub fn new() -> Self {
+        Self { app_handle: None }
+    }
+
+    fn calc_window_size(file_type: &str) -> (f64, f64) {
+        let monitor_info = monitor::get_monitor_info();
+
+        let scale = monitor_info.scale;
+        let mut width = 1000.0;
+        let mut height = 600.0;
+
+        if monitor_info.width > 0.0 {
+            if file_type == "Audio" {
+                width = 560.0;
+                height = 200.0;
+            } else {
+                width = monitor_info.width * 0.8;
+                height = monitor_info.height * 0.8;
+            }
+        }
+
+        if monitor_info.scale > 1.0 {
+            width = helper::get_scaled_size(width, scale);
+            height = helper::get_scaled_size(height, scale);
+        }
+
+        log::info!(
+            "Client Rect: width is {}, height is {}, scale is {}",
+            width,
+            height,
+            scale
+        );
+        (width, height)
+    }
+
+    pub fn preview_file(app: AppHandle) -> Result<(), TauriError> {
+        let file_path = Selected::new();
+        if file_path.is_ok() {
+            let file_path = file_path.unwrap();
+            let file_info = get_file_info(&file_path);
+
+            let preview_state = app.state::<PreviewState>();
+            let mut preview_state = preview_state.lock().unwrap();
+            preview_state.input_path = file_path.clone();
+
+            if file_info.is_none() {
+                return Ok(());
+            }
+
+            let file_info = file_info.unwrap();
+            let file_type = file_info.get_file_type();
+
+            let (width, height) = Self::calc_window_size(&file_type);
+
+            match app.get_webview_window("preview") {
+                Some(window) => {
+                    let type_str = file_info.get_file_type();
+                    let route = WebRoute::get_route(&type_str, &file_info);
+
+                    let url = route.to_url();
+                    let js = format!("window.location.href = '{}'", &url);
+                    let _ = window.eval(js.as_str());
+
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                },
+                None => {
+                    let result = WebviewWindowBuilder::new(
+                        &app,
+                        "preview",
+                        WebviewUrl::App("/preview".into()),
+                    )
+                    .title("Preview")
+                    .center()
+                    .devtools(cfg!(debug_assertions))
+                    .decorations(false)
+                    .skip_taskbar(false)
+                    .auto_resize()
+                    .inner_size(width, height)
+                    .min_inner_size(300.0, 200.0)
+                    .on_page_load(move |window, payload| {
+                        let cur_path = payload.url().path();
+                        if cur_path == "/preview" {
+                            match payload.event() {
+                                PageLoadEvent::Finished => {
+                                    let type_str = file_info.get_file_type();
+                                    let route = WebRoute::get_route(&type_str, &file_info);
+
+                                    let url = route.to_url();
+                                    let js = format!("window.location.href = '{}'", &url);
+                                    let _ = window.eval(js.as_str());
+
+                                    let _ = window.show();
+                                    let _ = window.set_focus();
+                                },
+                                _ => {},
+                            }
+                        }
+                    })
+                    .focused(true)
+                    .visible_on_all_workspaces(true)
+                    .build();
+                    if let Ok(preview) = result {
+                        let _ = preview.show();
+                    }
+                },
+            }
+        } else {
+            log::error!("Error: {:?}", file_path.err().unwrap());
+        }
+
+        Ok(())
+    }
+}
+
+#[cfg(not(windows))]
+impl Default for PreviewFile {
+    fn default() -> Self {
+        PreviewFile::new()
+    }
+}
+
+// ── Global singleton ─────────────────────────────────────────────────────────
+
 static PREVIEW_INSTANCE: LazyLock<Mutex<Option<Arc<PreviewFile>>>> =
     LazyLock::new(|| Mutex::new(None));
-// 函数用于设置全局 PreviewFile 实例
+
 pub fn set_global_instance(instance: PreviewFile) {
     if let Ok(mut handle) = PREVIEW_INSTANCE.lock() {
         *handle = Some(Arc::new(instance));
     }
 }
-// 函数用于获取全局 PreviewFile 实例
+
+#[cfg(windows)]
 fn get_global_instance() -> Option<Arc<PreviewFile>> {
     if let Ok(guard) = PREVIEW_INSTANCE.lock() {
         guard.clone()
@@ -269,18 +436,7 @@ fn get_global_instance() -> Option<Arc<PreviewFile>> {
     }
 }
 
-impl Drop for PreviewFile {
-    fn drop(&mut self) {
-        println!("Dropping PreviewFile instance");
-        self.remove_keyboard_hook();
-    }
-}
-
-impl Default for PreviewFile {
-    fn default() -> Self {
-        PreviewFile::new()
-    }
-}
+// ── Shared state ─────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Default)]
 pub struct PreviewStateInner {
@@ -292,15 +448,50 @@ unsafe impl Sync for PreviewStateInner {}
 
 pub type PreviewState = Mutex<PreviewStateInner>;
 
-//noinspection ALL
-// 公开一个全局函数来初始化 PreviewFile
+// ── init_preview_file ─────────────────────────────────────────────────────────
+
+/// Windows: 注册全局键盘钩子
+#[cfg(windows)]
 pub fn init_preview_file(handle: AppHandle) {
     let mut preview_file = PreviewFile::default();
     preview_file.set_keyboard_hook();
     preview_file.app_handle = Some(handle.clone());
 
-    // 将实例存储在全局变量中
     set_global_instance(preview_file);
-
     handle.manage::<PreviewState>(Mutex::new(PreviewStateInner::default()));
+}
+
+/// Linux: 在后台线程中使用 rdev 监听全局键盘事件
+#[cfg(target_os = "linux")]
+pub fn init_preview_file(handle: AppHandle) {
+    let preview_file = PreviewFile { app_handle: Some(handle.clone()) };
+    set_global_instance(preview_file);
+    handle.manage::<PreviewState>(Mutex::new(PreviewStateInner::default()));
+
+    let app_handle = handle.clone();
+    std::thread::spawn(move || {
+        use rdev::{listen, Event, EventType, Key};
+
+        let callback = move |event: Event| {
+            if let EventType::KeyPress(Key::Space) = event.event_type {
+                if Selected::get_focused_type().is_some() {
+                    let result = PreviewFile::preview_file(app_handle.clone());
+                    if let Err(e) = result {
+                        log::error!("预览失败: {:?}", e);
+                    }
+                }
+            }
+        };
+
+        if let Err(e) = listen(callback) {
+            log::error!("键盘监听器错误: {:?}", e);
+        }
+    });
+}
+
+/// 其他不支持的平台：空实现
+#[cfg(not(any(windows, target_os = "linux")))]
+pub fn init_preview_file(handle: AppHandle) {
+    handle.manage::<PreviewState>(Mutex::new(PreviewStateInner::default()));
+    log::warn!("当前平台不支持全局键盘监听，预览功能不可用");
 }

@@ -1,7 +1,7 @@
 [package]
 name = "app"
 version = "0.17.1"
-description = "Windows 平台的文件预览工具"
+description = "文件预览工具"
 authors = ["GuoJikun <guojikun486546@163.com>"]
 license = ""
 repository = "https://github.com/GuoJikun/quicklook.git"
@@ -27,23 +27,6 @@ tauri = { version = "2.10.3", features = [
     "unstable",
     "tray-icon",
 ] }
-windows = { version = "0.61.0", features = [
-    "Win32_System_Com",
-    "Win32_UI_Shell",
-    "Win32_UI_Shell_Common",
-    "Win32_Storage_FileSystem",
-    "Win32_Foundation",
-    "Win32_System_Threading",
-    "Win32_UI_WindowsAndMessaging",
-    "Win32_System_Ole",
-    "Win32_System_Registry",
-    "Win32_Graphics_Gdi",
-    "Win32_UI_Accessibility",
-    "Win32_System_SystemServices",
-    "Win32_System_Variant",
-    "Win32_UI_Input",
-    "Win32_UI_Input_KeyboardAndMouse",
-] }
 # tauri 相关
 tauri-plugin-opener = "2.5.3"
 tauri-plugin-fs = "2.5.0"
@@ -65,3 +48,25 @@ quicklook-archive = { path = "../crates/archive" }
 quicklook-docs = { path = "../crates/docs" }
 psd = "0.3.5"
 image = { version = "0.25.6", features = ["png", "webp"] }
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.61.0", features = [
+    "Win32_System_Com",
+    "Win32_UI_Shell",
+    "Win32_UI_Shell_Common",
+    "Win32_Storage_FileSystem",
+    "Win32_Foundation",
+    "Win32_System_Threading",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_System_Ole",
+    "Win32_System_Registry",
+    "Win32_Graphics_Gdi",
+    "Win32_UI_Accessibility",
+    "Win32_System_SystemServices",
+    "Win32_System_Variant",
+    "Win32_UI_Input",
+    "Win32_UI_Input_KeyboardAndMouse",
+] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+rdev = "0.5.3"

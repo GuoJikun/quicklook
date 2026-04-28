@@ -6,6 +6,7 @@ pub mod audio;
 pub mod config;
 pub mod monitor;
 pub mod selected_file;
+#[cfg(windows)]
 pub mod win;
 
 #[allow(unused)]

@@ -1,5 +1,11 @@
+// ============================================================
+// Windows-specific implementation
+// ============================================================
+#[cfg(windows)]
 use std::sync::mpsc;
+#[cfg(windows)]
 use std::thread;
+#[cfg(windows)]
 use windows::{
     core::{w, Error as WError, Interface, BOOL, HSTRING},
     Win32::{
@@ -29,8 +35,10 @@ use windows::{
     },
 };
 
+#[cfg(windows)]
 use crate::helper::win;
 
+#[cfg(windows)]
 #[allow(dead_code)]
 #[derive(Debug)]
 pub enum FwWindowType {
@@ -42,6 +50,7 @@ pub enum FwWindowType {
 #[allow(dead_code)]
 pub struct Selected;
 
+#[cfg(windows)]
 #[allow(dead_code)]
 impl Selected {
     pub fn new() -> Result<String, WError> {
@@ -427,8 +436,134 @@ impl Selected {
     }
 }
 
+#[cfg(windows)]
 impl Drop for Selected {
     fn drop(&mut self) {
         unsafe { CoUninitialize() }
     }
 }
+
+// ============================================================
+// Linux implementation
+// ============================================================
+
+/// 获取当前活动窗口的 WM_CLASS（通过 xdotool）
+#[cfg(target_os = "linux")]
+fn get_active_window_class() -> Option<String> {
+    let output = std::process::Command::new("xdotool")
+        .args(["getactivewindow", "getwindowclassname"])
+        .output()
+        .ok()?;
+
+    if output.status.success() {
+        Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    } else {
+        None
+    }
+}
+
+/// 从剪贴板 URI 列表中解析第一个本地文件路径
+#[cfg(target_os = "linux")]
+fn parse_uri_list(content: &str) -> Option<String> {
+    for line in content.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        if let Some(encoded) = line.strip_prefix("file://") {
+            let path = urlencoding::decode(encoded)
+                .map(|s| s.to_string())
+                .unwrap_or_else(|_| encoded.to_string());
+            if !path.is_empty() {
+                return Some(path);
+            }
+        }
+    }
+    None
+}
+
+/// 使用 xclip 或 xsel 读取剪贴板中的 URI 列表
+#[cfg(target_os = "linux")]
+fn read_clipboard_uri_list() -> Option<String> {
+    // 优先使用 xclip
+    if let Ok(output) = std::process::Command::new("xclip")
+        .args(["-o", "-selection", "clipboard", "-t", "text/uri-list"])
+        .output()
+    {
+        if output.status.success() {
+            let content = String::from_utf8_lossy(&output.stdout);
+            if let Some(path) = parse_uri_list(&content) {
+                return Some(path);
+            }
+        }
+    }
+
+    // 回退到 xsel（读取 UTF-8 文本，Nautilus 通常写入 URI 格式）
+    if let Ok(output) = std::process::Command::new("xsel")
+        .args(["--clipboard", "--output"])
+        .output()
+    {
+        if output.status.success() {
+            let content = String::from_utf8_lossy(&output.stdout);
+            if let Some(path) = parse_uri_list(&content) {
+                return Some(path);
+            }
+        }
+    }
+
+    None
+}
+
+#[cfg(target_os = "linux")]
+#[allow(dead_code)]
+impl Selected {
+    /// 获取当前文件管理器中选中的文件路径
+    ///
+    /// 实现原理：向活动窗口发送 Ctrl+C（xdotool），然后从剪贴板读取 URI 列表。
+    /// 需要安装 xdotool 和 xclip（或 xsel）：
+    ///   `sudo apt install xdotool xclip`
+    pub fn new() -> Result<String, String> {
+        Self::get_selected_type().ok_or_else(|| "当前窗口不是支持的文件管理器".to_string())?;
+        Self::get_selected_file()
+    }
+
+    /// 检查当前活动窗口是否为受支持的文件管理器，是则返回 Some(())
+    pub fn get_focused_type() -> Option<()> {
+        Self::get_selected_type()
+    }
+
+    fn get_selected_type() -> Option<()> {
+        let class_name = get_active_window_class()?;
+        let lower = class_name.to_lowercase();
+        // 支持 Nautilus、Nemo、Thunar、Dolphin 等常见文件管理器
+        if lower.contains("nautilus")
+            || lower.contains("nemo")
+            || lower.contains("thunar")
+            || lower.contains("dolphin")
+            || lower.contains("pcmanfm")
+            || lower.contains("caja")
+        {
+            Some(())
+        } else {
+            None
+        }
+    }
+
+    fn get_selected_file() -> Result<String, String> {
+        // 向活动文件管理器窗口发送 Ctrl+C，将选中文件写入剪贴板
+        let status = std::process::Command::new("xdotool")
+            .args(["key", "--clearmodifiers", "ctrl+c"])
+            .status()
+            .map_err(|e| format!("xdotool 执行失败: {}", e))?;
+
+        if !status.success() {
+            return Err("xdotool key 命令失败".to_string());
+        }
+
+        // 等待剪贴板更新
+        std::thread::sleep(std::time::Duration::from_millis(150));
+
+        read_clipboard_uri_list().ok_or_else(|| "剪贴板中未找到文件 URI".to_string())
+    }
+}
+

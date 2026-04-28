@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::os::windows::fs::MetadataExt;
 use std::path::Path;
+#[cfg(windows)]
+use std::os::windows::fs::MetadataExt;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct File {
@@ -145,14 +146,31 @@ pub fn get_file_info(path: &str) -> Option<File> {
 
     let metadata = file_path.metadata().unwrap();
 
+    // 获取文件大小（跨平台）
+    #[cfg(windows)]
+    let file_size = metadata.file_size();
+    #[cfg(not(windows))]
+    let file_size = metadata.len();
+
+    // 获取文件最后修改时间（跨平台，转换为 Unix 时间戳秒数）
+    #[cfg(windows)]
+    let last_modified = metadata.last_write_time();
+    #[cfg(not(windows))]
+    let last_modified = metadata
+        .modified()
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+
     // 根据扩展名从映射表中获取文件类型
     match file_type_mapping().get(extension.as_str()) {
         Some(file_type) => Some(File::new(
             file_type,
             path_str,
             extension,
-            metadata.file_size(),
-            metadata.last_write_time(),
+            file_size,
+            last_modified,
             name,
         )),
         None => None, // 如果没有匹配的文件类型，返回 None
