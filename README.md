@@ -96,6 +96,14 @@ pnpm tauri build
 
 ![code.png](./screenshots/preview-zip.png)
 
+### 预览 Video
+
+![code.png](./screenshots/preview-video.png)
+
+### 预览 Audio
+
+![code.png](./screenshots/preview-audio.png)
+
 ## License/许可证
 
 项目使用了 MIT 和 Apache 2.0。
