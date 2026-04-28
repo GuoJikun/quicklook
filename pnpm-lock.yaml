@@ -140,6 +140,9 @@ importers:
       xgplayer:
         specifier: ^3.0.24
         version: 3.0.24(core-js@3.49.0)
+      xgplayer-hls.js:
+        specifier: ^3.0.24
+        version: 3.0.24(core-js@3.49.0)(xgplayer@3.0.24(core-js@3.49.0))
     devDependencies:
       '@sentry/vite-plugin':
         specifier: ^5.2.0
@@ -2199,6 +2202,10 @@ packages:
   deep-is@0.1.4:
     resolution: {integrity: sha512-oIPzksmTg4/MriiaYGO+okXDT7ztn/w3Eptv/+gSIdMdKsJo0u4CfYNFJPy+4SKMuCqGw2wxnA+URMg3t8a/bQ==}
 
+  deepmerge@2.0.1:
+    resolution: {integrity: sha512-VIPwiMJqJ13ZQfaCsIFnp5Me9tnjURiaIFxfz7EH0Ci0dTSQpZtSLrqOicXqEd/z2r+z+Klk9GzmnRsgpgbOsQ==}
+    engines: {node: '>=0.10.0'}
+
   delayed-stream@1.0.0:
     resolution: {integrity: sha512-ZySD7Nf91aLB0RxL4KGrKHBXl7Eds1DAmEdcoVawXnLD7SDhpNgtuII2aAkg7a7QS41jxPSZ17p4VdGnMHk3MQ==}
     engines: {node: '>=0.4.0'}
@@ -2518,6 +2525,9 @@ packages:
   highlight.js@11.11.1:
     resolution: {integrity: sha512-Xwwo44whKBVCYoliBQwaPvtd/2tYFkRQtXDWj1nackaV2JPXx3L0+Jvd8/qCJ2p+ML0/XVkJ2q+Mr+UVdpJK5w==}
     engines: {node: '>=12.0.0'}
+
+  hls.js@1.6.16:
+    resolution: {integrity: sha512-VSIRpLfRwlAAdGL4wiTucx2ScRipo0ed1FBatWkyt832jC4CReKstga6yIhYVwGu9LOBjuX9wzmRMeQdBJtzEA==}
 
   hookable@5.5.3:
     resolution: {integrity: sha512-Yc+BQe8SvoXH1643Qez1zqLRmbA5rCL+sSmk6TVos0LWVfNIB7PGncdlId77WzLGSIB5KaWgTaNTs2lNVEI6VQ==}
@@ -3700,6 +3710,12 @@ packages:
         optional: true
       utf-8-validate:
         optional: true
+
+  xgplayer-hls.js@3.0.24:
+    resolution: {integrity: sha512-XLPeYevtCI01/HxqjmWhTrdAD9mopMfd/J4QadCeUc5V+64mcN97RqyhE3m2XAhLqKIdmG34Qkvngz8AAwGEQw==}
+    peerDependencies:
+      core-js: '>=3.12.1'
+      xgplayer: '>=3.0.13'
 
   xgplayer-subtitles@3.0.24:
     resolution: {integrity: sha512-yrHROepD9kTGWiTSxBjh+TGaK9orQOHQ1GUxWFOkQzO8BLl/pcIAqqJkHiAoP0j+eU8VdIhpb55oJRIkTTWPsA==}
@@ -5791,6 +5807,8 @@ snapshots:
 
   deep-is@0.1.4: {}
 
+  deepmerge@2.0.1: {}
+
   delayed-stream@1.0.0: {}
 
   delegate@3.2.0: {}
@@ -6197,6 +6215,8 @@ snapshots:
   he@1.2.0: {}
 
   highlight.js@11.11.1: {}
+
+  hls.js@1.6.16: {}
 
   hookable@5.5.3: {}
 
@@ -7314,6 +7334,14 @@ snapshots:
       strip-ansi: 7.1.0
 
   ws@8.18.0: {}
+
+  xgplayer-hls.js@3.0.24(core-js@3.49.0)(xgplayer@3.0.24(core-js@3.49.0)):
+    dependencies:
+      core-js: 3.49.0
+      deepmerge: 2.0.1
+      event-emitter: 0.3.5
+      hls.js: 1.6.16
+      xgplayer: 3.0.24(core-js@3.49.0)
 
   xgplayer-subtitles@3.0.24(core-js@3.49.0):
     dependencies:

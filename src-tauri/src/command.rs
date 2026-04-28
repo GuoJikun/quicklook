@@ -2,12 +2,13 @@ use log::{set_max_level, LevelFilter};
 use quicklook_archive::{extractors, Extract};
 use quicklook_docs as docs;
 use std::path::PathBuf;
-use tauri::{command, AppHandle, Manager};
+use std::time::{SystemTime, UNIX_EPOCH};
+use tauri::{command, ipc::Channel, AppHandle, Manager};
 use windows::Win32::Foundation::HWND;
 
 #[path = "helper/mod.rs"]
 mod helper;
-use helper::{audio, monitor, win};
+use helper::{audio, ffm, monitor, win};
 // use helper::{archives, docs, ffmp, monitor, win};
 
 #[command]
@@ -63,6 +64,25 @@ pub fn get_monitor_info() -> monitor::MonitorInfo {
 #[command]
 pub fn get_default_program_name(path: &str) -> Result<String, String> {
     win::get_default_program_name(path)
+}
+
+#[command]
+pub fn start_hls_process(input: String) -> Result<String, String> {
+    ffm::start_hls_process(input)
+}
+
+#[command]
+pub fn set_log_level(level: usize) -> Result<(), String> {
+    let level_filter = match level {
+        1 => LevelFilter::Error,
+        2 => LevelFilter::Warn,
+        3 => LevelFilter::Info,
+        4 => LevelFilter::Debug,
+        5 => LevelFilter::Trace,
+        _ => LevelFilter::Off,
+    };
+    set_max_level(level_filter);
+    Ok(())
 }
 
 #[command]

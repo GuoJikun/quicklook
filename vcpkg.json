@@ -1,0 +1,24 @@
+{
+    "dependencies": [
+        {
+            "name": "ffmpeg",
+            "version>=": "7.1",
+            "features": [
+                "avcodec",
+                "avformat",
+                "swscale",
+                "openh264",
+                "mp3lame",
+                "nvcodec",
+                "qsv",
+                "amf"
+            ]
+        }
+    ],
+    "overrides": [
+        {
+            "name": "ffmpeg",
+            "version": "7.1.2#5"
+        }
+    ]
+}
