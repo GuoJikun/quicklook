@@ -447,22 +447,13 @@ impl Drop for Selected {
 // Linux implementation
 // ============================================================
 
-/// 检测当前 Linux 会话是否为 Wayland
-#[cfg(target_os = "linux")]
-fn is_wayland() -> bool {
-    std::env::var("WAYLAND_DISPLAY").is_ok()
-        || std::env::var("XDG_SESSION_TYPE")
-            .map(|v| v.eq_ignore_ascii_case("wayland"))
-            .unwrap_or(false)
-}
-
 // ── Active window detection ───────────────────────────────────────────────────
 
 /// 获取当前活动窗口的应用类名
 /// Wayland 环境优先，X11 作为回退
 #[cfg(target_os = "linux")]
 fn get_active_window_class() -> Option<String> {
-    if is_wayland() {
+    if super::is_wayland() {
         get_active_window_class_wayland().or_else(get_active_window_class_x11)
     } else {
         get_active_window_class_x11()
@@ -484,7 +475,7 @@ fn get_active_window_class_x11() -> Option<String> {
     }
 }
 
-/// Wayland：依次尝试 Hyprland → Sway/wlroots → kdotool (KDE)
+/// Wayland：依次尝试 Hyprland → Sway/wlroots → KDE → GNOME → kdotool
 #[cfg(target_os = "linux")]
 fn get_active_window_class_wayland() -> Option<String> {
     // Hyprland
@@ -517,6 +508,16 @@ fn get_active_window_class_wayland() -> Option<String> {
         }
     }
 
+    // GNOME Wayland：Shell.Introspect.GetWindows（GNOME 3.36+，推荐方式）
+    if let Some(class) = get_active_window_class_gnome_introspect() {
+        return Some(class);
+    }
+
+    // GNOME Wayland：Shell.Eval 回退（GNOME < 41 或启用了 unsafe-mode-menu 扩展）
+    if let Some(class) = get_active_window_class_gnome_eval() {
+        return Some(class);
+    }
+
     // KDE Wayland: kdotool (mirrors xdotool API)
     if let Ok(output) = std::process::Command::new("kdotool")
         .args(["getactivewindow", "getwindowclassname"])
@@ -531,6 +532,117 @@ fn get_active_window_class_wayland() -> Option<String> {
     }
 
     None
+}
+
+/// GNOME Wayland：通过 `org.gnome.Shell.Introspect.GetWindows` 获取焦点窗口的应用 ID
+/// 此接口自 GNOME 3.36 起可用，返回所有窗口及其属性（含 `has-focus` 和 `app-id`）。
+#[cfg(target_os = "linux")]
+fn get_active_window_class_gnome_introspect() -> Option<String> {
+    let output = std::process::Command::new("gdbus")
+        .args([
+            "call",
+            "--session",
+            "--dest",
+            "org.gnome.Shell",
+            "--object-path",
+            "/org/gnome/Shell/Introspect",
+            "--method",
+            "org.gnome.Shell.Introspect.GetWindows",
+        ])
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    let text = String::from_utf8_lossy(&output.stdout);
+    parse_gnome_introspect_focused_app(&text)
+}
+
+/// 解析 `GetWindows` 的 GVariant 文本输出，找出 `has-focus: true` 的窗口并返回其 app-id。
+///
+/// 示例输出（简化）：
+/// ```
+/// ({'8388611': {'app-id': <'org.gnome.Nautilus'>, 'has-focus': <true>, ...}, ...},)
+/// ```
+#[cfg(target_os = "linux")]
+fn parse_gnome_introspect_focused_app(text: &str) -> Option<String> {
+    use std::sync::OnceLock;
+
+    static RE_APP_ID: OnceLock<regex::Regex> = OnceLock::new();
+    static RE_WM_CLASS: OnceLock<regex::Regex> = OnceLock::new();
+
+    let re_app_id =
+        RE_APP_ID.get_or_init(|| regex::Regex::new(r"'app-id':\s*<'([^']+)'>").unwrap());
+    let re_wm_class =
+        RE_WM_CLASS.get_or_init(|| regex::Regex::new(r"'wm-class':\s*<'([^']+)'>").unwrap());
+
+    // 找到第一个 has-focus: <true> 的位置
+    let focus_marker = "'has-focus': <true>";
+    let focus_pos = text.find(focus_marker)?;
+
+    // 从该位置向前找到所在窗口属性块的起始 `{`
+    let block_start = text[..focus_pos].rfind('{')? + 1;
+
+    // 从 block_start 向后找到结束 `}`
+    let block_end = block_start + text[block_start..].find('}')?;
+    let block = &text[block_start..block_end];
+
+    // 优先提取 app-id（如 'org.gnome.Nautilus'）
+    if let Some(cap) = re_app_id.captures(block) {
+        let id = cap.get(1)?.as_str().to_string();
+        if !id.is_empty() {
+            return Some(id);
+        }
+    }
+
+    // 回退到 wm-class（部分合成器可能包含此字段）
+    if let Some(cap) = re_wm_class.captures(block) {
+        let class = cap.get(1)?.as_str().to_string();
+        if !class.is_empty() {
+            return Some(class);
+        }
+    }
+
+    None
+}
+
+/// GNOME Wayland：通过 `org.gnome.Shell.Eval` 获取焦点窗口类名
+/// 仅适用于 GNOME < 41 或启用了 `unsafe-mode-menu` 扩展的系统。
+#[cfg(target_os = "linux")]
+fn get_active_window_class_gnome_eval() -> Option<String> {
+    let output = std::process::Command::new("gdbus")
+        .args([
+            "call",
+            "--session",
+            "--dest",
+            "org.gnome.Shell",
+            "--object-path",
+            "/org/gnome/Shell",
+            "--method",
+            "org.gnome.Shell.Eval",
+            "global.display.focus_window?.wm_class ?? ''",
+        ])
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    let text = String::from_utf8_lossy(&output.stdout);
+    // 输出格式：(true, 'ClassName') 或 (false, '')
+    use std::sync::OnceLock;
+    static RE_EVAL: OnceLock<regex::Regex> = OnceLock::new();
+    let re = RE_EVAL.get_or_init(|| regex::Regex::new(r"\(true,\s*'([^']*)'\)").unwrap());
+    let cap = re.captures(text.trim())?;
+    let class = cap.get(1)?.as_str().to_string();
+    if class.is_empty() {
+        None
+    } else {
+        Some(class)
+    }
 }
 
 /// 递归在 Sway/i3 窗口树中寻找 focused 节点的 app_id
@@ -598,7 +710,7 @@ fn parse_uri_list(content: &str) -> Option<String> {
 /// Wayland 环境优先（wl-paste），X11 作为回退（xclip / xsel）
 #[cfg(target_os = "linux")]
 fn read_clipboard_uri_list() -> Option<String> {
-    if is_wayland() {
+    if super::is_wayland() {
         read_clipboard_wayland().or_else(read_clipboard_x11)
     } else {
         read_clipboard_x11()
@@ -676,7 +788,7 @@ fn read_clipboard_x11() -> Option<String> {
 /// X11：使用 xdotool
 #[cfg(target_os = "linux")]
 fn send_copy_shortcut() -> Result<(), String> {
-    if is_wayland() {
+    if super::is_wayland() {
         // ydotool: Wayland 原生输入模拟（需要 uinput 权限）
         // KEY_LEFTCTRL=29, KEY_C=46
         if let Ok(status) = std::process::Command::new("ydotool")

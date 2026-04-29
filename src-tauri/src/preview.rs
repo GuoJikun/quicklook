@@ -469,11 +469,59 @@ pub fn init_preview_file(handle: AppHandle) {
     handle.manage::<PreviewState>(Mutex::new(PreviewStateInner::default()));
 
     let app_handle = handle.clone();
-    std::thread::spawn(move || {
-        use rdev::{listen, Event, EventType, Key};
 
+    if helper::is_wayland() {
+        // Wayland 会话：使用 evdev（直接读 /dev/input/event*），可捕获所有应用的键盘事件，
+        // 包括 GTK4/Wayland 原生应用（如 Nautilus）。
+        // rdev 默认使用 X11/XRecord，对原生 Wayland 窗口的事件不可见。
+        std::thread::spawn(move || {
+            init_evdev_listener(app_handle);
+        });
+    } else {
+        // X11 会话：继续使用 rdev
+        std::thread::spawn(move || {
+            use rdev::{listen, Event, EventType, Key};
+
+            let callback = move |event: Event| {
+                if let EventType::KeyPress(Key::Space) = event.event_type {
+                    if Selected::get_focused_type().is_some() {
+                        let result = PreviewFile::preview_file(app_handle.clone());
+                        if let Err(e) = result {
+                            log::error!("预览失败: {:?}", e);
+                        }
+                    }
+                }
+            };
+
+            if let Err(e) = listen(callback) {
+                log::error!("键盘监听器错误: {:?}", e);
+            }
+        });
+    }
+}
+
+/// Wayland 键盘监听器：通过 evdev 读取原始输入设备事件
+///
+/// 需要用户对 `/dev/input/event*` 有读权限（GUI 会话用户在 Ubuntu 上默认通过
+/// logind/udev 的 `input` 组获得此权限）。若没有可用设备，自动回退到 rdev。
+#[cfg(target_os = "linux")]
+fn init_evdev_listener(app_handle: AppHandle) {
+    use evdev::{InputEventKind, Key};
+
+    // 枚举所有支持空格键的键盘设备
+    let keyboards: Vec<_> = evdev::enumerate()
+        .filter(|(_, d)| {
+            d.supported_keys()
+                .map_or(false, |k| k.contains(Key::KEY_SPACE))
+        })
+        .collect();
+
+    if keyboards.is_empty() {
+        log::warn!("evdev: 未找到键盘设备（可能缺少 /dev/input 读权限），回退到 rdev");
+        // 回退到 rdev
+        use rdev::{listen, Event, EventType, Key as RdevKey};
         let callback = move |event: Event| {
-            if let EventType::KeyPress(Key::Space) = event.event_type {
+            if let EventType::KeyPress(RdevKey::Space) = event.event_type {
                 if Selected::get_focused_type().is_some() {
                     let result = PreviewFile::preview_file(app_handle.clone());
                     if let Err(e) = result {
@@ -482,11 +530,50 @@ pub fn init_preview_file(handle: AppHandle) {
                 }
             }
         };
-
         if let Err(e) = listen(callback) {
             log::error!("键盘监听器错误: {:?}", e);
         }
-    });
+        return;
+    }
+
+    // 为每个键盘设备启动一个监听线程
+    let handles: Vec<_> = keyboards
+        .into_iter()
+        .map(|(path, mut device)| {
+            let handle = app_handle.clone();
+            std::thread::spawn(move || {
+                log::info!("evdev: 监听键盘设备 {:?}", path);
+                loop {
+                    match device.fetch_events() {
+                        Ok(events) => {
+                            for ev in events {
+                                if ev.kind() == InputEventKind::Key(Key::KEY_SPACE)
+                                    && ev.value() == 1
+                                {
+                                    if Selected::get_focused_type().is_some() {
+                                        let result = PreviewFile::preview_file(handle.clone());
+                                        if let Err(e) = result {
+                                            log::error!("预览失败: {:?}", e);
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        Err(e) => {
+                            log::error!("evdev 读取错误 ({:?}): {:?}", path, e);
+                            break;
+                        },
+                    }
+                }
+            })
+        })
+        .collect();
+
+    for h in handles {
+        if let Err(e) = h.join() {
+            log::error!("evdev listener thread panicked: {:?}", e);
+        }
+    }
 }
 
 /// 其他不支持的平台：空实现

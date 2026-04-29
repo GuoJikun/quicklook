@@ -50,33 +50,26 @@ pub fn get_monitor_info() -> MonitorInfo {
     }
 }
 
-/// 检测当前 Linux 会话是否为 Wayland
+/// Linux 默认分辨率回退值（当无法从系统查询时使用）
 #[cfg(target_os = "linux")]
-fn is_wayland() -> bool {
-    std::env::var("WAYLAND_DISPLAY").is_ok()
-        || std::env::var("XDG_SESSION_TYPE")
-            .map(|v| v.eq_ignore_ascii_case("wayland"))
-            .unwrap_or(false)
+fn default_monitor_info() -> MonitorInfo {
+    MonitorInfo {
+        width: 1920.0,
+        height: 1080.0,
+        scale: 1.0,
+    }
 }
 
 /// Linux 实现：Wayland 环境优先，X11 作为回退
 #[allow(dead_code)]
 #[cfg(target_os = "linux")]
 pub fn get_monitor_info() -> MonitorInfo {
-    if is_wayland() {
+    if super::is_wayland() {
         get_monitor_info_wayland()
             .or_else(get_monitor_info_xrandr)
-            .unwrap_or(MonitorInfo {
-                width: 1920.0,
-                height: 1080.0,
-                scale: 1.0,
-            })
+            .unwrap_or_else(default_monitor_info)
     } else {
-        get_monitor_info_xrandr().unwrap_or(MonitorInfo {
-            width: 1920.0,
-            height: 1080.0,
-            scale: 1.0,
-        })
+        get_monitor_info_xrandr().unwrap_or_else(default_monitor_info)
     }
 }
 
