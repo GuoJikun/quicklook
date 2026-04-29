@@ -50,42 +50,99 @@ pub fn get_monitor_info() -> MonitorInfo {
     }
 }
 
-/// Linux 实现：通过 xrandr 子进程获取主显示器信息
+/// 检测当前 Linux 会话是否为 Wayland
+#[cfg(target_os = "linux")]
+fn is_wayland() -> bool {
+    std::env::var("WAYLAND_DISPLAY").is_ok()
+        || std::env::var("XDG_SESSION_TYPE")
+            .map(|v| v.eq_ignore_ascii_case("wayland"))
+            .unwrap_or(false)
+}
+
+/// Linux 实现：Wayland 环境优先，X11 作为回退
 #[allow(dead_code)]
 #[cfg(target_os = "linux")]
 pub fn get_monitor_info() -> MonitorInfo {
-    use std::process::Command;
+    if is_wayland() {
+        get_monitor_info_wayland()
+            .or_else(get_monitor_info_xrandr)
+            .unwrap_or(MonitorInfo {
+                width: 1920.0,
+                height: 1080.0,
+                scale: 1.0,
+            })
+    } else {
+        get_monitor_info_xrandr().unwrap_or(MonitorInfo {
+            width: 1920.0,
+            height: 1080.0,
+            scale: 1.0,
+        })
+    }
+}
 
-    let output = Command::new("xrandr").arg("--current").output();
+/// Wayland：通过 wlr-randr（wlroots 合成器：Sway、Hyprland 等）获取显示器信息
+#[cfg(target_os = "linux")]
+fn get_monitor_info_wayland() -> Option<MonitorInfo> {
+    let output = std::process::Command::new("wlr-randr").output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    parse_wlr_randr_output(&stdout)
+}
 
-    if let Ok(output) = output {
-        let stdout = String::from_utf8_lossy(&output.stdout);
-
-        // 找到主显示器（包含 " connected primary" 或第一个 " connected"）
-        let primary_line = stdout
-            .lines()
-            .find(|l| l.contains(" connected primary"))
-            .or_else(|| stdout.lines().find(|l| l.contains(" connected")));
-
-        if let Some(line) = primary_line {
-            // 解析类似 "1920x1080+0+0" 的分辨率字段
-            if let Some(res_token) = line.split_whitespace().find(|tok| {
-                tok.contains('x') && tok.chars().next().map_or(false, |c| c.is_ascii_digit())
-            }) {
-                let dims: Vec<&str> = res_token.splitn(2, 'x').collect();
-                if dims.len() == 2 {
-                    let width_str = dims[0];
-                    let height_str = dims[1].split('+').next().unwrap_or("0");
-                    if let (Ok(w), Ok(h)) = (width_str.parse::<f64>(), height_str.parse::<f64>()) {
-                        return MonitorInfo { width: w, height: h, scale: 1.0 };
+/// 解析 wlr-randr 输出，提取当前（current）模式的分辨率
+/// 示例行：`  1920x1080 px, 60.000000 Hz (preferred, current)`
+#[cfg(target_os = "linux")]
+fn parse_wlr_randr_output(output: &str) -> Option<MonitorInfo> {
+    for line in output.lines() {
+        let trimmed = line.trim();
+        if trimmed.contains("current") && trimmed.contains("px") {
+            if let Some(res) = trimmed.split_whitespace().next() {
+                let parts: Vec<&str> = res.splitn(2, 'x').collect();
+                if parts.len() == 2 {
+                    if let (Ok(w), Ok(h)) = (parts[0].parse::<f64>(), parts[1].parse::<f64>()) {
+                        return Some(MonitorInfo { width: w, height: h, scale: 1.0 });
                     }
                 }
             }
         }
     }
+    None
+}
 
-    // 无法取得时返回合理默认值
-    MonitorInfo { width: 1920.0, height: 1080.0, scale: 1.0 }
+/// X11：通过 xrandr 获取主显示器信息
+#[cfg(target_os = "linux")]
+fn get_monitor_info_xrandr() -> Option<MonitorInfo> {
+    use std::process::Command;
+
+    let output = Command::new("xrandr").arg("--current").output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // 找到主显示器（包含 " connected primary" 或第一个 " connected"）
+    let primary_line = stdout
+        .lines()
+        .find(|l| l.contains(" connected primary"))
+        .or_else(|| stdout.lines().find(|l| l.contains(" connected")))?;
+
+    // 解析类似 "1920x1080+0+0" 的分辨率字段
+    let res_token = primary_line.split_whitespace().find(|tok| {
+        tok.contains('x') && tok.chars().next().map_or(false, |c| c.is_ascii_digit())
+    })?;
+
+    let dims: Vec<&str> = res_token.splitn(2, 'x').collect();
+    if dims.len() == 2 {
+        let width_str = dims[0];
+        let height_str = dims[1].split('+').next().unwrap_or("0");
+        if let (Ok(w), Ok(h)) = (width_str.parse::<f64>(), height_str.parse::<f64>()) {
+            return Some(MonitorInfo { width: w, height: h, scale: 1.0 });
+        }
+    }
+
+    None
 }
 
 #[allow(dead_code)]

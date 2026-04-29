@@ -447,9 +447,31 @@ impl Drop for Selected {
 // Linux implementation
 // ============================================================
 
-/// 获取当前活动窗口的 WM_CLASS（通过 xdotool）
+/// 检测当前 Linux 会话是否为 Wayland
+#[cfg(target_os = "linux")]
+fn is_wayland() -> bool {
+    std::env::var("WAYLAND_DISPLAY").is_ok()
+        || std::env::var("XDG_SESSION_TYPE")
+            .map(|v| v.eq_ignore_ascii_case("wayland"))
+            .unwrap_or(false)
+}
+
+// ── Active window detection ───────────────────────────────────────────────────
+
+/// 获取当前活动窗口的应用类名
+/// Wayland 环境优先，X11 作为回退
 #[cfg(target_os = "linux")]
 fn get_active_window_class() -> Option<String> {
+    if is_wayland() {
+        get_active_window_class_wayland().or_else(get_active_window_class_x11)
+    } else {
+        get_active_window_class_x11()
+    }
+}
+
+/// X11：通过 xdotool 获取活动窗口类名
+#[cfg(target_os = "linux")]
+fn get_active_window_class_x11() -> Option<String> {
     let output = std::process::Command::new("xdotool")
         .args(["getactivewindow", "getwindowclassname"])
         .output()
@@ -462,7 +484,95 @@ fn get_active_window_class() -> Option<String> {
     }
 }
 
-/// 从剪贴板 URI 列表中解析第一个本地文件路径
+/// Wayland：依次尝试 Hyprland → Sway/wlroots → kdotool (KDE)
+#[cfg(target_os = "linux")]
+fn get_active_window_class_wayland() -> Option<String> {
+    // Hyprland
+    if let Ok(output) = std::process::Command::new("hyprctl")
+        .args(["activewindow", "-j"])
+        .output()
+    {
+        if output.status.success() {
+            if let Ok(val) = serde_json::from_slice::<serde_json::Value>(&output.stdout) {
+                if let Some(class) = val.get("class").and_then(|v| v.as_str()) {
+                    if !class.is_empty() {
+                        return Some(class.to_string());
+                    }
+                }
+            }
+        }
+    }
+
+    // Sway / wlroots-based compositors
+    if let Ok(output) = std::process::Command::new("swaymsg")
+        .args(["-t", "get_tree"])
+        .output()
+    {
+        if output.status.success() {
+            if let Ok(tree) = serde_json::from_slice::<serde_json::Value>(&output.stdout) {
+                if let Some(class) = find_sway_focused_class(&tree) {
+                    return Some(class);
+                }
+            }
+        }
+    }
+
+    // KDE Wayland: kdotool (mirrors xdotool API)
+    if let Ok(output) = std::process::Command::new("kdotool")
+        .args(["getactivewindow", "getwindowclassname"])
+        .output()
+    {
+        if output.status.success() {
+            let class = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if !class.is_empty() {
+                return Some(class);
+            }
+        }
+    }
+
+    None
+}
+
+/// 递归在 Sway/i3 窗口树中寻找 focused 节点的 app_id
+#[cfg(target_os = "linux")]
+fn find_sway_focused_class(node: &serde_json::Value) -> Option<String> {
+    if node
+        .get("focused")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false)
+    {
+        // Native Wayland window
+        if let Some(id) = node.get("app_id").and_then(|v| v.as_str()) {
+            if !id.is_empty() {
+                return Some(id.to_string());
+            }
+        }
+        // XWayland window in Sway
+        if let Some(props) = node.get("window_properties") {
+            if let Some(class) = props.get("class").and_then(|v| v.as_str()) {
+                if !class.is_empty() {
+                    return Some(class.to_string());
+                }
+            }
+        }
+    }
+
+    for key in &["nodes", "floating_nodes"] {
+        if let Some(children) = node.get(key).and_then(|v| v.as_array()) {
+            for child in children {
+                if let Some(r) = find_sway_focused_class(child) {
+                    return Some(r);
+                }
+            }
+        }
+    }
+
+    None
+}
+
+// ── URI-list parsing ──────────────────────────────────────────────────────────
+
+/// 从 URI 列表文本中解析第一个本地文件路径
 #[cfg(target_os = "linux")]
 fn parse_uri_list(content: &str) -> Option<String> {
     for line in content.lines() {
@@ -482,9 +592,54 @@ fn parse_uri_list(content: &str) -> Option<String> {
     None
 }
 
-/// 使用 xclip 或 xsel 读取剪贴板中的 URI 列表
+// ── Clipboard reading ─────────────────────────────────────────────────────────
+
+/// 读取剪贴板中的 URI 列表
+/// Wayland 环境优先（wl-paste），X11 作为回退（xclip / xsel）
 #[cfg(target_os = "linux")]
 fn read_clipboard_uri_list() -> Option<String> {
+    if is_wayland() {
+        read_clipboard_wayland().or_else(read_clipboard_x11)
+    } else {
+        read_clipboard_x11()
+    }
+}
+
+/// Wayland：通过 wl-paste 读取剪贴板
+#[cfg(target_os = "linux")]
+fn read_clipboard_wayland() -> Option<String> {
+    // 优先读取 text/uri-list MIME 类型（文件管理器通常写入这种格式）
+    if let Ok(output) = std::process::Command::new("wl-paste")
+        .args(["--no-newline", "--type", "text/uri-list"])
+        .output()
+    {
+        if output.status.success() {
+            let content = String::from_utf8_lossy(&output.stdout);
+            if let Some(path) = parse_uri_list(&content) {
+                return Some(path);
+            }
+        }
+    }
+
+    // 回退：读取纯文本（部分文件管理器写入 URI 格式的纯文本）
+    if let Ok(output) = std::process::Command::new("wl-paste")
+        .args(["--no-newline"])
+        .output()
+    {
+        if output.status.success() {
+            let content = String::from_utf8_lossy(&output.stdout);
+            if let Some(path) = parse_uri_list(&content) {
+                return Some(path);
+            }
+        }
+    }
+
+    None
+}
+
+/// X11：通过 xclip 或 xsel 读取剪贴板
+#[cfg(target_os = "linux")]
+fn read_clipboard_x11() -> Option<String> {
     // 优先使用 xclip
     if let Ok(output) = std::process::Command::new("xclip")
         .args(["-o", "-selection", "clipboard", "-t", "text/uri-list"])
@@ -498,7 +653,7 @@ fn read_clipboard_uri_list() -> Option<String> {
         }
     }
 
-    // 回退到 xsel（读取 UTF-8 文本，Nautilus 通常写入 URI 格式）
+    // 回退到 xsel
     if let Ok(output) = std::process::Command::new("xsel")
         .args(["--clipboard", "--output"])
         .output()
@@ -514,13 +669,63 @@ fn read_clipboard_uri_list() -> Option<String> {
     None
 }
 
+// ── Key simulation (Ctrl+C) ───────────────────────────────────────────────────
+
+/// 向当前活动窗口发送 Ctrl+C
+/// Wayland：先尝试 ydotool，回退到 xdotool（XWayland）
+/// X11：使用 xdotool
+#[cfg(target_os = "linux")]
+fn send_copy_shortcut() -> Result<(), String> {
+    if is_wayland() {
+        // ydotool: Wayland 原生输入模拟（需要 uinput 权限）
+        // KEY_LEFTCTRL=29, KEY_C=46
+        if let Ok(status) = std::process::Command::new("ydotool")
+            .args(["key", "29:1", "46:1", "46:0", "29:0"])
+            .status()
+        {
+            if status.success() {
+                return Ok(());
+            }
+        }
+
+        // 回退：xdotool 在 XWayland 下仍然可用
+        let status = std::process::Command::new("xdotool")
+            .args(["key", "--clearmodifiers", "ctrl+c"])
+            .status()
+            .map_err(|e| format!("xdotool 执行失败: {}", e))?;
+
+        if !status.success() {
+            return Err("发送 Ctrl+C 失败（ydotool 和 xdotool 均不可用）".to_string());
+        }
+        Ok(())
+    } else {
+        let status = std::process::Command::new("xdotool")
+            .args(["key", "--clearmodifiers", "ctrl+c"])
+            .status()
+            .map_err(|e| format!("xdotool 执行失败: {}", e))?;
+
+        if !status.success() {
+            return Err("xdotool key 命令失败".to_string());
+        }
+        Ok(())
+    }
+}
+
+// ── Selected impl ─────────────────────────────────────────────────────────────
+
 #[cfg(target_os = "linux")]
 #[allow(dead_code)]
 impl Selected {
     /// 获取当前文件管理器中选中的文件路径
     ///
-    /// 实现原理：向活动窗口发送 Ctrl+C（xdotool），然后从剪贴板读取 URI 列表。
-    /// 需要安装 xdotool 和 xclip（或 xsel）：
+    /// 实现原理：向活动窗口发送 Ctrl+C，然后从剪贴板读取 URI 列表。
+    ///
+    /// Wayland 所需工具（按优先级）：
+    ///   - 窗口检测：hyprctl / swaymsg / kdotool
+    ///   - 输入模拟：ydotool（需 uinput 权限）或 xdotool（XWayland 回退）
+    ///   - 剪贴板：wl-paste（wl-clipboard）
+    ///
+    /// X11 所需工具：
     ///   `sudo apt install xdotool xclip`
     pub fn new() -> Result<String, String> {
         Self::get_selected_file()
@@ -534,7 +739,7 @@ impl Selected {
     fn get_selected_type() -> Option<()> {
         let class_name = get_active_window_class()?;
         let lower = class_name.to_lowercase();
-        // 支持 Nautilus、Nemo、Thunar、Dolphin 等常见文件管理器
+        // 支持 Nautilus、Nemo、Thunar、Dolphin、PCManFM、Caja 等常见文件管理器
         if lower.contains("nautilus")
             || lower.contains("nemo")
             || lower.contains("thunar")
@@ -550,14 +755,7 @@ impl Selected {
 
     fn get_selected_file() -> Result<String, String> {
         // 向活动文件管理器窗口发送 Ctrl+C，将选中文件写入剪贴板
-        let status = std::process::Command::new("xdotool")
-            .args(["key", "--clearmodifiers", "ctrl+c"])
-            .status()
-            .map_err(|e| format!("xdotool 执行失败: {}", e))?;
-
-        if !status.success() {
-            return Err("xdotool key 命令失败".to_string());
-        }
+        send_copy_shortcut()?;
 
         // 等待剪贴板更新
         std::thread::sleep(std::time::Duration::from_millis(150));
@@ -565,4 +763,3 @@ impl Selected {
         read_clipboard_uri_list().ok_or_else(|| "剪贴板中未找到文件 URI".to_string())
     }
 }
-
