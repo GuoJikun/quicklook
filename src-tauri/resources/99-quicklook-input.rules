@@ -1,0 +1,10 @@
+# QuickLook: grant the active login session access to keyboard input devices.
+# This rule uses the systemd/logind "uaccess" tag so that the user logged into
+# a graphical seat can read /dev/input/event* without belonging to the "input"
+# group. It enables QuickLook to detect Space key presses in native Wayland
+# applications (e.g. Nautilus on GNOME Wayland / Ubuntu 26).
+#
+# Installed by the QuickLook .deb package. To reload manually:
+#   sudo udevadm control --reload-rules
+#   sudo udevadm trigger --subsystem-match=input --action=change
+KERNEL=="event[0-9]*", SUBSYSTEM=="input", TAG+="uaccess"

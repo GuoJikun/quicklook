@@ -502,23 +502,48 @@ pub fn init_preview_file(handle: AppHandle) {
 
 /// Wayland 键盘监听器：通过 evdev 读取原始输入设备事件
 ///
-/// 需要用户对 `/dev/input/event*` 有读权限（GUI 会话用户在 Ubuntu 上默认通过
-/// logind/udev 的 `input` 组获得此权限）。若没有可用设备，自动回退到 rdev。
+/// 需要用户对 `/dev/input/event*` 有读权限。在 Ubuntu/systemd 会话中，
+/// `TAG+="uaccess"` udev 规则会让 logind 自动将当前登录用户授权访问这些设备。
+/// 若检测到权限不足，会尝试通过 `pkexec` 自动安装该规则（会弹出系统授权对话框）。
 #[cfg(target_os = "linux")]
 fn init_evdev_listener(app_handle: AppHandle) {
     use evdev::{InputEventKind, Key};
 
-    // 枚举所有支持空格键的键盘设备
-    let keyboards: Vec<_> = evdev::enumerate()
-        .filter(|(_, d)| {
-            d.supported_keys()
-                .map_or(false, |k| k.contains(Key::KEY_SPACE))
-        })
-        .collect();
+    // 先枚举一次；若为空则检查原因
+    let keyboards = enumerate_keyboards();
+
+    let keyboards = if keyboards.is_empty() {
+        match check_input_device_permission() {
+            InputPermStatus::PermissionDenied => {
+                log::warn!("evdev: /dev/input/event* 权限不足，尝试通过 pkexec 安装 udev 规则...");
+                if try_install_udev_rule() {
+                    log::info!("evdev: udev 规则安装成功，重新枚举键盘设备");
+                    enumerate_keyboards()
+                } else {
+                    log::warn!(
+                        "evdev: udev 规则安装失败（用户取消授权或 pkexec 不可用），回退到 rdev"
+                    );
+                    vec![]
+                }
+            },
+            InputPermStatus::NoDevices => {
+                log::warn!("evdev: 系统中未找到键盘设备");
+                vec![]
+            },
+            InputPermStatus::Ok => {
+                // 枚举返回空但权限 OK —— 理论上不应发生，直接回退
+                vec![]
+            },
+        }
+    } else {
+        keyboards
+    };
 
     if keyboards.is_empty() {
-        log::warn!("evdev: 未找到键盘设备（可能缺少 /dev/input 读权限），回退到 rdev");
-        // 回退到 rdev
+        // 最终回退：使用 rdev（仅对 X11 / XWayland 窗口有效）
+        log::warn!(
+            "evdev: 回退到 rdev 监听（原生 Wayland 应用（如 Nautilus）的按键事件可能无法捕获）"
+        );
         use rdev::{listen, Event, EventType, Key as RdevKey};
         let callback = move |event: Event| {
             if let EventType::KeyPress(RdevKey::Space) = event.event_type {
@@ -574,6 +599,144 @@ fn init_evdev_listener(app_handle: AppHandle) {
             log::error!("evdev listener thread panicked: {:?}", e);
         }
     }
+}
+
+/// 枚举系统中所有支持空格键的键盘 evdev 设备
+#[cfg(target_os = "linux")]
+fn enumerate_keyboards() -> Vec<(std::path::PathBuf, evdev::Device)> {
+    use evdev::Key;
+    evdev::enumerate()
+        .filter(|(_, d)| {
+            d.supported_keys()
+                .map_or(false, |k| k.contains(Key::KEY_SPACE))
+        })
+        .collect()
+}
+
+/// `/dev/input/event*` 设备的访问权限状态
+#[cfg(target_os = "linux")]
+#[derive(Debug, PartialEq)]
+enum InputPermStatus {
+    /// 至少有一个设备可读
+    Ok,
+    /// 设备存在但均无读权限（EACCES）
+    PermissionDenied,
+    /// `/dev/input` 中没有 event* 设备
+    NoDevices,
+}
+
+/// 检查 `/dev/input/event*` 的实际访问权限状态
+#[cfg(target_os = "linux")]
+fn check_input_device_permission() -> InputPermStatus {
+    let entries = match std::fs::read_dir("/dev/input") {
+        Ok(e) => e,
+        Err(_) => return InputPermStatus::NoDevices,
+    };
+
+    let mut found_event = false;
+    for entry in entries.flatten() {
+        if !entry.file_name().to_string_lossy().starts_with("event") {
+            continue;
+        }
+        found_event = true;
+        match std::fs::File::open(entry.path()) {
+            Ok(_) => return InputPermStatus::Ok,
+            Err(e) if e.raw_os_error() == Some(libc_eacces()) => {
+                return InputPermStatus::PermissionDenied;
+            },
+            Err(_) => {},
+        }
+    }
+
+    if found_event {
+        // All event devices failed with a non-EACCES error; treat as denied
+        InputPermStatus::PermissionDenied
+    } else {
+        InputPermStatus::NoDevices
+    }
+}
+
+/// Returns the EACCES errno value (13 on Linux)
+#[cfg(target_os = "linux")]
+fn libc_eacces() -> i32 {
+    13
+}
+
+/// udev 规则内容（使用 TAG+="uaccess" 让 logind 自动为活跃会话用户授权）
+#[cfg(target_os = "linux")]
+const UDEV_RULE_CONTENT: &str = "\
+# QuickLook: grant active login session access to keyboard input devices.\n\
+# This uses the systemd/logind \"uaccess\" tag so no manual group changes are needed.\n\
+KERNEL==\"event[0-9]*\", SUBSYSTEM==\"input\", TAG+=\"uaccess\"\n";
+
+/// udev 规则的安装路径
+#[cfg(target_os = "linux")]
+const UDEV_RULE_PATH: &str = "/etc/udev/rules.d/99-quicklook-input.rules";
+
+/// 通过 `pkexec` 安装 udev 规则并重新加载，使当前会话立即生效
+///
+/// `pkexec` 会弹出系统授权对话框；用户取消时返回 `false`。
+/// 安装成功后调用 `udevadm trigger`，logind 会随即更新设备 ACL。
+#[cfg(target_os = "linux")]
+fn try_install_udev_rule() -> bool {
+    use std::io::Write;
+    use std::process::{Command, Stdio};
+
+    // pkexec tee <path>  — writes stdin to the target file with root privileges
+    let child = Command::new("pkexec")
+        .args(["tee", UDEV_RULE_PATH])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn();
+
+    let mut child = match child {
+        Ok(c) => c,
+        Err(e) => {
+            log::error!("pkexec 启动失败: {:?}", e);
+            return false;
+        },
+    };
+
+    // Write rule content to pkexec's stdin
+    if let Some(mut stdin) = child.stdin.take() {
+        if let Err(e) = stdin.write_all(UDEV_RULE_CONTENT.as_bytes()) {
+            log::error!("写入 udev 规则内容失败: {:?}", e);
+            let _ = child.wait();
+            return false;
+        }
+    }
+
+    let status = match child.wait() {
+        Ok(s) => s,
+        Err(e) => {
+            log::error!("等待 pkexec 完成失败: {:?}", e);
+            return false;
+        },
+    };
+
+    if !status.success() {
+        log::warn!(
+            "pkexec 返回非零退出码（用户可能取消了授权）: {:?}",
+            status.code()
+        );
+        return false;
+    }
+
+    // Reload udev rules
+    let _ = Command::new("udevadm")
+        .args(["control", "--reload-rules"])
+        .status();
+
+    // Trigger input subsystem so logind updates device ACLs in the current session
+    let _ = Command::new("udevadm")
+        .args(["trigger", "--subsystem-match=input", "--action=change"])
+        .status();
+
+    // Give logind/udevd a moment to apply the new ACLs
+    std::thread::sleep(std::time::Duration::from_millis(500));
+
+    true
 }
 
 /// 其他不支持的平台：空实现

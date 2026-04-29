@@ -46,6 +46,13 @@
     "resources": {
       "resources/config.json": "config.json"
     },
+    "linux": {
+      "deb": {
+        "files": {
+          "/etc/udev/rules.d/99-quicklook-input.rules": "resources/99-quicklook-input.rules"
+        }
+      }
+    },
     "windows": {
       "digestAlgorithm": "sha256",
       "webviewInstallMode": {
