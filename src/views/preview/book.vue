@@ -14,6 +14,7 @@ import '@leafer-in/view' // 导入视口插件
 import '@leafer-in/viewport' // 导入视口插件
 import '@leafer-in/animate' // 导入画布插件
 import '@leafer-in/resize' // 导入画布插件
+import '@leafer-in/color' // 导入滚动条插件
 import { ScrollBar } from '@leafer-in/scroll' // 导入滚动条插件  //
 import { useThrottleFn } from '@vueuse/core'
 
