@@ -58,7 +58,9 @@ const initPlayer = (url: string, isHls = false) => {
 onUnmounted(() => {
     // 如果窗口关闭或切换文件时转码仍在进行，通知后端终止 ffmpeg 进程
     if (converting.value) {
-        invoke('cancel_video_conversion').catch(() => {})
+        invoke('cancel_video_conversion').catch((err) =>
+            console.error('停止 ffmpeg 转换失败:', err),
+        )
     }
     if (player !== null) {
         player.destroy()
@@ -97,7 +99,7 @@ onMounted(async () => {
     <LayoutPreview :file="fileInfo">
         <div class="video-support">
             <div v-if="converting" class="video-converting">
-                <el-text>正在使用 ffmpeg 解析视频，请稍候…</el-text>
+                <el-text>正在使用 ffmpeg 转换视频，请稍候…</el-text>
             </div>
             <el-alert
                 v-if="convertError"
