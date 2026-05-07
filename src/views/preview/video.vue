@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 import Player, { I18N } from 'xgplayer'
@@ -54,6 +54,16 @@ const initPlayer = (url: string, isHls = false) => {
         })
     }
 }
+
+onUnmounted(() => {
+    // 如果窗口关闭或切换文件时转码仍在进行，通知后端终止 ffmpeg 进程
+    if (converting.value) {
+        invoke('cancel_video_conversion').catch(() => {})
+    }
+    if (player !== null) {
+        player.destroy()
+    }
+})
 
 onMounted(async () => {
     fileInfo.value = route.query as unknown as FileInfo

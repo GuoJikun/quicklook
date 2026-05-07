@@ -2,6 +2,7 @@ use log::{set_max_level, LevelFilter};
 use quicklook_archive::{extractors, Extract};
 use quicklook_docs as docs;
 use std::path::PathBuf;
+use std::sync::{LazyLock, Mutex};
 use tauri::{command, AppHandle, Manager};
 use windows::Win32::Foundation::HWND;
 
@@ -122,6 +123,10 @@ pub fn parse_lrc(path: &str) -> Result<audio::Lrc, String> {
     audio::parse_lrc(path)
 }
 
+/// 全局记录正在运行的 ffmpeg 进程 PID 及其对应的临时目录，用于取消时终止进程并清理。
+static FFMPEG_PROCESS: LazyLock<Mutex<Option<(u32, PathBuf)>>> =
+    LazyLock::new(|| Mutex::new(None));
+
 /// 检测本机是否安装了 ffmpeg
 #[command]
 pub fn check_ffmpeg() -> bool {
@@ -202,9 +207,10 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
         .to_string();
     let m3u8_str = m3u8_path
         .to_str()
-        .ok_or_else(|| "m3u8 路径包含无效字符".to_string())?;
+        .ok_or_else(|| "m3u8 路径包含无效字符".to_string())?
+        .to_string();
 
-    let output = std::process::Command::new("ffmpeg")
+    let mut child = std::process::Command::new("ffmpeg")
         .args([
             "-i",
             path,
@@ -220,19 +226,67 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
             &seg_filename,
             "-f",
             "hls",
-            m3u8_str,
+            &m3u8_str,
         ])
-        .output()
+        .spawn()
         .map_err(|e| e.to_string())?;
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        log::error!("ffmpeg 转换失败: {}", stderr);
+    // 记录 PID 和临时目录，以便在取消时终止进程
+    {
+        let mut guard = FFMPEG_PROCESS.lock().unwrap();
+        *guard = Some((child.id(), temp_dir.clone()));
+    }
+
+    let status = child.wait().map_err(|e| e.to_string())?;
+
+    // 清除全局进程记录
+    {
+        let mut guard = FFMPEG_PROCESS.lock().unwrap();
+        *guard = None;
+    }
+
+    if !status.success() {
+        let code = status.code().unwrap_or(-1);
+        log::error!("ffmpeg 转换失败，退出码: {}", code);
         // 清理不完整的临时文件
         let _ = std::fs::remove_dir_all(&temp_dir);
-        return Err(format!("ffmpeg 转换失败: {}", stderr));
+        return Err(format!("ffmpeg 转换被中断或失败（退出码: {}）", code));
     }
 
     log::info!("HLS 转换完成: {:?}", m3u8_path);
     Ok(m3u8_path.to_string_lossy().to_string())
+}
+
+/// 取消正在进行的 ffmpeg 视频转换，清理临时文件。
+#[command]
+pub fn cancel_video_conversion() {
+    let entry = {
+        let mut guard = FFMPEG_PROCESS.lock().unwrap();
+        guard.take()
+    };
+
+    if let Some((pid, temp_dir)) = entry {
+        log::info!("正在终止 ffmpeg 进程 (PID: {})", pid);
+        // 使用 taskkill 强制结束进程（Windows 平台）
+        let result = std::process::Command::new("taskkill")
+            .args(["/F", "/PID", &pid.to_string()])
+            .output();
+        match result {
+            Ok(out) if out.status.success() => {
+                log::info!("ffmpeg 进程 (PID: {}) 已终止", pid);
+            },
+            Ok(out) => {
+                let stderr = String::from_utf8_lossy(&out.stderr);
+                log::warn!("终止 ffmpeg 进程时出现警告: {}", stderr);
+            },
+            Err(e) => {
+                log::error!("终止 ffmpeg 进程失败: {}", e);
+            },
+        }
+        // 清理不完整的临时文件
+        let _ = std::fs::remove_dir_all(&temp_dir);
+        log::info!("已清理临时目录: {:?}", temp_dir);
+    } else {
+        log::info!("cancel_video_conversion: 当前无正在进行的 ffmpeg 转换");
+    }
 }
