@@ -302,7 +302,9 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
 
     // 记录 PID 和临时目录，以便在取消时终止进程
     {
-        let mut guard = FFMPEG_PROCESS.lock().unwrap();
+        let mut guard = FFMPEG_PROCESS
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         *guard = Some((child.id(), temp_dir.clone()));
     }
 
@@ -312,7 +314,9 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
         let status = child.wait();
 
         {
-            let mut guard = FFMPEG_PROCESS.lock().unwrap();
+            let mut guard = FFMPEG_PROCESS
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
             if let Some((pid, _)) = guard.as_ref() {
                 if *pid == child_pid {
                     *guard = None;
@@ -345,16 +349,20 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
         std::thread::sleep(std::time::Duration::from_millis(100));
     }
 
+    // m3u8 在 12 秒内未生成：终止进程、清理临时目录并向前端报错。
+    log::error!("ffmpeg 已启动，但 m3u8 生成超时，正在终止进程并清理临时文件");
+    kill_ffmpeg_process();
+    let _ = std::fs::remove_dir_all(&temp_dir);
     Err("ffmpeg 已启动，但 m3u8 生成超时".to_string())
 }
 
-/// 取消正在进行的 ffmpeg 视频转换，清理临时文件。
-#[command]
-pub fn cancel_video_conversion() {
-    let entry = {
-        let mut guard = FFMPEG_PROCESS.lock().unwrap();
-        guard.take()
-    };
+/// 从全局取出正在运行的 ffmpeg 进程记录，终止该进程并删除临时目录。
+/// 如果当前没有记录则直接返回。
+fn kill_ffmpeg_process() {
+    let entry = FFMPEG_PROCESS
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .take();
 
     if let Some((pid, temp_dir)) = entry {
         log::info!("正在终止 ffmpeg 进程 (PID: {})", pid);
@@ -367,17 +375,22 @@ pub fn cancel_video_conversion() {
                 log::info!("ffmpeg 进程 (PID: {}) 已终止", pid);
             },
             Ok(out) => {
-                let stderr = String::from_utf8_lossy(&out.stderr);
-                log::warn!("终止 ffmpeg 进程时出现警告: {}", stderr);
+                log::warn!(
+                    "终止 ffmpeg 进程时出现警告: {}",
+                    String::from_utf8_lossy(&out.stderr)
+                );
             },
             Err(e) => {
                 log::error!("终止 ffmpeg 进程失败: {}", e);
             },
         }
-        // 清理不完整的临时文件
         let _ = std::fs::remove_dir_all(&temp_dir);
         log::info!("已清理临时目录: {:?}", temp_dir);
-    } else {
-        log::info!("cancel_video_conversion: 当前无正在进行的 ffmpeg 转换");
     }
+}
+
+/// 取消正在进行的 ffmpeg 视频转换，清理临时文件。
+#[command]
+pub fn cancel_video_conversion() {
+    kill_ffmpeg_process();
 }
