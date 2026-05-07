@@ -77,7 +77,8 @@ const handleLogLevelChange = (level: unknown) => {
 const useLocalFfmpeg = ref<boolean>(false)
 const ffmpegAvailable = ref<boolean | null>(null)
 
-const handleUseLocalFfmpegChange = async (val: boolean) => {
+const handleUseLocalFfmpegChange = async (val: unknown) => {
+    if (typeof val !== 'boolean') return
     await localStore?.set('useLocalFfmpeg', val)
     await localStore?.save()
     if (val) {
@@ -125,11 +126,7 @@ onMounted(async () => {
         <SettingItem title="视频" id="video">
             <div class="flex-col-center">
                 <span>使用本机 ffmpeg 解析视频：</span>
-                <el-switch
-                    v-model="useLocalFfmpeg"
-                    @change="handleUseLocalFfmpegChange"
-                    style="margin-left: 16px"
-                />
+                <el-switch v-model="useLocalFfmpeg" @change="handleUseLocalFfmpegChange" style="margin-left: 16px" />
             </div>
             <div v-if="useLocalFfmpeg" style="margin-top: 8px; font-size: 13px; color: var(--el-text-color-secondary)">
                 <template v-if="ffmpegAvailable === null">正在检测 ffmpeg…</template>
