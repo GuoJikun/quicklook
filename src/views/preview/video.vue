@@ -40,7 +40,7 @@ const initPlayer = (url: string, isHls = false) => {
                 url,
                 height: '100%',
                 width: '100%',
-                // @ts-ignore
+                // @ts-expect-error xgplayer-hls plugin is not reflected in the base Player type definitions
                 plugins: [HlsPlugin],
             })
         })

@@ -7,6 +7,7 @@ import { app } from '@tauri-apps/api'
 import { load, type Store } from '@tauri-apps/plugin-store'
 import { invoke } from '@tauri-apps/api/core'
 import { LogLevel } from '@tauri-apps/plugin-log'
+import { Check } from '@element-plus/icons-vue'
 
 import SettingItem from '@/components/setting-item.vue'
 
@@ -133,7 +134,7 @@ onMounted(async () => {
             <div v-if="useLocalFfmpeg" style="margin-top: 8px; font-size: 13px; color: var(--el-text-color-secondary)">
                 <template v-if="ffmpegAvailable === null">正在检测 ffmpeg…</template>
                 <template v-else-if="ffmpegAvailable">
-                    <el-icon style="color: var(--el-color-success); vertical-align: middle"><i class="el-icon-check" /></el-icon>
+                    <el-icon style="color: var(--el-color-success); vertical-align: middle"><Check /></el-icon>
                     已检测到本机 ffmpeg，非 h264 格式视频将自动转换后播放。
                 </template>
                 <template v-else>

@@ -141,12 +141,7 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
     use std::hash::{Hash, Hasher};
 
     // 确认 ffmpeg 可用
-    let ok = std::process::Command::new("ffmpeg")
-        .arg("-version")
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false);
-    if !ok {
+    if !check_ffmpeg() {
         return Err("ffmpeg 未找到，请确保 ffmpeg 已安装并添加到 PATH 中".to_string());
     }
 
@@ -169,7 +164,7 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
     std::fs::create_dir_all(&temp_dir).map_err(|e| e.to_string())?;
 
     // 用 ffprobe 检测视频流编解码器
-    let codec = std::process::Command::new("ffprobe")
+    let codec_result = std::process::Command::new("ffprobe")
         .args([
             "-v",
             "quiet",
@@ -181,17 +176,33 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
             "default=noprint_wrappers=1:nokeys=1",
             path,
         ])
-        .output()
-        .ok()
-        .and_then(|o| String::from_utf8(o.stdout).ok())
-        .unwrap_or_default();
-    let codec = codec.trim().to_lowercase();
+        .output();
+    let codec = match codec_result {
+        Ok(out) => match String::from_utf8(out.stdout) {
+            Ok(s) => s.trim().to_lowercase(),
+            Err(e) => {
+                log::warn!("ffprobe 输出解析失败: {}，将使用转码模式", e);
+                String::new()
+            },
+        },
+        Err(e) => {
+            log::warn!("ffprobe 执行失败: {}，将使用转码模式", e);
+            String::new()
+        },
+    };
     log::info!("检测到视频编解码器: {}", codec);
 
     // 如果已是 h264，直接复制视频流；否则转码为 libx264
     let video_codec = if codec == "h264" { "copy" } else { "libx264" };
 
-    let seg_filename = temp_dir.join("seg_%03d.ts");
+    let seg_filename = temp_dir
+        .join("seg_%03d.ts")
+        .to_str()
+        .ok_or_else(|| "临时目录路径包含无效字符".to_string())?
+        .to_string();
+    let m3u8_str = m3u8_path
+        .to_str()
+        .ok_or_else(|| "m3u8 路径包含无效字符".to_string())?;
 
     let output = std::process::Command::new("ffmpeg")
         .args([
@@ -206,10 +217,10 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
             "-hls_list_size",
             "0",
             "-hls_segment_filename",
-            seg_filename.to_str().unwrap_or_default(),
+            &seg_filename,
             "-f",
             "hls",
-            m3u8_path.to_str().unwrap_or_default(),
+            m3u8_str,
         ])
         .output()
         .map_err(|e| e.to_string())?;
