@@ -3,6 +3,7 @@
   "platforms": [
     "windows"
   ],
+  "local": true,
   "permissions": [
     "autostart:default",
     "core:default",

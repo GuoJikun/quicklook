@@ -124,8 +124,7 @@ pub fn parse_lrc(path: &str) -> Result<audio::Lrc, String> {
 }
 
 /// 全局记录正在运行的 ffmpeg 进程 PID 及其对应的临时目录，用于取消时终止进程并清理。
-static FFMPEG_PROCESS: LazyLock<Mutex<Option<(u32, PathBuf)>>> =
-    LazyLock::new(|| Mutex::new(None));
+static FFMPEG_PROCESS: LazyLock<Mutex<Option<(u32, PathBuf)>>> = LazyLock::new(|| Mutex::new(None));
 
 /// 检测本机是否安装了 ffmpeg
 #[command]
@@ -159,11 +158,57 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
     temp_dir.push(format!("quicklook_hls_{:x}", hash));
 
     let m3u8_path = temp_dir.join("index.m3u8");
+    let m3u8_result = m3u8_path.to_string_lossy().to_string();
 
-    // 如果已经转换过，直接返回缓存结果
+    // 同一文件若已在转换中，直接等待播放列表就绪并返回，避免重复启动 ffmpeg。
+    {
+        let guard = FFMPEG_PROCESS.lock().unwrap();
+        if let Some((pid, running_dir)) = guard.as_ref() {
+            if *running_dir == temp_dir {
+                log::info!(
+                    "检测到同一路径已有 ffmpeg 正在运行 (PID: {})，等待 m3u8 就绪后复用",
+                    pid
+                );
+                drop(guard);
+
+                for _ in 0..120 {
+                    if m3u8_path.exists() {
+                        return Ok(m3u8_result);
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+                }
+                return Err("ffmpeg 正在运行，但 m3u8 尚未就绪，请稍后重试".to_string());
+            }
+        }
+    }
+
+    // 如果已经转换过，优先复用缓存；但要避免历史版本留下的错误分片路径，且必须是绝对分片 URI。
     if m3u8_path.exists() {
-        log::info!("命中 HLS 缓存: {:?}", m3u8_path);
-        return Ok(m3u8_path.to_string_lossy().to_string());
+        let should_rebuild = std::fs::read_to_string(&m3u8_path)
+            .map(|content| {
+                let has_invalid_backslash = content.contains(":\\") || content.contains('\\');
+                let has_absolute_segment_uri = content.lines().any(|line| {
+                    let l = line.trim();
+                    if l.is_empty() || l.starts_with('#') {
+                        return false;
+                    }
+                    l.contains("://")
+                        || (l.len() > 2
+                            && l.as_bytes()[1] == b':'
+                            && (l.as_bytes()[2] == b'/' || l.as_bytes()[2] == b'\\'))
+                        || l.starts_with('/')
+                });
+                has_invalid_backslash || !has_absolute_segment_uri
+            })
+            .unwrap_or(true);
+
+        if !should_rebuild {
+            log::info!("命中 HLS 缓存: {:?}", m3u8_path);
+            return Ok(m3u8_result);
+        }
+
+        log::warn!("检测到旧版 HLS 缓存路径格式异常，准备重建: {:?}", m3u8_path);
+        let _ = std::fs::remove_dir_all(&temp_dir);
     }
 
     std::fs::create_dir_all(&temp_dir).map_err(|e| e.to_string())?;
@@ -200,33 +245,57 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
     // 如果已是 h264，直接复制视频流；否则转码为 libx264
     let video_codec = if codec == "h264" { "copy" } else { "libx264" };
 
-    let seg_filename = temp_dir
-        .join("seg_%03d.ts")
-        .to_str()
-        .ok_or_else(|| "临时目录路径包含无效字符".to_string())?
-        .to_string();
-    let m3u8_str = m3u8_path
-        .to_str()
-        .ok_or_else(|| "m3u8 路径包含无效字符".to_string())?
-        .to_string();
+    let seg_filename = "seg_%03d.ts".to_string();
+    let m3u8_file_name = "index.m3u8".to_string();
+    let mut hls_base_url = format!("{}", temp_dir.to_string_lossy().replace('\\', "/"));
+    if !hls_base_url.ends_with('/') {
+        hls_base_url.push('/');
+    }
 
-    let mut child = std::process::Command::new("ffmpeg")
+    let mut ffmpeg = std::process::Command::new("ffmpeg");
+    ffmpeg
+        .current_dir(&temp_dir)
+        .arg("-i")
+        .arg(path)
+        .arg("-c:v")
+        .arg(video_codec);
+
+    // 转码时固定像素格式和 profile，提升浏览器/MSE 兼容性；copy 模式保持原编码。
+    if video_codec != "copy" {
+        ffmpeg
+            .arg("-preset")
+            .arg("veryfast")
+            .arg("-pix_fmt")
+            .arg("yuv420p")
+            .arg("-profile:v")
+            .arg("main")
+            .arg("-level")
+            .arg("4.0");
+    }
+
+    let mut child = ffmpeg
         .args([
-            "-i",
-            path,
-            "-c:v",
-            video_codec,
             "-c:a",
             "aac",
+            "-b:a",
+            "128k",
+            "-ac",
+            "2",
+            "-ar",
+            "48000",
             "-hls_time",
-            "4",
+            "2",
             "-hls_list_size",
             "0",
+            "-hls_flags",
+            "independent_segments+append_list",
+            "-hls_base_url",
+            &hls_base_url,
             "-hls_segment_filename",
             &seg_filename,
             "-f",
             "hls",
-            &m3u8_str,
+            &m3u8_file_name,
         ])
         .spawn()
         .map_err(|e| e.to_string())?;
@@ -237,24 +306,46 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
         *guard = Some((child.id(), temp_dir.clone()));
     }
 
-    let status = child.wait().map_err(|e| e.to_string())?;
+    let child_pid = child.id();
+    let temp_dir_for_wait = temp_dir.clone();
+    std::thread::spawn(move || {
+        let status = child.wait();
 
-    // 清除全局进程记录
-    {
-        let mut guard = FFMPEG_PROCESS.lock().unwrap();
-        *guard = None;
+        {
+            let mut guard = FFMPEG_PROCESS.lock().unwrap();
+            if let Some((pid, _)) = guard.as_ref() {
+                if *pid == child_pid {
+                    *guard = None;
+                }
+            }
+        }
+
+        match status {
+            Ok(exit) if exit.success() => {
+                log::info!("HLS 转换完成，PID: {}", child_pid);
+            },
+            Ok(exit) => {
+                let code = exit.code().unwrap_or(-1);
+                log::error!("ffmpeg 转换失败，PID: {}, 退出码: {}", child_pid, code);
+                let _ = std::fs::remove_dir_all(&temp_dir_for_wait);
+            },
+            Err(e) => {
+                log::error!("等待 ffmpeg 进程失败，PID: {}, 错误: {}", child_pid, e);
+                let _ = std::fs::remove_dir_all(&temp_dir_for_wait);
+            },
+        }
+    });
+
+    // 边转边播：等待首个播放列表文件生成后立即返回给前端。
+    for _ in 0..120 {
+        if m3u8_path.exists() {
+            log::info!("m3u8 已就绪，开始边转边播: {:?}", m3u8_path);
+            return Ok(m3u8_result);
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
     }
 
-    if !status.success() {
-        let code = status.code().unwrap_or(-1);
-        log::error!("ffmpeg 转换失败，退出码: {}", code);
-        // 清理不完整的临时文件
-        let _ = std::fs::remove_dir_all(&temp_dir);
-        return Err(format!("ffmpeg 转换被中断或失败（退出码: {}）", code));
-    }
-
-    log::info!("HLS 转换完成: {:?}", m3u8_path);
-    Ok(m3u8_path.to_string_lossy().to_string())
+    Err("ffmpeg 已启动，但 m3u8 生成超时".to_string())
 }
 
 /// 取消正在进行的 ffmpeg 视频转换，清理临时文件。
