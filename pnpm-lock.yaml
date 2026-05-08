@@ -140,6 +140,9 @@ importers:
       xgplayer:
         specifier: ^3.0.24
         version: 3.0.24(core-js@3.49.0)
+      xgplayer-hls:
+        specifier: 3.0.24
+        version: 3.0.24(core-js@3.49.0)(xgplayer@3.0.24(core-js@3.49.0))
     devDependencies:
       '@sentry/vite-plugin':
         specifier: ^5.2.0
@@ -408,6 +411,10 @@ packages:
     engines: {node: '>=6.9.0'}
     peerDependencies:
       '@babel/core': ^7.0.0-0
+
+  '@babel/runtime@7.29.2':
+    resolution: {integrity: sha512-JiDShH45zKHWyGe4ZNVRrCjBz8Nh9TMmZG1kh4QTK8hCBTWBi8Da+i7s1fJw7/lYpM4ccepSNfqzZ/QvABBi5g==}
+    engines: {node: '>=6.9.0'}
 
   '@babel/template@7.25.7':
     resolution: {integrity: sha512-wRwtAgI3bAS+JGU2upWNL9lSlDcRCqD05BZ1n3X2ONLH1WilFP6O1otQjeMK/1g0pvYcXC7b/qVUB1keofjtZA==}
@@ -2104,6 +2111,11 @@ packages:
   concat-map@0.0.1:
     resolution: {integrity: sha512-/Srv4dswyQNBfohGpz9o6Yb3Gz3SrUDqBH5rTuhGR7ahtlbYKnVxw2bCFMRljaA7EXHaXZ8wsHdodFvbkhKmqg==}
 
+  concat-typed-array@1.0.2:
+    resolution: {integrity: sha512-aC878bxeWSlrY6h60cCDwBUXpKwovZrB7+C4+VHNO1CIXW2gBLxbQ757jWtOXUscLGgYI8R84N6uy9fTJPe+0g==}
+    engines: {node: '>=0.10.0'}
+    deprecated: 'WARNING: This package has been renamed to typed-array-concat.'
+
   config-chain@1.1.13:
     resolution: {integrity: sha512-qj+f8APARXHrM0hraqXYb2/bOVSV4PvJQlNZ/DVj0QrmNM2q2euizkeuVckQ57J+W0mRH6Hvi+k50M4Jul2VRQ==}
 
@@ -2127,6 +2139,9 @@ packages:
   cross-spawn@7.0.6:
     resolution: {integrity: sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==}
     engines: {node: '>= 8'}
+
+  crypto-es@1.2.7:
+    resolution: {integrity: sha512-UUqiVJ2gUuZFmbFsKmud3uuLcNP2+Opt+5ysmljycFCyhA0+T16XJmo1ev/t5kMChMqWh7IEvURNCqsg+SjZGQ==}
 
   css-render@0.15.14:
     resolution: {integrity: sha512-9nF4PdUle+5ta4W5SyZdLCCmFd37uVimSjg1evcTqKJCyvCEEj12WKzOSBNak6r4im4J4iYXKH1OWpUV5LBYFg==}
@@ -3683,8 +3698,24 @@ packages:
       utf-8-validate:
         optional: true
 
+  xgplayer-hls@3.0.24:
+    resolution: {integrity: sha512-R4saQRCnRk5zcYCFGc10BGCIWLXQ4vwjoWKJaPQEr7vGvrxMGLlWt63cmzGnL6HHSzzFna0nIe2BCDHtOQOaVw==}
+    peerDependencies:
+      core-js: '>=3.12.1'
+      xgplayer: 3.0.24
+
+  xgplayer-streaming-shared@3.0.24:
+    resolution: {integrity: sha512-6ROPxuwAIYWysF8qWMeVTHzlc+KFVhU0d79WY9B3st1RqBidEhysGqQRbwd9WHMuWePbLQv2zj6yRg7PVcdXKA==}
+    peerDependencies:
+      core-js: '>=3.12.1'
+
   xgplayer-subtitles@3.0.24:
     resolution: {integrity: sha512-yrHROepD9kTGWiTSxBjh+TGaK9orQOHQ1GUxWFOkQzO8BLl/pcIAqqJkHiAoP0j+eU8VdIhpb55oJRIkTTWPsA==}
+    peerDependencies:
+      core-js: '>=3.12.1'
+
+  xgplayer-transmuxer@3.0.24:
+    resolution: {integrity: sha512-Mz0+Bne2Hg/gJ8Q/NGja83QUHuPewrn6i2gVFC/DVGApzClLikNpBRe17HYoME9noj775QEFbXYXZ+W+uptHUA==}
     peerDependencies:
       core-js: '>=3.12.1'
 
@@ -3975,6 +4006,8 @@ snapshots:
       '@babel/plugin-syntax-typescript': 7.25.9(@babel/core@7.26.0)
     transitivePeerDependencies:
       - supports-color
+
+  '@babel/runtime@7.29.2': {}
 
   '@babel/template@7.25.7':
     dependencies:
@@ -5693,6 +5726,8 @@ snapshots:
 
   concat-map@0.0.1: {}
 
+  concat-typed-array@1.0.2: {}
+
   config-chain@1.1.13:
     dependencies:
       ini: 1.3.8
@@ -5719,6 +5754,8 @@ snapshots:
       path-key: 3.1.1
       shebang-command: 2.0.0
       which: 2.0.2
+
+  crypto-es@1.2.7: {}
 
   css-render@0.15.14:
     dependencies:
@@ -7280,10 +7317,30 @@ snapshots:
 
   ws@8.18.0: {}
 
+  xgplayer-hls@3.0.24(core-js@3.49.0)(xgplayer@3.0.24(core-js@3.49.0)):
+    dependencies:
+      core-js: 3.49.0
+      eventemitter3: 4.0.7
+      xgplayer: 3.0.24(core-js@3.49.0)
+      xgplayer-streaming-shared: 3.0.24(core-js@3.49.0)
+      xgplayer-transmuxer: 3.0.24(core-js@3.49.0)
+
+  xgplayer-streaming-shared@3.0.24(core-js@3.49.0):
+    dependencies:
+      core-js: 3.49.0
+      eventemitter3: 4.0.7
+
   xgplayer-subtitles@3.0.24(core-js@3.49.0):
     dependencies:
       core-js: 3.49.0
       eventemitter3: 4.0.7
+
+  xgplayer-transmuxer@3.0.24(core-js@3.49.0):
+    dependencies:
+      '@babel/runtime': 7.29.2
+      concat-typed-array: 1.0.2
+      core-js: 3.49.0
+      crypto-es: 1.2.7
 
   xgplayer@3.0.24(core-js@3.49.0):
     dependencies:

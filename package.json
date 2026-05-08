@@ -59,7 +59,8 @@
     "shiki": "^3.23.0",
     "vue": "^3.5.32",
     "vue-router": "^4.6.4",
-    "xgplayer": "^3.0.24"
+    "xgplayer": "^3.0.24",
+    "xgplayer-hls": "3.0.24"
   },
   "devDependencies": {
     "@sentry/vite-plugin": "^5.2.0",

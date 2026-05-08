@@ -7,6 +7,7 @@ import { app } from '@tauri-apps/api'
 import { load, type Store } from '@tauri-apps/plugin-store'
 import { invoke } from '@tauri-apps/api/core'
 import { LogLevel } from '@tauri-apps/plugin-log'
+import { Check } from '@element-plus/icons-vue'
 
 import SettingItem from '@/components/setting-item.vue'
 
@@ -72,6 +73,19 @@ const handleLogLevelChange = (level: unknown) => {
     updateLogLevel(level as number)
 }
 
+// 本机 ffmpeg 视频解析设置
+const useLocalFfmpeg = ref<boolean>(false)
+const ffmpegAvailable = ref<boolean | null>(null)
+
+const handleUseLocalFfmpegChange = async (val: unknown) => {
+    if (typeof val !== 'boolean') return
+    await localStore?.set('useLocalFfmpeg', val)
+    await localStore?.save()
+    if (val) {
+        ffmpegAvailable.value = await invoke<boolean>('check_ffmpeg')
+    }
+}
+
 onMounted(async () => {
     await loadStore()
     config.value = await getConfig()
@@ -79,6 +93,12 @@ onMounted(async () => {
     const tmpLogLevel: string = (await localStore?.get<string>('logLevel')) || ''
     console.log('当前日志级别:', tmpLogLevel)
     logLevel.value = tmpLogLevel || 'info'
+
+    const storedFfmpeg = await localStore?.get<boolean>('useLocalFfmpeg')
+    useLocalFfmpeg.value = storedFfmpeg ?? false
+    if (useLocalFfmpeg.value) {
+        ffmpegAvailable.value = await invoke<boolean>('check_ffmpeg')
+    }
 })
 </script>
 
@@ -87,6 +107,7 @@ onMounted(async () => {
         <el-affix>
             <el-anchor direction="horizontal">
                 <el-anchor-link href="#support">支持的格式</el-anchor-link>
+                <el-anchor-link href="#video">视频</el-anchor-link>
                 <el-anchor-link href="#log">日志</el-anchor-link>
                 <el-anchor-link href="#version">版本</el-anchor-link>
             </el-anchor>
@@ -100,6 +121,24 @@ onMounted(async () => {
                 <div class="support-item-body">
                     {{ type.data.join('、') }}
                 </div>
+            </div>
+        </SettingItem>
+        <SettingItem title="视频" id="video">
+            <div class="flex-col-center">
+                <span>使用本机 ffmpeg 解析视频：</span>
+                <el-switch v-model="useLocalFfmpeg" @change="handleUseLocalFfmpegChange" style="margin-left: 16px" />
+            </div>
+            <div v-if="useLocalFfmpeg" style="margin-top: 8px; font-size: 13px; color: var(--el-text-color-secondary)">
+                <template v-if="ffmpegAvailable === null">正在检测 ffmpeg…</template>
+                <template v-else-if="ffmpegAvailable">
+                    <el-icon style="color: var(--el-color-success); vertical-align: middle"><Check /></el-icon>
+                    已检测到本机 ffmpeg，非 h264 格式视频将自动转换后播放。
+                </template>
+                <template v-else>
+                    <span style="color: var(--el-color-danger)">
+                        未检测到 ffmpeg，请安装 ffmpeg 并确保其在系统 PATH 中。
+                    </span>
+                </template>
             </div>
         </SettingItem>
         <SettingItem title="日志" id="log">
