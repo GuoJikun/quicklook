@@ -406,19 +406,15 @@ pub fn clear_ffmpeg_cache() -> Result<u32, String> {
     for entry in entries.flatten() {
         let name = entry.file_name();
         let name_str = name.to_string_lossy();
-        if name_str.starts_with("quicklook_hls_") {
-            if let Ok(meta) = entry.metadata() {
-                if meta.is_dir() {
-                    match std::fs::remove_dir_all(entry.path()) {
-                        Ok(_) => {
-                            removed += 1;
-                            log::info!("已清理缓存目录: {:?}", entry.path());
-                        },
-                        Err(e) => {
-                            log::warn!("清理缓存目录失败: {:?}, 错误: {}", entry.path(), e);
-                        },
-                    }
-                }
+        if name_str.starts_with("quicklook_hls_") && entry.path().is_dir() {
+            match std::fs::remove_dir_all(entry.path()) {
+                Ok(_) => {
+                    removed += 1;
+                    log::info!("已清理缓存目录: {}", entry.path().display());
+                },
+                Err(e) => {
+                    log::warn!("清理缓存目录失败: {}, 错误: {}", entry.path().display(), e);
+                },
             }
         }
     }
