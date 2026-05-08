@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { onMounted, ref } from 'vue'
+import { ElMessage } from 'element-plus'
 import { BaseDirectory } from '@tauri-apps/plugin-fs'
 // import { emit } from '@tauri-apps/api/event'
 import { readTextFile } from '@/utils'
@@ -100,6 +101,19 @@ onMounted(async () => {
         ffmpegAvailable.value = await invoke<boolean>('check_ffmpeg')
     }
 })
+
+const clearingCache = ref<boolean>(false)
+const handleClearCache = async () => {
+    clearingCache.value = true
+    try {
+        const removed = await invoke<number>('clear_ffmpeg_cache')
+        ElMessage.success(`已清理 ${removed} 个缓存目录`)
+    } catch (e) {
+        ElMessage.error(`清理缓存失败：${e}`)
+    } finally {
+        clearingCache.value = false
+    }
+}
 </script>
 
 <template>
@@ -108,6 +122,7 @@ onMounted(async () => {
             <el-anchor direction="horizontal">
                 <el-anchor-link href="#support">支持的格式</el-anchor-link>
                 <el-anchor-link href="#video">视频</el-anchor-link>
+                <el-anchor-link href="#cache">缓存</el-anchor-link>
                 <el-anchor-link href="#log">日志</el-anchor-link>
                 <el-anchor-link href="#version">版本</el-anchor-link>
             </el-anchor>
@@ -139,6 +154,21 @@ onMounted(async () => {
                         未检测到 ffmpeg，请安装 ffmpeg 并确保其在系统 PATH 中。
                     </span>
                 </template>
+            </div>
+        </SettingItem>
+        <SettingItem title="缓存" id="cache">
+            <div class="flex-col-center">
+                <span>清理 ffmpeg 转码缓存：</span>
+                <el-button
+                    type="danger"
+                    plain
+                    :loading="clearingCache"
+                    style="margin-left: 16px"
+                    @click="handleClearCache"
+                >清理缓存</el-button>
+            </div>
+            <div style="margin-top: 8px; font-size: 13px; color: var(--el-text-color-secondary)">
+                清理由 ffmpeg 视频转码生成的临时 HLS 缓存文件。
             </div>
         </SettingItem>
         <SettingItem title="日志" id="log">
