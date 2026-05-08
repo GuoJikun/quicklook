@@ -100,9 +100,6 @@ onMounted(async () => {
 <template>
     <LayoutPreview :file="fileInfo">
         <div class="video-support">
-            <div v-if="converting" class="video-converting">
-                <el-text>正在使用 ffmpeg 转换视频，请稍候…</el-text>
-            </div>
             <el-alert
                 v-if="convertError"
                 :title="'ffmpeg 转换失败，已回退到直接播放：' + convertError"
@@ -110,7 +107,11 @@ onMounted(async () => {
                 :closable="false"
                 style="margin-bottom: 8px"
             />
-            <div class="video-support-inner">
+            <div
+                class="video-support-inner"
+                v-loading="converting"
+                element-loading-text="正在使用 ffmpeg 转换视频，请稍候…"
+            >
                 <div id="videos"></div>
             </div>
         </div>
