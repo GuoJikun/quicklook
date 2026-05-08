@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { onMounted, ref } from 'vue'
+import { ElMessage } from 'element-plus'
 import { BaseDirectory } from '@tauri-apps/plugin-fs'
 // import { emit } from '@tauri-apps/api/event'
 import { readTextFile } from '@/utils'
@@ -100,6 +101,19 @@ onMounted(async () => {
         ffmpegAvailable.value = await invoke<boolean>('check_ffmpeg')
     }
 })
+
+const clearingCache = ref<boolean>(false)
+const handleClearCache = async () => {
+    clearingCache.value = true
+    try {
+        const removed = await invoke<number>('clear_cache')
+        ElMessage.success(`已清理 ${removed} 个缓存目录`)
+    } catch (e) {
+        ElMessage.error(`清理缓存失败：${e}`)
+    } finally {
+        clearingCache.value = false
+    }
+}
 </script>
 
 <template>
@@ -108,52 +122,78 @@ onMounted(async () => {
             <el-anchor direction="horizontal">
                 <el-anchor-link href="#support">支持的格式</el-anchor-link>
                 <el-anchor-link href="#video">视频</el-anchor-link>
+                <el-anchor-link href="#cache">缓存</el-anchor-link>
                 <el-anchor-link href="#log">日志</el-anchor-link>
                 <el-anchor-link href="#version">版本</el-anchor-link>
             </el-anchor>
         </el-affix>
-
-        <SettingItem title="支持的格式" id="support">
-            <div class="support-item" v-for="type in config" :key="type.code">
-                <div class="support-item-header">
-                    <span>{{ type.code }}：</span>
+        <div class="setting-content">
+            <SettingItem title="支持的格式" id="support">
+                <div class="support-item" v-for="type in config" :key="type.code">
+                    <div class="support-item-header">
+                        <span>{{ type.code }}：</span>
+                    </div>
+                    <div class="support-item-body">
+                        {{ type.data.join('、') }}
+                    </div>
                 </div>
-                <div class="support-item-body">
-                    {{ type.data.join('、') }}
+            </SettingItem>
+            <SettingItem title="视频" id="video">
+                <div class="flex-col-center">
+                    <span>使用本机 ffmpeg 解析视频：</span>
+                    <el-switch
+                        v-model="useLocalFfmpeg"
+                        @change="handleUseLocalFfmpegChange"
+                        style="margin-left: 16px"
+                    />
                 </div>
-            </div>
-        </SettingItem>
-        <SettingItem title="视频" id="video">
-            <div class="flex-col-center">
-                <span>使用本机 ffmpeg 解析视频：</span>
-                <el-switch v-model="useLocalFfmpeg" @change="handleUseLocalFfmpegChange" style="margin-left: 16px" />
-            </div>
-            <div v-if="useLocalFfmpeg" style="margin-top: 8px; font-size: 13px; color: var(--el-text-color-secondary)">
-                <template v-if="ffmpegAvailable === null">正在检测 ffmpeg…</template>
-                <template v-else-if="ffmpegAvailable">
-                    <el-icon style="color: var(--el-color-success); vertical-align: middle"><Check /></el-icon>
-                    已检测到本机 ffmpeg，非 h264 格式视频将自动转换后播放。
-                </template>
-                <template v-else>
-                    <span style="color: var(--el-color-danger)">
-                        未检测到 ffmpeg，请安装 ffmpeg 并确保其在系统 PATH 中。
-                    </span>
-                </template>
-            </div>
-        </SettingItem>
-        <SettingItem title="日志" id="log">
-            <div class="flex-col-center">
-                <span>日志级别：</span>
-                <el-radio-group v-model="logLevel" @change="handleLogLevelChange" style="margin-left: 16px">
-                    <el-radio v-for="item in logLevelList" :key="item.value" :value="item.value">{{
-                        item.label
-                    }}</el-radio>
-                </el-radio-group>
-            </div>
-        </SettingItem>
-        <SettingItem title="版本" id="version">
-            <span>app 版本：{{ version }}</span>
-        </SettingItem>
+                <div
+                    v-if="useLocalFfmpeg"
+                    style="margin-top: 8px; font-size: 13px; color: var(--el-text-color-secondary)"
+                >
+                    <template v-if="ffmpegAvailable === null">正在检测 ffmpeg…</template>
+                    <template v-else-if="ffmpegAvailable">
+                        <el-icon style="color: var(--el-color-success); vertical-align: middle"><Check /></el-icon>
+                        已检测到本机 ffmpeg，非 h264 格式视频将自动转换后播放。
+                    </template>
+                    <template v-else>
+                        <span style="color: var(--el-color-danger)">
+                            未检测到 ffmpeg，请安装 ffmpeg 并确保其在系统 PATH 中。
+                        </span>
+                    </template>
+                </div>
+            </SettingItem>
+            <SettingItem title="缓存" id="cache">
+                <div class="flex-col-center">
+                    <span>清理 ffmpeg 缓存：</span>
+                    <el-button
+                        size="small"
+                        type="danger"
+                        plain
+                        :loading="clearingCache"
+                        style="margin-left: 16px"
+                        @click="handleClearCache"
+                        >清理缓存</el-button
+                    >
+                </div>
+                <div style="margin-top: 8px; font-size: 13px; color: var(--el-text-color-secondary)">
+                    清理由 ffmpeg 视频转码生成的临时 HLS 缓存文件。
+                </div>
+            </SettingItem>
+            <SettingItem title="日志" id="log">
+                <div class="flex-col-center">
+                    <span>日志级别：</span>
+                    <el-radio-group v-model="logLevel" @change="handleLogLevelChange" style="margin-left: 16px">
+                        <el-radio v-for="item in logLevelList" :key="item.value" :value="item.value">{{
+                            item.label
+                        }}</el-radio>
+                    </el-radio-group>
+                </div>
+            </SettingItem>
+            <SettingItem title="版本" id="version">
+                <span>app 版本：{{ version }}</span>
+            </SettingItem>
+        </div>
     </div>
 </template>
 
@@ -162,6 +202,12 @@ onMounted(async () => {
     padding: 16px;
     width: 100%;
     line-height: 1.6em;
+    background-color: #fff;
+    &-content {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
 }
 .support {
     &-item {
