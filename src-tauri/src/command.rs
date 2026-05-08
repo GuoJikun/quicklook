@@ -397,7 +397,6 @@ pub fn cancel_video_conversion() {
 
 /// 清理所有由 quicklook 生成的 ffmpeg HLS 转码缓存目录。
 /// 返回被删除的目录数量。
-#[command]
 pub fn clear_ffmpeg_cache() -> Result<u32, String> {
     let temp_dir = std::env::temp_dir();
     let entries = std::fs::read_dir(&temp_dir).map_err(|e| e.to_string())?;
@@ -420,4 +419,14 @@ pub fn clear_ffmpeg_cache() -> Result<u32, String> {
     }
     log::info!("共清理 {} 个 ffmpeg 缓存目录", removed);
     Ok(removed)
+}
+
+/// 汇总清理所有 quicklook 产生的缓存，目前包含 ffmpeg HLS 转码缓存。
+/// 返回被删除的目录/文件总数量。
+#[command]
+pub fn clear_cache() -> Result<u32, String> {
+    let mut total = 0u32;
+    total += clear_ffmpeg_cache()?;
+    log::info!("缓存清理完成，共删除 {} 个目录/文件", total);
+    Ok(total)
 }

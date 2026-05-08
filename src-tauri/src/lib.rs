@@ -12,7 +12,7 @@ mod tray;
 #[path = "./command.rs"]
 mod command;
 use command::{
-    archive, cancel_video_conversion, check_ffmpeg, clear_ffmpeg_cache, convert_video_to_hls,
+    archive, cancel_video_conversion, check_ffmpeg, clear_cache, convert_video_to_hls,
     document, get_default_program_name, get_monitor_info, parse_lrc, psd_to_png, read_audio_info,
     set_log_level, show_open_with_dialog,
 };
@@ -125,7 +125,7 @@ pub fn run() {
             check_ffmpeg,
             convert_video_to_hls,
             cancel_video_conversion,
-            clear_ffmpeg_cache,
+            clear_cache,
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");
