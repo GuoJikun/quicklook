@@ -25,7 +25,11 @@ const createMd = async (): Promise<MarkdownIt> => {
     const md = new MarkdownIt()
 
     const highlight = await Shiki({
-        theme: 'none',
+        themes: {
+            light: 'github-light',
+            dark: 'github-dark',
+        },
+        defaultColor: 'light-dark()',
     })
 
     md.use(markdownItAbbr)
