@@ -42,7 +42,7 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
 
     // 同一文件若已在转换中，直接等待播放列表就绪并返回，避免重复启动 ffmpeg。
     {
-        let guard = FFMPEG_PROCESS.lock().unwrap();
+        let guard = FFMPEG_PROCESS.lock().unwrap_or_else(|e| e.into_inner());
         if let Some((pid, running_dir)) = guard.as_ref() {
             if *running_dir == temp_dir {
                 log::info!(
