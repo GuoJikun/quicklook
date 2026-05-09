@@ -2,6 +2,8 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
+import { info } from '@tauri-apps/plugin-log'
+
 import Player, { I18N } from 'xgplayer'
 import 'xgplayer/dist/index.min.css'
 import ZH from 'xgplayer/es/lang/zh-cn'
@@ -10,8 +12,32 @@ import type { FileInfo } from '@/utils/typescript'
 import LayoutPreview from '@/components/layout-preview.vue'
 import { convertFileSrc, invoke } from '@tauri-apps/api/core'
 import { load } from '@tauri-apps/plugin-store'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 
 const route = useRoute()
+let unlistenWindowClose: (() => void) | null = null
+let disposed = false
+
+const cleanupPlayer = () => {
+    if (player !== null) {
+        player.destroy()
+        player = null
+    }
+}
+
+const listenWindowClose = async () => {
+    const currentWindow = getCurrentWindow()
+    unlistenWindowClose = await currentWindow.onCloseRequested(() => {
+        disposed = true
+        // 清理逻辑
+        info('触发 onCloseRequested 生命周期，正在清理资源...')
+        // 如果窗口关闭或切换文件时转码仍在进行，通知后端终止 ffmpeg 进程
+
+        invoke('cancel_video_conversion').catch(err => console.error('停止 ffmpeg 转换失败:', err))
+        cleanupPlayer()
+        // 不阻止则继续关闭
+    })
+}
 
 // 启用中文
 I18N.use(ZH)
@@ -55,17 +81,9 @@ const initPlayer = (url: string, isHls = false) => {
     }
 }
 
-onUnmounted(() => {
-    // 如果窗口关闭或切换文件时转码仍在进行，通知后端终止 ffmpeg 进程
-    if (converting.value) {
-        invoke('cancel_video_conversion').catch(err => console.error('停止 ffmpeg 转换失败:', err))
-    }
-    if (player !== null) {
-        player.destroy()
-    }
-})
-
 onMounted(async () => {
+    await listenWindowClose()
+
     fileInfo.value = route.query as unknown as FileInfo
     const filePath = fileInfo.value.path
 
@@ -79,11 +97,17 @@ onMounted(async () => {
         convertError.value = null
         try {
             const m3u8Path = await invoke<string>('convert_video_to_hls', { path: filePath })
+            if (disposed) {
+                return
+            }
             console.log('视频转换完成，m3u8 文件路径:', m3u8Path)
             const m3u8Url = convertFileSrc(m3u8Path)
             console.log('视频转换完成，开始播放...', m3u8Url)
             initPlayer(m3u8Url, true)
         } catch (e: unknown) {
+            if (disposed) {
+                return
+            }
             convertError.value = e instanceof Error ? e.message : String(e)
             // 回退到直接播放
             initPlayer(convertFileSrc(filePath), false)
@@ -93,6 +117,16 @@ onMounted(async () => {
     } else {
         console.log('直接播放视频，不使用 ffmpeg 转换')
         initPlayer(convertFileSrc(filePath), false)
+    }
+})
+
+onUnmounted(() => {
+    disposed = true
+    invoke('cancel_video_conversion').catch(err => console.error('停止 ffmpeg 转换失败:', err))
+    cleanupPlayer()
+    if (unlistenWindowClose !== null) {
+        unlistenWindowClose()
+        unlistenWindowClose = null
     }
 })
 </script>
