@@ -9,7 +9,20 @@ use windows::Win32::Foundation::HWND;
 mod helper;
 use helper::{audio, ffmp, monitor, win};
 
-pub use ffmp::{cancel_video_conversion, check_ffmpeg, convert_video_to_hls};
+#[command]
+pub fn check_ffmpeg() -> bool {
+    ffmp::check_ffmpeg()
+}
+
+#[command]
+pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
+    ffmp::convert_video_to_hls(path)
+}
+
+#[command]
+pub fn cancel_video_conversion() {
+    ffmp::cancel_video_conversion()
+}
 
 #[command]
 pub fn show_open_with_dialog(app: AppHandle, path: &str) {

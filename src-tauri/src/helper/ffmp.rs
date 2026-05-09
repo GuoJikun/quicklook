@@ -1,12 +1,10 @@
 use std::path::PathBuf;
 use std::sync::{LazyLock, Mutex};
-use tauri::command;
 
 /// 全局记录正在运行的 ffmpeg 进程 PID 及其对应的临时目录，用于取消时终止进程并清理。
 static FFMPEG_PROCESS: LazyLock<Mutex<Option<(u32, PathBuf)>>> = LazyLock::new(|| Mutex::new(None));
 
 /// 检测本机是否安装了 ffmpeg
-#[command]
 pub fn check_ffmpeg() -> bool {
     std::process::Command::new("ffmpeg")
         .arg("-version")
@@ -18,7 +16,6 @@ pub fn check_ffmpeg() -> bool {
 /// 将视频转换为 HLS (m3u8) 格式以供播放。
 /// 如果视频已经是 h264 编码，则直接封装为 HLS；否则先转码为 h264 再封装。
 /// 返回生成的 m3u8 文件路径。
-#[command]
 pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
@@ -269,7 +266,6 @@ fn kill_ffmpeg_process() {
 }
 
 /// 取消正在进行的 ffmpeg 视频转换，清理临时文件。
-#[command]
 pub fn cancel_video_conversion() {
     kill_ffmpeg_process();
 }
