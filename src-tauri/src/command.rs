@@ -15,8 +15,11 @@ pub fn check_ffmpeg() -> bool {
 }
 
 #[command]
-pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
-    ffmp::convert_video_to_hls(path)
+pub async fn convert_video_to_hls(path: String) -> Result<String, String> {
+    let path_for_work = path.clone();
+    tauri::async_runtime::spawn_blocking(move || ffmp::convert_video_to_hls(&path_for_work))
+        .await
+        .map_err(|e| format!("转码任务执行失败: {}", e))?
 }
 
 #[command]

@@ -17,6 +17,7 @@
     "core:window:allow-get-all-windows",
     "core:window:allow-close",
     "core:window:allow-create",
+    "core:window:allow-destroy",
     "core:window:allow-is-visible",
     "core:window:allow-set-focus",
     "core:window:allow-show",

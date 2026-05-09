@@ -1,8 +1,10 @@
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{LazyLock, Mutex};
 
 /// 全局记录正在运行的 ffmpeg 进程 PID 及其对应的临时目录，用于取消时终止进程并清理。
 static FFMPEG_PROCESS: LazyLock<Mutex<Option<(u32, PathBuf)>>> = LazyLock::new(|| Mutex::new(None));
+static FFMPEG_CANCELLED: AtomicBool = AtomicBool::new(false);
 
 /// 检测本机是否安装了 ffmpeg
 pub fn check_ffmpeg() -> bool {
@@ -17,6 +19,8 @@ pub fn check_ffmpeg() -> bool {
 /// 如果视频已经是 h264 编码，则直接封装为 HLS；否则先转码为 h264 再封装。
 /// 返回生成的 m3u8 文件路径。
 pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
+    FFMPEG_CANCELLED.store(false, Ordering::Relaxed);
+
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
 
@@ -48,6 +52,9 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
                 drop(guard);
 
                 for _ in 0..120 {
+                    if FFMPEG_CANCELLED.load(Ordering::Relaxed) {
+                        return Err("ffmpeg 转换已取消".to_string());
+                    }
                     if m3u8_path.exists() {
                         return Ok(m3u8_result);
                     }
@@ -178,9 +185,7 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
 
     // 记录 PID 和临时目录，以便在取消时终止进程
     {
-        let mut guard = FFMPEG_PROCESS
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
+        let mut guard = FFMPEG_PROCESS.lock().unwrap_or_else(|e| e.into_inner());
         *guard = Some((child.id(), temp_dir.clone()));
     }
 
@@ -190,9 +195,7 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
         let status = child.wait();
 
         {
-            let mut guard = FFMPEG_PROCESS
-                .lock()
-                .unwrap_or_else(|e| e.into_inner());
+            let mut guard = FFMPEG_PROCESS.lock().unwrap_or_else(|e| e.into_inner());
             if let Some((pid, _)) = guard.as_ref() {
                 if *pid == child_pid {
                     *guard = None;
@@ -218,6 +221,11 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
 
     // 边转边播：等待首个播放列表文件生成后立即返回给前端。
     for _ in 0..120 {
+        if FFMPEG_CANCELLED.load(Ordering::Relaxed) {
+            log::info!("ffmpeg 转换已取消，提前结束等待");
+            let _ = std::fs::remove_dir_all(&temp_dir);
+            return Err("ffmpeg 转换已取消".to_string());
+        }
         if m3u8_path.exists() {
             log::info!("m3u8 已就绪，开始边转边播: {:?}", m3u8_path);
             return Ok(m3u8_result);
@@ -267,6 +275,7 @@ fn kill_ffmpeg_process() {
 
 /// 取消正在进行的 ffmpeg 视频转换，清理临时文件。
 pub fn cancel_video_conversion() {
+    FFMPEG_CANCELLED.store(true, Ordering::Relaxed);
     kill_ffmpeg_process();
 }
 
