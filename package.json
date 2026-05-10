@@ -65,7 +65,7 @@
   "devDependencies": {
     "@sentry/vite-plugin": "^5.2.0",
     "@tauri-apps/cli": "2.11.1",
-    "@tsconfig/node20": "^20.1.4",
+    "@tsconfig/node24": "^24.0.4",
     "@types/jsdom": "^21.1.7",
     "@types/markdown-it": "^14.1.2",
     "@types/node": "^22.10.1",
@@ -89,7 +89,7 @@
     "vue-tsc": "^2.2.0"
   },
   "volta": {
-    "node": "22.21.0",
-    "pnpm": "10.24.0"
+    "node": "24.15.0",
+    "pnpm": "11.0.9"
   }
 }
