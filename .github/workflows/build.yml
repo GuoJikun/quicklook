@@ -50,11 +50,11 @@ jobs:
       - name: setup pnpm
         uses: pnpm/action-setup@v2
         with:
-          version: 10.15.0
+          version: 11
       - name: setup node
         uses: actions/setup-node@v4
         with:
-          node-version: 22.12.0
+          node-version: 24
           cache: pnpm
       - name: Install frontend dependencies
         run: pnpm install
