@@ -175,15 +175,20 @@ impl PreviewFile {
             let file_path = file_path.unwrap();
 
             // 从 store 读取用户自定义扩展名
-            let custom_code_exts: Vec<String> = app
-                .store("config.data")
-                .ok()
+            let store = match app.store("config.data") {
+                Ok(store) => Some(store),
+                Err(err) => {
+                    log::warn!("Failed to open config.data store: {:?}", err);
+                    None
+                },
+            };
+            let custom_code_exts: Vec<String> = store
+                .as_ref()
                 .and_then(|s| s.get("customCodeExtensions"))
                 .and_then(|v| serde_json::from_value(v).ok())
                 .unwrap_or_default();
-            let custom_video_exts: Vec<String> = app
-                .store("config.data")
-                .ok()
+            let custom_video_exts: Vec<String> = store
+                .as_ref()
                 .and_then(|s| s.get("customVideoExtensions"))
                 .and_then(|v| serde_json::from_value(v).ok())
                 .unwrap_or_default();
