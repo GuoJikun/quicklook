@@ -123,7 +123,11 @@ pub fn detect_language_no_ext(file_name: &str) -> String {
     map.get(file_name).copied().unwrap_or("txt").to_string()
 }
 
-pub fn get_file_info(path: &str) -> Option<File> {
+pub fn get_file_info(
+    path: &str,
+    custom_code_exts: &[String],
+    custom_video_exts: &[String],
+) -> Option<File> {
     let file_path = Path::new(path);
     let path_str = path.to_string();
 
@@ -145,9 +149,25 @@ pub fn get_file_info(path: &str) -> Option<File> {
 
     let metadata = file_path.metadata().unwrap();
 
-    // 根据扩展名从映射表中获取文件类型
-    match file_type_mapping().get(extension.as_str()) {
-        Some(file_type) => Some(File::new(
+    // 先从内置映射表中查找文件类型
+    let file_type_opt = file_type_mapping()
+        .get(extension.as_str())
+        .map(|s| s.to_string());
+
+    // 如果内置映射表中没有匹配，检查用户自定义扩展名
+    let file_type_opt = file_type_opt.or_else(|| {
+        let ext_lower = extension.as_str();
+        if custom_code_exts.iter().any(|e| e.to_lowercase() == ext_lower) {
+            Some("Code".to_string())
+        } else if custom_video_exts.iter().any(|e| e.to_lowercase() == ext_lower) {
+            Some("Video".to_string())
+        } else {
+            None
+        }
+    });
+
+    match file_type_opt {
+        Some(ref file_type) => Some(File::new(
             file_type,
             path_str,
             extension,
