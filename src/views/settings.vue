@@ -171,7 +171,7 @@ const handleClearCache = async () => {
 <template>
     <div class="setting">
         <el-affix>
-            <el-anchor direction="horizontal">
+            <el-anchor direction="horizontal" container="#app" :offset="24">
                 <el-anchor-link href="#support">支持的格式</el-anchor-link>
                 <el-anchor-link href="#custom-code">自定义代码格式</el-anchor-link>
                 <el-anchor-link href="#video">视频</el-anchor-link>
@@ -310,8 +310,21 @@ const handleClearCache = async () => {
                     </el-radio-group>
                 </div>
             </SettingItem>
-            <SettingItem title="版本" id="version">
-                <span>app 版本：{{ version }}</span>
+            <SettingItem title="关于" id="version">
+                <div>版本：{{ version }}</div>
+                <div>
+                    下载地址：
+                    <el-link
+                        type="primary"
+                        href="https://github.com/GuoJikun/quicklook/releases/latest"
+                        target="_blank"
+                        style="margin-right: 12px"
+                        >GitHub</el-link
+                    >
+                    <el-link type="primary" href="https://gitee.com/guojikun/quicklook/releases/latest" target="_blank"
+                        >Gitee</el-link
+                    >
+                </div>
             </SettingItem>
         </div>
     </div>
@@ -327,6 +340,7 @@ const handleClearCache = async () => {
         display: flex;
         flex-direction: column;
         gap: 12px;
+        margin-top: 12px;
     }
 }
 .support {
