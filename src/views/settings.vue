@@ -116,6 +116,7 @@ const customVideoExts = ref<string[]>([])
 const newVideoExt = ref<string>('')
 
 const addVideoExt = async () => {
+    if (!useLocalFfmpeg.value) return
     const ext = newVideoExt.value.trim().toLowerCase().replace(/^\./, '')
     if (!ext) return
     if (customVideoExts.value.includes(ext)) {
@@ -268,7 +269,7 @@ const handleClearCache = async () => {
                             size="small"
                             style="width: 180px"
                             :disabled="!useLocalFfmpeg"
-                            @keyup.enter="useLocalFfmpeg && addVideoExt()"
+                            @keyup.enter="addVideoExt"
                         />
                         <el-button
                             size="small"

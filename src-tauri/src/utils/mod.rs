@@ -155,11 +155,14 @@ pub fn get_file_info(
         .map(|s| s.to_string());
 
     // 如果内置映射表中没有匹配，检查用户自定义扩展名
+    // extension 已经是小写，将自定义扩展名一次性转为小写再比较，避免循环中重复分配
     let file_type_opt = file_type_opt.or_else(|| {
-        let ext_lower = extension.as_str();
-        if custom_code_exts.iter().any(|e| e.to_lowercase() == ext_lower) {
+        let ext_lower = extension.as_str(); // extension 已经是小写
+        let code_exts_lower: Vec<String> = custom_code_exts.iter().map(|e| e.to_lowercase()).collect();
+        let video_exts_lower: Vec<String> = custom_video_exts.iter().map(|e| e.to_lowercase()).collect();
+        if code_exts_lower.iter().any(|e| e == ext_lower) {
             Some("Code".to_string())
-        } else if custom_video_exts.iter().any(|e| e.to_lowercase() == ext_lower) {
+        } else if video_exts_lower.iter().any(|e| e == ext_lower) {
             Some("Video".to_string())
         } else {
             None
