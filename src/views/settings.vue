@@ -87,6 +87,55 @@ const handleUseLocalFfmpegChange = async (val: unknown) => {
     }
 }
 
+// 用户自定义代码格式
+const customCodeExts = ref<string[]>([])
+const newCodeExt = ref<string>('')
+
+const addCodeExt = async () => {
+    const ext = newCodeExt.value.trim().toLowerCase().replace(/^\./, '')
+    if (!ext) return
+    if (customCodeExts.value.includes(ext)) {
+        ElMessage.warning(`扩展名 "${ext}" 已存在`)
+        return
+    }
+    customCodeExts.value.push(ext)
+    newCodeExt.value = ''
+    await localStore?.set('customCodeExtensions', customCodeExts.value)
+    await localStore?.save()
+    ElMessage.success(`已添加代码格式：${ext}`)
+}
+
+const removeCodeExt = async (ext: string) => {
+    customCodeExts.value = customCodeExts.value.filter(e => e !== ext)
+    await localStore?.set('customCodeExtensions', customCodeExts.value)
+    await localStore?.save()
+}
+
+// 用户自定义视频格式
+const customVideoExts = ref<string[]>([])
+const newVideoExt = ref<string>('')
+
+const addVideoExt = async () => {
+    if (!useLocalFfmpeg.value) return
+    const ext = newVideoExt.value.trim().toLowerCase().replace(/^\./, '')
+    if (!ext) return
+    if (customVideoExts.value.includes(ext)) {
+        ElMessage.warning(`扩展名 "${ext}" 已存在`)
+        return
+    }
+    customVideoExts.value.push(ext)
+    newVideoExt.value = ''
+    await localStore?.set('customVideoExtensions', customVideoExts.value)
+    await localStore?.save()
+    ElMessage.success(`已添加视频格式：${ext}`)
+}
+
+const removeVideoExt = async (ext: string) => {
+    customVideoExts.value = customVideoExts.value.filter(e => e !== ext)
+    await localStore?.set('customVideoExtensions', customVideoExts.value)
+    await localStore?.save()
+}
+
 onMounted(async () => {
     await loadStore()
     config.value = await getConfig()
@@ -100,6 +149,9 @@ onMounted(async () => {
     if (useLocalFfmpeg.value) {
         ffmpegAvailable.value = await invoke<boolean>('check_ffmpeg')
     }
+
+    customCodeExts.value = (await localStore?.get<string[]>('customCodeExtensions')) ?? []
+    customVideoExts.value = (await localStore?.get<string[]>('customVideoExtensions')) ?? []
 })
 
 const clearingCache = ref<boolean>(false)
@@ -119,8 +171,9 @@ const handleClearCache = async () => {
 <template>
     <div class="setting">
         <el-affix>
-            <el-anchor direction="horizontal">
+            <el-anchor direction="horizontal" container="#app" :offset="24">
                 <el-anchor-link href="#support">支持的格式</el-anchor-link>
+                <el-anchor-link href="#custom-code">自定义代码格式</el-anchor-link>
                 <el-anchor-link href="#video">视频</el-anchor-link>
                 <el-anchor-link href="#cache">缓存</el-anchor-link>
                 <el-anchor-link href="#log">日志</el-anchor-link>
@@ -136,6 +189,34 @@ const handleClearCache = async () => {
                     <div class="support-item-body">
                         {{ type.data.join('、') }}
                     </div>
+                </div>
+            </SettingItem>
+            <SettingItem title="自定义代码格式" id="custom-code">
+                <div style="font-size: 13px; color: var(--el-text-color-secondary); margin-bottom: 8px">
+                    在此添加额外的代码文件扩展名（如 <code>rb</code>、<code>lua</code>），添加后即可预览对应文件。
+                </div>
+                <div class="custom-ext-tags" v-if="customCodeExts.length > 0">
+                    <el-tag
+                        v-for="ext in customCodeExts"
+                        :key="ext"
+                        closable
+                        @close="removeCodeExt(ext)"
+                        style="margin: 2px 4px 2px 0"
+                    >
+                        {{ ext }}
+                    </el-tag>
+                </div>
+                <div class="custom-ext-input flex-col-center" style="margin-top: 8px">
+                    <el-input
+                        v-model="newCodeExt"
+                        placeholder="输入扩展名，如 rb"
+                        size="small"
+                        style="width: 180px"
+                        @keyup.enter="addCodeExt"
+                    />
+                    <el-button size="small" type="primary" style="margin-left: 8px" @click="addCodeExt">
+                        添加
+                    </el-button>
                 </div>
             </SettingItem>
             <SettingItem title="视频" id="video">
@@ -161,6 +242,45 @@ const handleClearCache = async () => {
                             未检测到 ffmpeg，请安装 ffmpeg 并确保其在系统 PATH 中。
                         </span>
                     </template>
+                </div>
+                <div style="margin-top: 12px">
+                    <div style="font-size: 13px; color: var(--el-text-color-secondary); margin-bottom: 8px">
+                        自定义视频格式扩展名（如 <code>ts</code>、<code>rm</code>）：
+                        <span v-if="!useLocalFfmpeg" style="color: var(--el-color-warning); margin-left: 4px">
+                            （需先启用 ffmpeg 解析）
+                        </span>
+                    </div>
+                    <div class="custom-ext-tags" v-if="customVideoExts.length > 0">
+                        <el-tag
+                            v-for="ext in customVideoExts"
+                            :key="ext"
+                            closable
+                            :disabled="!useLocalFfmpeg"
+                            @close="useLocalFfmpeg && removeVideoExt(ext)"
+                            style="margin: 2px 4px 2px 0"
+                        >
+                            {{ ext }}
+                        </el-tag>
+                    </div>
+                    <div class="custom-ext-input flex-col-center" style="margin-top: 8px">
+                        <el-input
+                            v-model="newVideoExt"
+                            placeholder="输入扩展名，如 ts"
+                            size="small"
+                            style="width: 180px"
+                            :disabled="!useLocalFfmpeg"
+                            @keyup.enter="addVideoExt"
+                        />
+                        <el-button
+                            size="small"
+                            type="primary"
+                            style="margin-left: 8px"
+                            :disabled="!useLocalFfmpeg"
+                            @click="addVideoExt"
+                        >
+                            添加
+                        </el-button>
+                    </div>
                 </div>
             </SettingItem>
             <SettingItem title="缓存" id="cache">
@@ -190,8 +310,21 @@ const handleClearCache = async () => {
                     </el-radio-group>
                 </div>
             </SettingItem>
-            <SettingItem title="版本" id="version">
-                <span>app 版本：{{ version }}</span>
+            <SettingItem title="关于" id="version">
+                <div>版本：{{ version }}</div>
+                <div>
+                    下载地址：
+                    <el-link
+                        type="primary"
+                        href="https://github.com/GuoJikun/quicklook/releases/latest"
+                        target="_blank"
+                        style="margin-right: 12px"
+                        >GitHub</el-link
+                    >
+                    <el-link type="primary" href="https://gitee.com/guojikun/quicklook/releases/latest" target="_blank"
+                        >Gitee</el-link
+                    >
+                </div>
             </SettingItem>
         </div>
     </div>
@@ -207,6 +340,7 @@ const handleClearCache = async () => {
         display: flex;
         flex-direction: column;
         gap: 12px;
+        margin-top: 12px;
     }
 }
 .support {
@@ -223,5 +357,9 @@ const handleClearCache = async () => {
             justify-content: flex-end;
         }
     }
+}
+.custom-ext-tags {
+    display: flex;
+    flex-wrap: wrap;
 }
 </style>

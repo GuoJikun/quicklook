@@ -3,6 +3,7 @@ use tauri::{
     webview::PageLoadEvent, AppHandle, Error as TauriError, Manager, WebviewUrl,
     WebviewWindowBuilder,
 };
+use tauri_plugin_store::StoreExt;
 use windows::Win32::{
     Foundation::{LPARAM, LRESULT, WPARAM},
     UI::{Input::KeyboardAndMouse, WindowsAndMessaging},
@@ -172,7 +173,27 @@ impl PreviewFile {
         let file_path = Selected::new();
         if file_path.is_ok() {
             let file_path = file_path.unwrap();
-            let file_info = get_file_info(&file_path);
+
+            // 从 store 读取用户自定义扩展名
+            let store = match app.store("config.data") {
+                Ok(store) => Some(store),
+                Err(err) => {
+                    log::warn!("Failed to open config.data store: {:?}", err);
+                    None
+                },
+            };
+            let custom_code_exts: Vec<String> = store
+                .as_ref()
+                .and_then(|s| s.get("customCodeExtensions"))
+                .and_then(|v| serde_json::from_value(v).ok())
+                .unwrap_or_default();
+            let custom_video_exts: Vec<String> = store
+                .as_ref()
+                .and_then(|s| s.get("customVideoExtensions"))
+                .and_then(|v| serde_json::from_value(v).ok())
+                .unwrap_or_default();
+
+            let file_info = get_file_info(&file_path, &custom_code_exts, &custom_video_exts);
 
             let preview_state = app.state::<PreviewState>();
             let mut preview_state = preview_state.lock().unwrap();
