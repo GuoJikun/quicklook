@@ -128,9 +128,7 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
     // 如果已是 h264，直接复制视频流；否则转码为 libx264
     let video_codec = if codec == "h264" { "copy" } else { "libx264" };
 
-    let seg_filename = "seg_%03d.ts".to_string();
-    let m3u8_file_name = "index.m3u8".to_string();
-    let mut hls_base_url = format!("{}", temp_dir.to_string_lossy().replace('\\', "/"));
+    let mut hls_base_url = temp_dir.to_string_lossy().replace('\\', "/");
     if !hls_base_url.ends_with('/') {
         hls_base_url.push('/');
     }
@@ -175,10 +173,10 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
             "-hls_base_url",
             &hls_base_url,
             "-hls_segment_filename",
-            &seg_filename,
+            "seg_%03d.ts",
             "-f",
             "hls",
-            &m3u8_file_name,
+            "index.m3u8",
         ])
         .spawn()
         .map_err(|e| e.to_string())?;

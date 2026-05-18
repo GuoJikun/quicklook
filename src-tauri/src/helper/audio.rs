@@ -23,14 +23,14 @@ pub fn read_music_info<P: AsRef<Path>>(path: P) -> Option<MusicInfo> {
     let props = AudioFile::properties(&tagged_file);
 
     // 提取封面（APIC / covr 等）
-    let cover = tag.and_then(|t| t.pictures().get(0).map(|pic| pic.data().to_vec()));
+    let cover = tag.and_then(|t| t.pictures().first().map(|pic| pic.data().to_vec()));
     let title = tag.and_then(|t| t.get_string(ItemKey::TrackTitle).map(|s| s.to_string()));
     let artist = tag.and_then(|t| t.get_string(ItemKey::TrackArtist).map(|s| s.to_string()));
     let album = tag.and_then(|t| t.get_string(ItemKey::AlbumTitle).map(|s| s.to_string()));
     let music_info = MusicInfo {
-        title: title,
-        artist: artist,
-        album: album,
+        title,
+        artist,
+        album,
         duration: Some(props.duration().as_secs()),
         bitrate: props.audio_bitrate().map(|b| b / 1000), // 转换为 kbps
         cover,

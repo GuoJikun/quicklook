@@ -21,10 +21,7 @@ pub fn list_tar_entries<P: AsRef<Path>>(path: P) -> Result<Vec<Extract>, Archive
         let is_dir = header.entry_type().is_dir();
 
         let dt = UNIX_EPOCH + Duration::from_secs(mtime);
-        let last_modified = format!(
-            "{}",
-            chrono::DateTime::<chrono::Local>::from(dt).to_rfc3339()
-        );
+        let last_modified = chrono::DateTime::<chrono::Local>::from(dt).to_rfc3339();
 
         entries.push(Extract::new(name, size, last_modified, is_dir));
     }
@@ -49,10 +46,7 @@ pub fn list_tar_gz_entries<P: AsRef<Path>>(path: P) -> Result<Vec<Extract>, Arch
         let is_dir = header.entry_type().is_dir();
 
         let dt = UNIX_EPOCH + Duration::from_secs(mtime);
-        let last_modified = format!(
-            "{}",
-            chrono::DateTime::<chrono::Local>::from(dt).to_rfc3339()
-        );
+        let last_modified = chrono::DateTime::<chrono::Local>::from(dt).to_rfc3339();
 
         entries.push(Extract::new(name, size, last_modified, is_dir));
     }
@@ -77,10 +71,7 @@ pub fn list_tar_bz2_entries<P: AsRef<Path>>(path: P) -> Result<Vec<Extract>, Arc
         let is_dir = header.entry_type().is_dir();
 
         let dt = UNIX_EPOCH + Duration::from_secs(mtime);
-        let last_modified = format!(
-            "{}",
-            chrono::DateTime::<chrono::Local>::from(dt).to_rfc3339()
-        );
+        let last_modified = chrono::DateTime::<chrono::Local>::from(dt).to_rfc3339();
 
         entries.push(Extract::new(name, size, last_modified, is_dir));
     }
@@ -105,10 +96,7 @@ pub fn list_tar_xz_entries<P: AsRef<Path>>(path: P) -> Result<Vec<Extract>, Arch
         let is_dir = header.entry_type().is_dir();
 
         let dt = UNIX_EPOCH + Duration::from_secs(mtime);
-        let last_modified = format!(
-            "{}",
-            chrono::DateTime::<chrono::Local>::from(dt).to_rfc3339()
-        );
+        let last_modified = chrono::DateTime::<chrono::Local>::from(dt).to_rfc3339();
 
         entries.push(Extract::new(name, size, last_modified, is_dir));
     }

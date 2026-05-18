@@ -12,18 +12,18 @@ use tauri_plugin_updater::UpdaterExt;
 mod helper;
 
 async fn updater_check(app: AppHandle) -> tauri_plugin_updater::Result<()> {
-    let checked = app.updater()?.check().await;
-    if let Err(_) = checked {
-        let _ = app
-            .dialog()
-            .message("检查更新失败")
-            .kind(MessageDialogKind::Error)
-            .title("Warning")
-            .blocking_show();
-        return Ok(());
-    }
-
-    let checked = checked.unwrap();
+    let checked = match app.updater()?.check().await {
+        Ok(c) => c,
+        Err(_) => {
+            let _ = app
+                .dialog()
+                .message("检查更新失败")
+                .kind(MessageDialogKind::Error)
+                .title("Warning")
+                .blocking_show();
+            return Ok(());
+        },
+    };
 
     match checked {
         Some(_) => {
@@ -107,8 +107,10 @@ pub fn create_tray(app: &mut App) -> tauri::Result<()> {
             },
             "auto_start" => {
                 let autostart_manager = app.autolaunch();
-                // let is_enabled = autostart_manager.is_enabled();
-                let store = app.store("config.data").unwrap();
+                let Ok(store) = app.store("config.data") else {
+                    log::warn!("无法打开 config.data store");
+                    return;
+                };
                 let store_auto_start = store
                     .get("autostart")
                     .unwrap_or(serde_json::Value::Bool(true));
@@ -117,12 +119,12 @@ pub fn create_tray(app: &mut App) -> tauri::Result<()> {
                 if let Some(enabled) = is_enabled {
                     if enabled {
                         let _ = autostart_manager.disable();
-                        let _ = auto_start.set_text("启用开机自启").unwrap();
+                        let _ = auto_start.set_text("启用开机自启");
                         store.set("autostart", serde_json::Value::Bool(false));
                         log::info!("自启动设置为禁用");
                     } else {
                         let _ = autostart_manager.enable();
-                        let _ = auto_start.set_text("关闭开机自启").unwrap();
+                        let _ = auto_start.set_text("关闭开机自启");
                         store.set("autostart", serde_json::Value::Bool(true));
                         log::info!("自启动设置为开启");
                     }

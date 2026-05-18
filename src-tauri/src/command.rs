@@ -98,31 +98,29 @@ pub fn set_log_level(level: usize) -> Result<(), String> {
 
 #[command]
 pub fn psd_to_png(path: &str) -> Result<String, String> {
-    let file_bytes = std::fs::read(path);
+    let file_bytes = std::fs::read(path).map_err(|e| {
+        log::info!("psd:: 读取文件失败");
+        e.to_string()
+    })?;
 
-    if file_bytes.is_err() {
-        log::info!("psd:: 读取文件失败")
-    }
-
-    let psd_obj = psd::Psd::from_bytes(&*file_bytes.unwrap());
-    if psd_obj.is_err() {
-        log::info!("psd:: 从 bytes 解析 错误")
-    }
-    let psd_obj = psd_obj.unwrap();
+    let psd_obj = psd::Psd::from_bytes(&file_bytes).map_err(|e| {
+        log::info!("psd:: 从 bytes 解析 错误");
+        e.to_string()
+    })?;
 
     let rgba = psd_obj.rgba();
     // 封装成 RgbaImage
     let width = psd_obj.width();
     let height = psd_obj.height();
-    let img = image::RgbaImage::from_raw(width, height, rgba);
+    let img = image::RgbaImage::from_raw(width, height, rgba)
+        .ok_or_else(|| "PSD 图像数据尺寸与像素数据不匹配".to_string())?;
 
     // Windows 临时目录
     let mut temp_path: PathBuf = std::env::temp_dir();
     temp_path.push("quicklook_psd_preview.png"); // 固定文件名
 
     // 保存为 PNG
-    img.unwrap()
-        .save_with_format(&temp_path, image::ImageFormat::Png)
+    img.save_with_format(&temp_path, image::ImageFormat::Png)
         .map_err(|e| e.to_string())?;
 
     // 返回文件路径给前端

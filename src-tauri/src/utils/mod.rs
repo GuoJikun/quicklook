@@ -132,7 +132,7 @@ pub fn get_file_info(
     let path_str = path.to_string();
 
     // 如果不是文件则返回 None
-    if file_path.is_file() == false {
+    if !file_path.is_file() {
         return None;
     }
     // 获取文件名称
@@ -147,7 +147,7 @@ pub fn get_file_info(
     };
     println!("File extension: {}", extension);
 
-    let metadata = file_path.metadata().unwrap();
+    let metadata = file_path.metadata().ok()?;
 
     // 先从内置映射表中查找文件类型
     let file_type_opt = file_type_mapping()
@@ -169,17 +169,16 @@ pub fn get_file_info(
         }
     });
 
-    match file_type_opt {
-        Some(ref file_type) => Some(File::new(
-            file_type,
+    file_type_opt.map(|file_type| {
+        File::new(
+            &file_type,
             path_str,
             extension,
             metadata.file_size(),
             metadata.last_write_time(),
             name,
-        )),
-        None => None, // 如果没有匹配的文件类型，返回 None
-    }
+        )
+    })
 }
 
 // 返回一个文件扩展名到文件类型的映射

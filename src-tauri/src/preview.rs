@@ -101,9 +101,10 @@ impl PreviewFile {
     // 按键处理逻辑
     pub fn handle_key_down(&self, vk_code: u32) {
         if vk_code == KeyboardAndMouse::VK_SPACE.0 as u32 {
-            let result = Self::preview_file(self.app_handle.clone().unwrap());
-            if result.is_err() {
-                log::error!("Error: {:?}", result.err().unwrap());
+            if let Some(handle) = &self.app_handle {
+                if let Err(e) = Self::preview_file(handle.clone()) {
+                    log::error!("Error: {:?}", e);
+                }
             }
         }
     }
@@ -170,99 +171,98 @@ impl PreviewFile {
     }
 
     pub fn preview_file(app: AppHandle) -> Result<(), TauriError> {
-        let file_path = Selected::new();
-        if file_path.is_ok() {
-            let file_path = file_path.unwrap();
-
-            // 从 store 读取用户自定义扩展名
-            let store = match app.store("config.data") {
-                Ok(store) => Some(store),
-                Err(err) => {
-                    log::warn!("Failed to open config.data store: {:?}", err);
-                    None
-                },
-            };
-            let custom_code_exts: Vec<String> = store
-                .as_ref()
-                .and_then(|s| s.get("customCodeExtensions"))
-                .and_then(|v| serde_json::from_value(v).ok())
-                .unwrap_or_default();
-            let custom_video_exts: Vec<String> = store
-                .as_ref()
-                .and_then(|s| s.get("customVideoExtensions"))
-                .and_then(|v| serde_json::from_value(v).ok())
-                .unwrap_or_default();
-
-            let file_info = get_file_info(&file_path, &custom_code_exts, &custom_video_exts);
-
-            let preview_state = app.state::<PreviewState>();
-            let mut preview_state = preview_state.lock().unwrap();
-            preview_state.input_path = file_path.clone();
-
-            if file_info.is_none() {
+        let file_path = match Selected::new() {
+            Ok(path) => path,
+            Err(e) => {
+                log::error!("Error: {:?}", e);
                 return Ok(());
-            }
+            },
+        };
 
-            let file_info = file_info.unwrap();
-            let file_type = file_info.get_file_type();
+        // 从 store 读取用户自定义扩展名
+        let store = match app.store("config.data") {
+            Ok(store) => Some(store),
+            Err(err) => {
+                log::warn!("Failed to open config.data store: {:?}", err);
+                None
+            },
+        };
+        let custom_code_exts: Vec<String> = store
+            .as_ref()
+            .and_then(|s| s.get("customCodeExtensions"))
+            .and_then(|v| serde_json::from_value(v).ok())
+            .unwrap_or_default();
+        let custom_video_exts: Vec<String> = store
+            .as_ref()
+            .and_then(|s| s.get("customVideoExtensions"))
+            .and_then(|v| serde_json::from_value(v).ok())
+            .unwrap_or_default();
 
-            let (width, height) = Self::calc_window_size(&file_type);
+        let file_info = get_file_info(&file_path, &custom_code_exts, &custom_video_exts);
 
-            match app.get_webview_window("preview") {
-                Some(window) => {
-                    let type_str = file_info.get_file_type();
-                    let route = WebRoute::get_route(&type_str, &file_info);
+        let preview_state = app.state::<PreviewState>();
+        let mut preview_state = preview_state.lock().unwrap();
+        preview_state.input_path = file_path.clone();
 
-                    let url = route.to_url();
-                    let js = format!("window.location.href = '{}'", &url);
-                    let _ = window.eval(js.as_str());
+        let Some(file_info) = file_info else {
+            return Ok(());
+        };
+        let file_type = file_info.get_file_type();
 
-                    let _ = window.show();
-                    let _ = window.set_focus();
-                },
-                None => {
-                    let result = WebviewWindowBuilder::new(
-                        &app,
-                        "preview",
-                        WebviewUrl::App("/preview".into()),
-                    )
-                    .title("Preview")
-                    .center()
-                    .devtools(cfg!(debug_assertions))
-                    .decorations(false)
-                    .skip_taskbar(false)
-                    .auto_resize()
-                    .inner_size(width, height)
-                    .min_inner_size(300.0, 200.0)
-                    .on_page_load(move |window, payload| {
-                        let cur_path = payload.url().path();
-                        if cur_path == "/preview" {
-                            match payload.event() {
-                                PageLoadEvent::Finished => {
-                                    let type_str = file_info.get_file_type();
-                                    let route = WebRoute::get_route(&type_str, &file_info);
+        let (width, height) = Self::calc_window_size(&file_type);
 
-                                    let url = route.to_url();
-                                    let js = format!("window.location.href = '{}'", &url);
-                                    let _ = window.eval(js.as_str());
+        match app.get_webview_window("preview") {
+            Some(window) => {
+                let type_str = file_info.get_file_type();
+                let route = WebRoute::get_route(&type_str, &file_info);
 
-                                    let _ = window.show();
-                                    let _ = window.set_focus();
-                                },
-                                _ => {},
-                            }
+                let url = route.to_url();
+                let js = format!("window.location.href = '{}'", &url);
+                let _ = window.eval(js.as_str());
+
+                let _ = window.show();
+                let _ = window.set_focus();
+            },
+            None => {
+                let result = WebviewWindowBuilder::new(
+                    &app,
+                    "preview",
+                    WebviewUrl::App("/preview".into()),
+                )
+                .title("Preview")
+                .center()
+                .devtools(cfg!(debug_assertions))
+                .decorations(false)
+                .skip_taskbar(false)
+                .auto_resize()
+                .inner_size(width, height)
+                .min_inner_size(300.0, 200.0)
+                .on_page_load(move |window, payload| {
+                    let cur_path = payload.url().path();
+                    if cur_path == "/preview" {
+                        match payload.event() {
+                            PageLoadEvent::Finished => {
+                                let type_str = file_info.get_file_type();
+                                let route = WebRoute::get_route(&type_str, &file_info);
+
+                                let url = route.to_url();
+                                let js = format!("window.location.href = '{}'", &url);
+                                let _ = window.eval(js.as_str());
+
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            },
+                            _ => {},
                         }
-                    })
-                    .focused(true)
-                    .visible_on_all_workspaces(true)
-                    .build();
-                    if let Ok(preview) = result {
-                        let _ = preview.show();
                     }
-                },
-            }
-        } else {
-            log::error!("Error: {:?}", file_path.err().unwrap());
+                })
+                .focused(true)
+                .visible_on_all_workspaces(true)
+                .build();
+                if let Ok(preview) = result {
+                    let _ = preview.show();
+                }
+            },
         }
 
         Ok(())

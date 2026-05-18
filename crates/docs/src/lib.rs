@@ -43,10 +43,7 @@ fn excel(file_path: &str) -> Result<Vec<DSheet>, Box<dyn std::error::Error>> {
         let range = workbook.worksheet_range(&sheet)?;
         let mut rows = Vec::new();
         for row in range.rows() {
-            let mut cell_list: Vec<String> = Vec::new();
-            for cell in row.iter() {
-                cell_list.push(cell.to_string());
-            }
+            let cell_list: Vec<String> = row.iter().map(|cell| cell.to_string()).collect();
             rows.push(cell_list);
         }
         let map = DSheet { name: sheet, rows };
@@ -65,10 +62,7 @@ fn csv(file_path: &str) -> Result<Vec<DSheet>, Box<dyn std::error::Error>> {
     let mut rows: Vec<Vec<String>> = vec![];
     for result in rdr.records() {
         let record = result?;
-        let mut cols: Vec<String> = Vec::new();
-        for i in 0..record.len() {
-            cols.push(record[i].to_string());
-        }
+        let cols: Vec<String> = record.iter().map(|s| s.to_string()).collect();
         rows.push(cols);
     }
     let target: Vec<DSheet> = vec![DSheet { name: "sheet1".to_string(), rows }];
