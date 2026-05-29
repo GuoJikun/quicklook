@@ -249,31 +249,27 @@ impl Selected {
             return Ok(target_path);
         }
         let listview = listview?;
-        let seleced_file_title = unsafe {
-            let _ = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
-            // 通过 ui automation 获取选中文件
+        let listview_raw = listview.0 as usize;
+        // 将 UI Automation COM 操作移入专用 COM 线程，避免在当前线程直接初始化 COM
+        let seleced_file_title = ComThread::run(move || unsafe {
+            let listview = HWND(listview_raw as *mut _);
             let automation: IUIAutomation =
                 CoCreateInstance(&CUIAutomation, None, CLSCTX_INPROC_SERVER)?;
-            // 获取列表元素
             let list_element = automation.ElementFromHandle(listview)?;
 
-            // 获取选中项
             let selection_pattern = list_element.GetCurrentPattern(UIA_SelectionPatternId)?;
             let selection = selection_pattern.cast::<IUIAutomationSelectionPattern>()?;
 
-            // 获取选中的元素
             let selected = selection.GetCurrentSelection()?;
             let count = selected.Length()?;
             let mut file_name = String::new();
             if count > 0 {
-                // 获取第一个选中项
                 let item = selected.GetElement(0)?;
-                // 获取文件名
                 let name = item.GetCurrentPropertyValue(UIA_NamePropertyId)?;
                 file_name = name.to_string();
             }
-            file_name
-        };
+            Ok(file_name)
+        })?;
         println!("seleced_file_title: {:?}", seleced_file_title);
 
         // 获取搜索框的 Text

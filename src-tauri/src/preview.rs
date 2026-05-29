@@ -22,6 +22,9 @@ pub struct PreviewFile {
     hook_handle: Option<WindowsAndMessaging::HHOOK>, // 钩子的句柄
     app_handle: Option<AppHandle>,
 }
+// SAFETY: PreviewFile 的 hook_handle 仅在主线程设置与访问（通过 keyboard_proc 回调），
+// app_handle（AppHandle）本身是 Send+Sync 的。全局实例通过 Mutex<Arc> 保护，
+// 实际访问只发生在键盘钩子回调中（主线程），因此 Send+Sync 是合理的。
 unsafe impl Send for PreviewFile {}
 unsafe impl Sync for PreviewFile {}
 
@@ -50,18 +53,18 @@ impl WebRoute {
     pub fn new(path: String, query: UFile) -> Self {
         Self { path, query }
     }
-    pub fn get_route(type_str: &str, file_info: &UFile) -> WebRoute {
+    pub fn get_route(type_str: &str, file_info: UFile) -> WebRoute {
         match type_str {
-            "Markdown" => WebRoute::new("/preview/md".to_string(), file_info.clone()),
-            "Image" => WebRoute::new("/preview/image".to_string(), file_info.clone()),
-            "Audio" => WebRoute::new("/preview/audio".to_string(), file_info.clone()),
-            "Video" => WebRoute::new("/preview/video".to_string(), file_info.clone()),
-            "Font" => WebRoute::new("/preview/font".to_string(), file_info.clone()),
-            "Code" => WebRoute::new("/preview/code".to_string(), file_info.clone()),
-            "Book" => WebRoute::new("/preview/book".to_string(), file_info.clone()),
-            "Archive" => WebRoute::new("/preview/archive".to_string(), file_info.clone()),
-            "Doc" => WebRoute::new("/preview/document".to_string(), file_info.clone()),
-            _ => WebRoute::new("/preview/not-support".to_string(), file_info.clone()),
+            "Markdown" => WebRoute::new("/preview/md".to_string(), file_info),
+            "Image" => WebRoute::new("/preview/image".to_string(), file_info),
+            "Audio" => WebRoute::new("/preview/audio".to_string(), file_info),
+            "Video" => WebRoute::new("/preview/video".to_string(), file_info),
+            "Font" => WebRoute::new("/preview/font".to_string(), file_info),
+            "Code" => WebRoute::new("/preview/code".to_string(), file_info),
+            "Book" => WebRoute::new("/preview/book".to_string(), file_info),
+            "Archive" => WebRoute::new("/preview/archive".to_string(), file_info),
+            "Doc" => WebRoute::new("/preview/document".to_string(), file_info),
+            _ => WebRoute::new("/preview/not-support".to_string(), file_info),
         }
     }
 }
@@ -204,15 +207,13 @@ impl PreviewFile {
             }
 
             let file_info = file_info.unwrap();
-            let file_type = file_info.get_file_type();
+            let type_str = file_info.get_file_type();
 
-            let (width, height) = Self::calc_window_size(&file_type);
+            let (width, height) = Self::calc_window_size(&type_str);
+            let route = WebRoute::get_route(&type_str, file_info);
 
             match app.get_webview_window("preview") {
                 Some(window) => {
-                    let type_str = file_info.get_file_type();
-                    let route = WebRoute::get_route(&type_str, &file_info);
-
                     let url = route.to_url();
                     let js = format!("window.location.href = '{}'", &url);
                     let _ = window.eval(js.as_str());
@@ -239,9 +240,6 @@ impl PreviewFile {
                         if cur_path == "/preview" {
                             match payload.event() {
                                 PageLoadEvent::Finished => {
-                                    let type_str = file_info.get_file_type();
-                                    let route = WebRoute::get_route(&type_str, &file_info);
-
                                     let url = route.to_url();
                                     let js = format!("window.location.href = '{}'", &url);
                                     let _ = window.eval(js.as_str());
@@ -307,9 +305,6 @@ impl Default for PreviewFile {
 pub struct PreviewStateInner {
     input_path: String,
 }
-
-unsafe impl Send for PreviewStateInner {}
-unsafe impl Sync for PreviewStateInner {}
 
 pub type PreviewState = Mutex<PreviewStateInner>;
 
