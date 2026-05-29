@@ -8,8 +8,6 @@ use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 use tauri_plugin_store::StoreExt;
 use tauri_plugin_updater::UpdaterExt;
 
-#[path = "./helper/mod.rs"]
-mod helper;
 
 async fn updater_check(app: AppHandle) -> tauri_plugin_updater::Result<()> {
     let checked = app.updater()?.check().await;
@@ -99,7 +97,7 @@ pub fn create_tray(app: &mut App) -> tauri::Result<()> {
             "setting" => {
                 log::debug!("Setting");
                 // 打开设置窗口
-                if let Ok(webview_window) = helper::get_webview_window(app, "settings", "/settings")
+                if let Ok(webview_window) = crate::helper::get_webview_window(app, "settings", "/settings")
                 {
                     let _ = webview_window.set_title("设置");
                     let _ = webview_window.show();

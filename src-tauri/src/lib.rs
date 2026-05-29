@@ -8,6 +8,7 @@ use tauri_plugin_store::StoreExt;
 mod helper;
 mod preview;
 mod tray;
+mod utils;
 
 #[path = "./command.rs"]
 mod command;

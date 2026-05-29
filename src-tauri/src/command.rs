@@ -5,9 +5,7 @@ use std::path::PathBuf;
 use tauri::{command, AppHandle, Manager};
 use windows::Win32::Foundation::HWND;
 
-#[path = "helper/mod.rs"]
-mod helper;
-use helper::{audio, ffmp, monitor, win};
+use crate::helper::{audio, ffmp, monitor, win};
 
 #[command]
 pub fn check_ffmpeg() -> bool {

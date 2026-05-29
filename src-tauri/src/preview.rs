@@ -1,4 +1,4 @@
-use std::sync::{Arc, LazyLock, Mutex};
+use std::sync::{LazyLock, Mutex};
 use tauri::{
     webview::PageLoadEvent, AppHandle, Error as TauriError, Manager, WebviewUrl,
     WebviewWindowBuilder,
@@ -9,24 +9,84 @@ use windows::Win32::{
     UI::{Input::KeyboardAndMouse, WindowsAndMessaging},
 };
 
-#[path = "./helper/mod.rs"]
-mod helper;
-use helper::{monitor, selected_file::Selected};
+use crate::helper::{monitor, selected_file::Selected};
 
-#[path = "./utils/mod.rs"]
-mod utils;
-use utils::{get_file_info, File as UFile};
+use crate::utils::{get_file_info, File as UFile};
+
+// SAFETY: HookHandle 仅在主线程上设置与访问（键盘钩子回调），因此 Send+Sync 是安全的。
+struct HookHandle(Option<WindowsAndMessaging::HHOOK>);
+unsafe impl Send for HookHandle {}
+unsafe impl Sync for HookHandle {}
+
+static HOOK_HANDLE: LazyLock<Mutex<HookHandle>> =
+    LazyLock::new(|| Mutex::new(HookHandle(None)));
+
+fn set_keyboard_hook() {
+    let hook_ex = unsafe {
+        WindowsAndMessaging::SetWindowsHookExW(
+            WindowsAndMessaging::WH_KEYBOARD_LL,
+            Some(keyboard_proc),
+            None,
+            0,
+        )
+    };
+    match hook_ex {
+        Ok(hook) => {
+            if let Ok(mut guard) = HOOK_HANDLE.lock() {
+                guard.0 = Some(hook);
+            }
+        },
+        Err(e) => {
+            log::error!("设置键盘钩子失败: {:?}", e);
+        },
+    }
+}
+
+fn remove_keyboard_hook() {
+    if let Ok(mut guard) = HOOK_HANDLE.lock() {
+        if let Some(hook) = guard.0.take() {
+            unsafe {
+                let _ = WindowsAndMessaging::UnhookWindowsHookEx(hook);
+            }
+        }
+    }
+}
+
+// 全局键盘钩子的回调函数
+extern "system" fn keyboard_proc(ncode: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+    let next_hook_result =
+        unsafe { WindowsAndMessaging::CallNextHookEx(None, ncode, wparam, lparam) };
+    #[cfg(debug_assertions)]
+    log::info!("Hook called - next_hook_result: {:?}", next_hook_result);
+
+    if ncode >= 0
+        && (wparam.0 == WindowsAndMessaging::WM_KEYDOWN as usize
+            || wparam.0 == WindowsAndMessaging::WM_SYSKEYDOWN as usize)
+    {
+        let kb_struct = unsafe { *(lparam.0 as *const WindowsAndMessaging::KBDLLHOOKSTRUCT) };
+        let vk_code = kb_struct.vkCode;
+
+        if vk_code == KeyboardAndMouse::VK_SPACE.0 as u32 {
+            let type_str = Selected::get_focused_type();
+            if type_str.is_none() {
+                return next_hook_result;
+            }
+
+            if let Some(app) = get_global_app() {
+                if let Err(e) = PreviewFile::preview_file(app) {
+                    log::error!("Error: {:?}", e);
+                }
+            }
+        }
+    }
+
+    next_hook_result
+}
 
 #[derive(Debug, Clone)]
 pub struct PreviewFile {
-    hook_handle: Option<WindowsAndMessaging::HHOOK>, // 钩子的句柄
     app_handle: Option<AppHandle>,
 }
-// SAFETY: PreviewFile 的 hook_handle 仅在主线程设置与访问（通过 keyboard_proc 回调），
-// app_handle（AppHandle）本身是 Send+Sync 的。全局实例通过 Mutex<Arc> 保护，
-// 实际访问只发生在键盘钩子回调中（主线程），因此 Send+Sync 是合理的。
-unsafe impl Send for PreviewFile {}
-unsafe impl Sync for PreviewFile {}
 
 pub struct WebRoute {
     path: String,
@@ -67,79 +127,7 @@ impl WebRoute {
     }
 }
 
-#[allow(dead_code)]
 impl PreviewFile {
-    // 注册键盘钩子
-    pub fn set_keyboard_hook(&mut self) {
-        let hook_ex = unsafe {
-            WindowsAndMessaging::SetWindowsHookExW(
-                WindowsAndMessaging::WH_KEYBOARD_LL,
-                Some(Self::keyboard_proc), // 使用结构体的键盘回调
-                None,                      // 当前进程实例句柄
-                0,
-            )
-        };
-        match hook_ex {
-            Ok(result) => {
-                self.hook_handle = Some(result);
-            },
-            Err(_) => {
-                self.hook_handle = None;
-            },
-        }
-    }
-
-    // 取消键盘钩子
-    pub fn remove_keyboard_hook(&mut self) {
-        if let Some(hook) = self.hook_handle {
-            unsafe {
-                let _ = WindowsAndMessaging::UnhookWindowsHookEx(hook);
-            }
-            self.hook_handle = None;
-        }
-    }
-
-    // 按键处理逻辑
-    pub fn handle_key_down(&self, vk_code: u32) {
-        if vk_code == KeyboardAndMouse::VK_SPACE.0 as u32 {
-            if let Some(app) = self.app_handle.clone() {
-                if let Err(e) = Self::preview_file(app) {
-                    log::error!("Error: {:?}", e);
-                }
-            }
-        }
-    }
-
-    // 全局键盘钩子的回调函数
-    extern "system" fn keyboard_proc(ncode: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
-        // 确保消息被传递给其他应用程序
-        let next_hook_result =
-            unsafe { WindowsAndMessaging::CallNextHookEx(None, ncode, wparam, lparam) };
-        #[cfg(debug_assertions)]
-        log::info!("Hook called - next_hook_result: {:?}", next_hook_result);
-
-        if ncode >= 0
-            && (wparam.0 == WindowsAndMessaging::WM_KEYDOWN as usize
-                || wparam.0 == WindowsAndMessaging::WM_SYSKEYDOWN as usize)
-        {
-            let kb_struct = unsafe { *(lparam.0 as *const WindowsAndMessaging::KBDLLHOOKSTRUCT) };
-            let vk_code = kb_struct.vkCode;
-
-            if vk_code == KeyboardAndMouse::VK_SPACE.0 as u32 {
-                let type_str = Selected::get_focused_type();
-                if type_str.is_none() {
-                    return next_hook_result;
-                }
-
-                // 获取 PreviewFile 实例并处理按键事件
-                if let Some(app) = get_global_instance() {
-                    app.handle_key_down(vk_code);
-                }
-            }
-        }
-
-        next_hook_result
-    }
     fn calc_window_size(file_type: &str) -> (f64, f64) {
         let monitor_info = monitor::get_monitor_info();
 
@@ -158,8 +146,8 @@ impl PreviewFile {
         }
 
         if monitor_info.scale > 1.0 {
-            width = helper::get_scaled_size(width, scale);
-            height = helper::get_scaled_size(height, scale);
+            width = crate::helper::get_scaled_size(width, scale);
+            height = crate::helper::get_scaled_size(height, scale);
         }
 
         log::info!(
@@ -272,39 +260,34 @@ impl PreviewFile {
 
         Ok(())
     }
-
-    pub fn new() -> Self {
-        Self { hook_handle: None, app_handle: None }
-    }
 }
 
-static PREVIEW_INSTANCE: LazyLock<Mutex<Option<Arc<PreviewFile>>>> =
+static PREVIEW_INSTANCE: LazyLock<Mutex<Option<PreviewFile>>> =
     LazyLock::new(|| Mutex::new(None));
-// 函数用于设置全局 PreviewFile 实例
-pub fn set_global_instance(instance: PreviewFile) {
-    if let Ok(mut handle) = PREVIEW_INSTANCE.lock() {
-        *handle = Some(Arc::new(instance));
+
+pub fn set_global_app(app: AppHandle) {
+    if let Ok(mut guard) = PREVIEW_INSTANCE.lock() {
+        *guard = Some(PreviewFile { app_handle: Some(app) });
     }
 }
-// 函数用于获取全局 PreviewFile 实例
-fn get_global_instance() -> Option<Arc<PreviewFile>> {
-    if let Ok(guard) = PREVIEW_INSTANCE.lock() {
-        guard.clone()
-    } else {
-        None
-    }
+
+fn get_global_app() -> Option<AppHandle> {
+    PREVIEW_INSTANCE
+        .lock()
+        .ok()
+        .and_then(|guard| guard.as_ref()?.app_handle.clone())
 }
 
 impl Drop for PreviewFile {
     fn drop(&mut self) {
         log::debug!("Dropping PreviewFile instance");
-        self.remove_keyboard_hook();
+        remove_keyboard_hook();
     }
 }
 
 impl Default for PreviewFile {
     fn default() -> Self {
-        PreviewFile::new()
+        PreviewFile { app_handle: None }
     }
 }
 
@@ -315,15 +298,9 @@ pub struct PreviewStateInner {
 
 pub type PreviewState = Mutex<PreviewStateInner>;
 
-//noinspection ALL
-// 公开一个全局函数来初始化 PreviewFile
 pub fn init_preview_file(handle: AppHandle) {
-    let mut preview_file = PreviewFile::default();
-    preview_file.set_keyboard_hook();
-    preview_file.app_handle = Some(handle.clone());
-
-    // 将实例存储在全局变量中
-    set_global_instance(preview_file);
+    set_keyboard_hook();
+    set_global_app(handle.clone());
 
     handle.manage::<PreviewState>(Mutex::new(PreviewStateInner::default()));
 }
