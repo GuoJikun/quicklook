@@ -1,4 +1,4 @@
-use std::sync::mpsc;
+use std::sync::{mpsc, LazyLock};
 use std::thread;
 use windows::{
     core::{w, Error as WError, Interface, BOOL, HSTRING},
@@ -39,6 +39,44 @@ pub enum FwWindowType {
     Dialog,
 }
 
+type ComTask = (
+    Box<dyn FnOnce() -> Result<String, WError> + Send>,
+    mpsc::SyncSender<Result<String, WError>>,
+);
+
+struct ComThread {
+    tx: mpsc::SyncSender<ComTask>,
+}
+
+static COM_THREAD: LazyLock<ComThread> = LazyLock::new(|| {
+    let (tx, rx) = mpsc::sync_channel::<ComTask>(1);
+    thread::Builder::new()
+        .name("com-worker".into())
+        .spawn(move || {
+            unsafe { let _ = CoInitializeEx(None, COINIT_APARTMENTTHREADED); }
+            while let Ok((task, result_tx)) = rx.recv() {
+                result_tx.send(task()).ok();
+            }
+            unsafe { CoUninitialize(); }
+        })
+        .expect("failed to spawn COM thread");
+    ComThread { tx }
+});
+
+impl ComThread {
+    fn run<F>(task: F) -> Result<String, WError>
+    where
+        F: FnOnce() -> Result<String, WError> + Send + 'static,
+    {
+        let (result_tx, result_rx) = mpsc::sync_channel::<Result<String, WError>>(1);
+        COM_THREAD
+            .tx
+            .send((Box::new(task), result_tx))
+            .map_err(|_| WError::from_win32())?;
+        result_rx.recv().map_err(|_| WError::from_win32())?
+    }
+}
+
 #[allow(dead_code)]
 pub struct Selected;
 
@@ -57,8 +95,8 @@ impl Selected {
     fn get_selected_file() -> Result<String, WError> {
         if let Some(fw_window_type) = Self::get_focused_type() {
             match fw_window_type {
-                FwWindowType::Explorer => unsafe { Self::get_selected_file_from_explorer() },
-                FwWindowType::Desktop => unsafe { Self::get_selected_file_from_desktop() },
+                FwWindowType::Explorer => Self::get_selected_file_from_explorer(),
+                FwWindowType::Desktop => Self::get_selected_file_from_desktop(),
                 FwWindowType::Dialog => Self::get_selected_file_from_dialog(),
             }
         } else {
@@ -92,118 +130,91 @@ impl Selected {
         type_str
     }
 
-    unsafe fn get_selected_file_from_explorer() -> Result<String, WError> {
-        let (tx, rx) = mpsc::channel();
+    fn get_selected_file_from_explorer() -> Result<String, WError> {
+        ComThread::run(|| unsafe {
+            let hwnd_gfw = WindowsAndMessaging::GetForegroundWindow();
+            let shell_windows: IShellWindows =
+                CoCreateInstance(&ShellWindows, None, CLSCTX_LOCAL_SERVER)?;
+            let result_hwnd = WindowsAndMessaging::FindWindowExW(
+                Some(hwnd_gfw),
+                None,
+                w!("ShellTabWindowClass"),
+                None,
+            )?;
 
-        // 在新的线程中执行 COM 操作
-        thread::spawn(move || {
-            let result: Result<String, WError> = (|| -> Result<String, WError> {
-                // 在子线程中初始化 COM 库为单线程单元
-                let _ = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
+            let mut target_path = String::new();
+            let count = shell_windows.Count().unwrap_or_default();
 
-                let hwnd_gfw = WindowsAndMessaging::GetForegroundWindow();
-                let shell_windows: IShellWindows =
-                    CoCreateInstance(&ShellWindows, None, CLSCTX_LOCAL_SERVER)?;
-                let result_hwnd = WindowsAndMessaging::FindWindowExW(
-                    Some(hwnd_gfw),
-                    None,
-                    w!("ShellTabWindowClass"),
-                    None,
-                )?;
+            for i in 0..count {
+                let variant = VARIANT::from(i);
+                let dispatch: IDispatch = shell_windows.Item(&variant)?;
 
-                let mut target_path = String::new();
-                let count = shell_windows.Count().unwrap_or_default();
+                let shell_browser = Selected::dispath2browser(dispatch);
 
-                for i in 0..count {
-                    let variant = VARIANT::from(i);
-                    let dispatch: IDispatch = shell_windows.Item(&variant)?;
-
-                    let shell_browser = Self::dispath2browser(dispatch);
-
-                    if shell_browser.is_none() {
-                        continue;
-                    }
-                    let shell_browser = shell_browser.unwrap();
-                    // 调用 GetWindow 可能会阻塞 GUI 消息
-                    let phwnd = shell_browser.GetWindow()?;
-                    if hwnd_gfw.0 != phwnd.0 && result_hwnd.0 != phwnd.0 {
-                        continue;
-                    }
-
-                    if win::is_cursor_activated(HWND::default()) {
-                        continue;
-                    };
-
-                    let shell_view = shell_browser.QueryActiveShellView().unwrap();
-                    target_path = Self::get_selected_file_path_from_shellview(shell_view);
+                if shell_browser.is_none() {
+                    continue;
+                }
+                let shell_browser = shell_browser.unwrap();
+                let phwnd = shell_browser.GetWindow()?;
+                if hwnd_gfw.0 != phwnd.0 && result_hwnd.0 != phwnd.0 {
+                    continue;
                 }
 
-                Ok(target_path)
-            })();
-            tx.send(result).unwrap();
-        });
-        let target_path = rx.recv().unwrap()?;
-
-        Ok(target_path)
-    }
-
-    unsafe fn get_selected_file_from_desktop() -> Result<String, WError> {
-        let (tx, rx) = mpsc::channel();
-
-        // 在新的线程中执行 COM 操作
-        thread::spawn(move || {
-            let result: Result<String, WError> = (|| -> Result<String, WError> {
-                // 初始化 COM 库
-                let _ = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
-
-                let mut target_path = String::new();
-                let hwnd_gfw = WindowsAndMessaging::GetForegroundWindow(); // 获取当前活动窗口句柄
-                log::info!("hwnd_gfw: {:?}", hwnd_gfw);
-                let shell_windows: Result<IShellWindows, WError> =
-                    CoCreateInstance(&ShellWindows, None, CLSCTX_LOCAL_SERVER);
-                if shell_windows.is_err() {
-                    log::info!("shell_windows 不存在");
-                    return Ok(target_path);
-                }
-                let shell_windows = shell_windows?;
-
-                let pvar_loc: VARIANT = Variant::VariantInit();
-
-                // 获取活动窗口
-                let mut phwnd: i32 = 0;
-
-                let dispatch = shell_windows.FindWindowSW(
-                    &pvar_loc,
-                    &pvar_loc,
-                    SWC_DESKTOP,
-                    &mut phwnd,
-                    SWFO_NEEDDISPATCH,
-                )?;
-
-                if win::is_cursor_activated(HWND(phwnd as *mut _)) {
-                    log::info!("存在激活的鼠标");
-                    return Ok(target_path);
+                if win::is_cursor_activated(HWND::default()) {
+                    continue;
                 };
 
-                let shell_browser = Self::dispath2browser(dispatch);
-                if shell_browser.is_none() {
-                    log::info!("shell_browser 不存在");
-                    return Ok(target_path);
-                }
+                let shell_view = shell_browser.QueryActiveShellView().unwrap();
+                target_path = Selected::get_selected_file_path_from_shellview(shell_view);
+            }
 
-                let shell_browser = shell_browser.unwrap();
+            Ok(target_path)
+        })
+    }
 
-                let shell_view = shell_browser.QueryActiveShellView()?;
+    fn get_selected_file_from_desktop() -> Result<String, WError> {
+        ComThread::run(|| unsafe {
+            let hwnd_gfw = WindowsAndMessaging::GetForegroundWindow();
+            log::info!("hwnd_gfw: {:?}", hwnd_gfw);
+            let shell_windows: Result<IShellWindows, WError> =
+                CoCreateInstance(&ShellWindows, None, CLSCTX_LOCAL_SERVER);
+            if shell_windows.is_err() {
+                log::info!("shell_windows 不存在");
+                return Ok(String::new());
+            }
+            let shell_windows = shell_windows?;
 
-                target_path = Self::get_selected_file_path_from_shellview(shell_view);
+            let pvar_loc: VARIANT = Variant::VariantInit();
 
-                Ok(target_path)
-            })();
-            tx.send(result).unwrap();
-        });
+            let mut phwnd: i32 = 0;
 
-        let target_path = rx.recv().unwrap()?;
-        Ok(target_path)
+            let dispatch = shell_windows.FindWindowSW(
+                &pvar_loc,
+                &pvar_loc,
+                SWC_DESKTOP,
+                &mut phwnd,
+                SWFO_NEEDDISPATCH,
+            )?;
+
+            if win::is_cursor_activated(HWND(phwnd as *mut _)) {
+                log::info!("存在激活的鼠标");
+                return Ok(String::new());
+            };
+
+            let shell_browser = Selected::dispath2browser(dispatch);
+            if shell_browser.is_none() {
+                log::info!("shell_browser 不存在");
+                return Ok(String::new());
+            }
+
+            let shell_browser = shell_browser.unwrap();
+
+            let shell_view = shell_browser.QueryActiveShellView()?;
+
+            let target_path = Selected::get_selected_file_path_from_shellview(shell_view);
+
+            Ok(target_path)
+        })
     }
 
     fn get_selected_file_from_dialog() -> Result<String, WError> {
@@ -424,11 +435,5 @@ impl Selected {
             }
         }
         target_path
-    }
-}
-
-impl Drop for Selected {
-    fn drop(&mut self) {
-        unsafe { CoUninitialize() }
     }
 }
