@@ -13,17 +13,26 @@ pub enum ArchiveError {
 impl fmt::Display for ArchiveError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ArchiveError::IoError(err) => write!(f, "IO error: {}", err),
-            ArchiveError::ZipError(err) => write!(f, "ZIP error: {}", err),
-            ArchiveError::SevenZError(err) => write!(f, "7Z error: {}", err),
-            ArchiveError::UnsupportedFormat(format) => write!(f, "Unsupported format: {}", format),
-            ArchiveError::InvalidPath(path) => write!(f, "Invalid path: {}", path),
-            ArchiveError::Other(msg) => write!(f, "Error: {}", msg),
+            ArchiveError::IoError(err) => write!(f, "IO error: {err}"),
+            ArchiveError::ZipError(err) => write!(f, "ZIP error: {err}"),
+            ArchiveError::SevenZError(err) => write!(f, "7Z error: {err}"),
+            ArchiveError::UnsupportedFormat(fmt) => write!(f, "Unsupported format: {fmt}"),
+            ArchiveError::InvalidPath(path) => write!(f, "Invalid path: {path}"),
+            ArchiveError::Other(msg) => write!(f, "Error: {msg}"),
         }
     }
 }
 
-impl std::error::Error for ArchiveError {}
+impl std::error::Error for ArchiveError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            ArchiveError::IoError(err) => Some(err),
+            ArchiveError::ZipError(err) => Some(err),
+            ArchiveError::SevenZError(err) => Some(err),
+            _ => None,
+        }
+    }
+}
 
 impl From<std::io::Error> for ArchiveError {
     fn from(err: std::io::Error) -> Self {

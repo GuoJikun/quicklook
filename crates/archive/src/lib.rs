@@ -1,11 +1,14 @@
 use serde::Serialize;
+use std::collections::HashMap;
 use std::path::Path;
 
 pub mod error;
 pub mod extractors;
 
 pub use error::ArchiveError;
-pub use extractors::*;
+pub use extractors::sevenz::list_7z_entries;
+pub use extractors::tar::{list_tar_bz2_entries, list_tar_entries, list_tar_gz_entries, list_tar_xz_entries};
+pub use extractors::zip::{list_zip_entries, zip_extract};
 
 /// 压缩文件条目信息
 #[derive(Debug, Clone, Serialize)]
@@ -66,21 +69,16 @@ impl Extract {
         entries.sort_by(|a, b| a.name.cmp(&b.name));
 
         let mut root_items = Vec::new();
-        let mut dirs_map = std::collections::HashMap::new();
+        let mut dirs_map: HashMap<String, Vec<Extract>> = HashMap::new();
 
         for entry in entries {
             let path_parts: Vec<&str> = entry.name.trim_end_matches('/').split('/').collect();
 
             if path_parts.len() == 1 {
-                // 根级别项目
                 root_items.push(entry);
             } else {
-                // 嵌套项目
                 let parent_path = path_parts[..path_parts.len() - 1].join("/");
-                dirs_map
-                    .entry(parent_path)
-                    .or_insert_with(Vec::new)
-                    .push(entry);
+                dirs_map.entry(parent_path).or_default().push(entry);
             }
         }
 
@@ -91,11 +89,12 @@ impl Extract {
 
     fn build_tree_recursive(
         items: &mut Vec<Extract>,
-        dirs_map: &std::collections::HashMap<String, Vec<Extract>>,
+        dirs_map: &HashMap<String, Vec<Extract>>,
     ) {
         for item in items.iter_mut() {
             if item.dir {
-                if let Some(children) = dirs_map.get(&item.name.trim_end_matches('/').to_string()) {
+                let key = item.name.trim_end_matches('/');
+                if let Some(children) = dirs_map.get(key) {
                     let mut child_items = children.clone();
                     Self::build_tree_recursive(&mut child_items, dirs_map);
                     item.children = Some(child_items);
