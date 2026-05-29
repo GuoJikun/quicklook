@@ -5,21 +5,11 @@ use windows::Win32::{
     Graphics::Gdi::{GetDC, GetDeviceCaps, ReleaseDC, HORZRES, LOGPIXELSX, VERTRES},
 };
 
-#[derive(Debug, serde::Serialize, Clone)]
+#[derive(Debug, serde::Serialize, Clone, Default)]
 pub struct MonitorInfo {
     pub width: f64,
     pub height: f64,
     pub scale: f64,
-}
-
-impl Default for MonitorInfo {
-    fn default() -> Self {
-        Self {
-            width: Default::default(),
-            height: Default::default(),
-            scale: Default::default(),
-        }
-    }
 }
 
 #[allow(dead_code)]
