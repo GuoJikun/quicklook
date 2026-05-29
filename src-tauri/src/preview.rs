@@ -34,21 +34,19 @@ pub struct WebRoute {
 }
 impl WebRoute {
     pub fn to_url(&self) -> String {
-        let mut url = self.path.clone();
-        url.push_str("?");
-        url.push_str(
-            format!(
-                "file_type={}&path={}&extension={}&size={}&last_modified={}&name={}",
-                self.query.get_file_type(),
-                urlencoding::encode(&self.query.get_path()),
-                self.query.get_extension(),
-                self.query.get_size(),
-                self.query.get_last_modified(),
-                self.query.get_name()
-            )
-            .as_str(),
-        );
-        url
+        let query = [
+            ("file_type", self.query.get_file_type()),
+            ("path", self.query.get_path()),
+            ("extension", self.query.get_extension()),
+            ("size", self.query.get_size().to_string()),
+            ("last_modified", self.query.get_last_modified().to_string()),
+            ("name", self.query.get_name()),
+        ];
+        let encoded: Vec<String> = query
+            .iter()
+            .map(|(k, v)| format!("{}={}", k, urlencoding::encode(v)))
+            .collect();
+        format!("{}?{}", self.path, encoded.join("&"))
     }
     pub fn new(path: String, query: UFile) -> Self {
         Self { path, query }
@@ -104,9 +102,10 @@ impl PreviewFile {
     // 按键处理逻辑
     pub fn handle_key_down(&self, vk_code: u32) {
         if vk_code == KeyboardAndMouse::VK_SPACE.0 as u32 {
-            let result = Self::preview_file(self.app_handle.clone().unwrap());
-            if result.is_err() {
-                log::error!("Error: {:?}", result.err().unwrap());
+            if let Some(app) = self.app_handle.clone() {
+                if let Err(e) = Self::preview_file(app) {
+                    log::error!("Error: {:?}", e);
+                }
             }
         }
     }
@@ -173,94 +172,102 @@ impl PreviewFile {
     }
 
     pub fn preview_file(app: AppHandle) -> Result<(), TauriError> {
-        let file_path = Selected::new();
-        if file_path.is_ok() {
-            let file_path = file_path.unwrap();
-
-            // 从 store 读取用户自定义扩展名
-            let store = match app.store("config.data") {
-                Ok(store) => Some(store),
-                Err(err) => {
-                    log::warn!("Failed to open config.data store: {:?}", err);
-                    None
-                },
-            };
-            let custom_code_exts: Vec<String> = store
-                .as_ref()
-                .and_then(|s| s.get("customCodeExtensions"))
-                .and_then(|v| serde_json::from_value(v).ok())
-                .unwrap_or_default();
-            let custom_video_exts: Vec<String> = store
-                .as_ref()
-                .and_then(|s| s.get("customVideoExtensions"))
-                .and_then(|v| serde_json::from_value(v).ok())
-                .unwrap_or_default();
-
-            let file_info = get_file_info(&file_path, &custom_code_exts, &custom_video_exts);
-
-            let preview_state = app.state::<PreviewState>();
-            let mut preview_state = preview_state.lock().unwrap();
-            preview_state.input_path = file_path.clone();
-
-            if file_info.is_none() {
+        let file_path = match Selected::new() {
+            Ok(path) => path,
+            Err(e) => {
+                log::error!("获取选中文件失败: {:?}", e);
                 return Ok(());
-            }
+            },
+        };
 
-            let file_info = file_info.unwrap();
-            let type_str = file_info.get_file_type();
+        // 从 store 读取用户自定义扩展名
+        let store = match app.store("config.data") {
+            Ok(store) => Some(store),
+            Err(err) => {
+                log::warn!("Failed to open config.data store: {:?}", err);
+                None
+            },
+        };
+        let custom_code_exts: Vec<String> = store
+            .as_ref()
+            .and_then(|s| s.get("customCodeExtensions"))
+            .and_then(|v| serde_json::from_value(v).ok())
+            .unwrap_or_default();
+        let custom_video_exts: Vec<String> = store
+            .as_ref()
+            .and_then(|s| s.get("customVideoExtensions"))
+            .and_then(|v| serde_json::from_value(v).ok())
+            .unwrap_or_default();
 
-            let (width, height) = Self::calc_window_size(&type_str);
-            let route = WebRoute::get_route(&type_str, file_info);
+        let file_info = match get_file_info(&file_path, &custom_code_exts, &custom_video_exts) {
+            Some(info) => info,
+            None => return Ok(()),
+        };
 
-            match app.get_webview_window("preview") {
-                Some(window) => {
-                    let url = route.to_url();
-                    let js = format!("window.location.href = '{}'", &url);
-                    let _ = window.eval(js.as_str());
+        let preview_state = app.state::<PreviewState>();
+        let mut preview_state = match preview_state.lock() {
+            Ok(guard) => guard,
+            Err(e) => {
+                log::error!("lock preview state failed: {}", e);
+                return Ok(());
+            },
+        };
+        preview_state.input_path = file_path;
 
-                    let _ = window.show();
-                    let _ = window.set_focus();
-                },
-                None => {
-                    let result = WebviewWindowBuilder::new(
-                        &app,
-                        "preview",
-                        WebviewUrl::App("/preview".into()),
-                    )
-                    .title("Preview")
-                    .center()
-                    .devtools(cfg!(debug_assertions))
-                    .decorations(false)
-                    .skip_taskbar(false)
-                    .auto_resize()
-                    .inner_size(width, height)
-                    .min_inner_size(300.0, 200.0)
-                    .on_page_load(move |window, payload| {
-                        let cur_path = payload.url().path();
-                        if cur_path == "/preview" {
-                            match payload.event() {
-                                PageLoadEvent::Finished => {
-                                    let url = route.to_url();
-                                    let js = format!("window.location.href = '{}'", &url);
-                                    let _ = window.eval(js.as_str());
+        let type_str = file_info.get_file_type();
+        let (width, height) = Self::calc_window_size(&type_str);
+        let route = WebRoute::get_route(&type_str, file_info);
 
-                                    let _ = window.show();
-                                    let _ = window.set_focus();
-                                },
-                                _ => {},
-                            }
+        match app.get_webview_window("preview") {
+            Some(window) => {
+                let url = route.to_url();
+                let js_escaped = url.replace('\\', "\\\\").replace('\'', "\\'");
+                let js = format!("window.location.href = '{}'", &js_escaped);
+                let _ = window.eval(js.as_str());
+
+                let _ = window.show();
+                let _ = window.set_focus();
+            },
+            None => {
+                let result = WebviewWindowBuilder::new(
+                    &app,
+                    "preview",
+                    WebviewUrl::App("/preview".into()),
+                )
+                .title("Preview")
+                .center()
+                .devtools(cfg!(debug_assertions))
+                .decorations(false)
+                .skip_taskbar(false)
+                .auto_resize()
+                .inner_size(width, height)
+                .min_inner_size(300.0, 200.0)
+                .on_page_load(move |window, payload| {
+                    let cur_path = payload.url().path();
+                    if cur_path == "/preview" {
+                        match payload.event() {
+                            PageLoadEvent::Finished => {
+                                let url = route.to_url();
+                                let js_escaped =
+                                    url.replace('\\', "\\\\").replace('\'', "\\'");
+                                let js =
+                                    format!("window.location.href = '{}'", &js_escaped);
+                                let _ = window.eval(js.as_str());
+
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            },
+                            _ => {},
                         }
-                    })
-                    .focused(true)
-                    .visible_on_all_workspaces(true)
-                    .build();
-                    if let Ok(preview) = result {
-                        let _ = preview.show();
                     }
-                },
-            }
-        } else {
-            log::error!("Error: {:?}", file_path.err().unwrap());
+                })
+                .focused(true)
+                .visible_on_all_workspaces(true)
+                .build();
+                if let Ok(preview) = result {
+                    let _ = preview.show();
+                }
+            },
         }
 
         Ok(())
@@ -290,7 +297,7 @@ fn get_global_instance() -> Option<Arc<PreviewFile>> {
 
 impl Drop for PreviewFile {
     fn drop(&mut self) {
-        println!("Dropping PreviewFile instance");
+        log::debug!("Dropping PreviewFile instance");
         self.remove_keyboard_hook();
     }
 }

@@ -149,12 +149,10 @@ impl Selected {
                 let variant = VARIANT::from(i);
                 let dispatch: IDispatch = shell_windows.Item(&variant)?;
 
-                let shell_browser = Selected::dispath2browser(dispatch);
-
-                if shell_browser.is_none() {
-                    continue;
-                }
-                let shell_browser = shell_browser.unwrap();
+                let shell_browser = match Selected::dispath2browser(dispatch) {
+                    Some(sb) => sb,
+                    None => continue,
+                };
                 let phwnd = shell_browser.GetWindow()?;
                 if hwnd_gfw.0 != phwnd.0 && result_hwnd.0 != phwnd.0 {
                     continue;
@@ -201,13 +199,13 @@ impl Selected {
                 return Ok(String::new());
             };
 
-            let shell_browser = Selected::dispath2browser(dispatch);
-            if shell_browser.is_none() {
-                log::info!("shell_browser 不存在");
-                return Ok(String::new());
-            }
-
-            let shell_browser = shell_browser.unwrap();
+            let shell_browser = match Selected::dispath2browser(dispatch) {
+                Some(sb) => sb,
+                None => {
+                    log::info!("shell_browser 不存在");
+                    return Ok(String::new());
+                },
+            };
 
             let shell_view = shell_browser.QueryActiveShellView()?;
 
@@ -220,7 +218,7 @@ impl Selected {
     fn get_selected_file_from_dialog() -> Result<String, WError> {
         let mut target_path = String::new();
         let fw_hwnd = unsafe { WindowsAndMessaging::GetForegroundWindow() };
-        println!("fw_hwnd: {:?}", fw_hwnd);
+        log::debug!("fw_hwnd: {:?}", fw_hwnd);
 
         let defview = unsafe {
             let mut tmp: Option<HWND> = None;
@@ -270,7 +268,7 @@ impl Selected {
             }
             Ok(file_name)
         })?;
-        println!("seleced_file_title: {:?}", seleced_file_title);
+        log::debug!("seleced_file_title: {:?}", seleced_file_title);
 
         // 获取搜索框的 Text
         let mut breadcrumb_parent_hwnd: Option<HWND> = None;
@@ -317,7 +315,7 @@ impl Selected {
         }
 
         target_path = format!("{}\\{}", breadcrumb_title, seleced_file_title);
-        println!("target_path: {:?}", target_path);
+        log::debug!("target_path: {:?}", target_path);
 
         Ok(target_path)
     }
@@ -344,7 +342,7 @@ impl Selected {
                 },
             };
 
-            println!("libraries_path: {:?}", folder_id);
+            log::debug!("libraries_path: {:?}", folder_id);
 
             let path = SHGetKnownFolderPath(folder_id, KF_FLAG_DEFAULT, None)?;
             Ok(path.to_string()?)
@@ -396,7 +394,7 @@ impl Selected {
         if shell_items.is_err() {
             return target_path;
         }
-        println!("shell_items: {:?}", shell_items);
+        log::debug!("shell_items: {:?}", shell_items);
         let shell_items = shell_items.unwrap();
         let count = shell_items.GetCount().unwrap_or_default();
         for i in 0..count {
@@ -420,10 +418,10 @@ impl Selected {
             }
 
             if let Ok(display_name) = shell_item.GetDisplayName(SIGDN_FILESYSPATH) {
-                println!("display_name: {:?}", display_name);
+                log::debug!("display_name: {:?}", display_name);
                 let tmp = display_name.to_string();
                 if tmp.is_err() {
-                    println!("display_name error: {:?}", tmp.err());
+                    log::debug!("display_name error: {:?}", tmp.err());
                     continue;
                 }
                 target_path = tmp.unwrap();

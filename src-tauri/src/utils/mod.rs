@@ -117,7 +117,7 @@ static BUILD_NAME_TO_LANG: LazyLock<HashMap<&'static str, &'static str>> =
 
 /// 仅在文件没有后缀时调用
 pub fn detect_language_no_ext(file_name: &str) -> String {
-    println!(
+    log::debug!(
         "Detecting language for file without extension: {}",
         file_name
     );
@@ -147,7 +147,7 @@ pub fn get_file_info(
         Some(ext) => ext.to_string_lossy().to_lowercase(),
         None => detect_language_no_ext(&name),
     };
-    println!("File extension: {}", extension);
+    log::debug!("File extension: {}", extension);
 
     let metadata = file_path.metadata().unwrap();
 
@@ -157,14 +157,10 @@ pub fn get_file_info(
         .map(|s| s.to_string());
 
     // 如果内置映射表中没有匹配，检查用户自定义扩展名
-    // extension 已经是小写，将自定义扩展名一次性转为小写再比较，避免循环中重复分配
     let file_type_opt = file_type_opt.or_else(|| {
-        let ext_lower = extension.as_str(); // extension 已经是小写
-        let code_exts_lower: Vec<String> = custom_code_exts.iter().map(|e| e.to_lowercase()).collect();
-        let video_exts_lower: Vec<String> = custom_video_exts.iter().map(|e| e.to_lowercase()).collect();
-        if code_exts_lower.iter().any(|e| e == ext_lower) {
+        if custom_code_exts.iter().any(|e| e.eq_ignore_ascii_case(&extension)) {
             Some("Code".to_string())
-        } else if video_exts_lower.iter().any(|e| e == ext_lower) {
+        } else if custom_video_exts.iter().any(|e| e.eq_ignore_ascii_case(&extension)) {
             Some("Video".to_string())
         } else {
             None

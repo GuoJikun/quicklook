@@ -28,9 +28,9 @@ pub fn read_music_info<P: AsRef<Path>>(path: P) -> Option<MusicInfo> {
     let artist = tag.and_then(|t| t.get_string(ItemKey::TrackArtist).map(|s| s.to_string()));
     let album = tag.and_then(|t| t.get_string(ItemKey::AlbumTitle).map(|s| s.to_string()));
     let music_info = MusicInfo {
-        title: title,
-        artist: artist,
-        album: album,
+        title,
+        artist,
+        album,
         duration: Some(props.duration().as_secs()),
         bitrate: props.audio_bitrate().map(|b| b / 1000), // 转换为 kbps
         cover,
@@ -85,13 +85,10 @@ pub fn parse_lrc(path: &str) -> Result<Lrc, String> {
             continue;
         }
 
-        let line_list = line.trim().split("]").collect::<Vec<&str>>();
-        if line_list.len() != 2 {
-            continue; // 忽略非歌词主体部分
-        }
-
-        let time_part = line_list[0].trim_start_matches('[');
-        let lyric_text = line_list[1].trim().to_string();
+        let (time_part, lyric_text) = match line.trim().split_once(']') {
+            Some((t, text)) => (t.trim_start_matches('['), text.trim().to_string()),
+            None => continue,
+        };
 
         let mut lrc_line = LrcLine { timestamp: 0, text: lyric_text };
         if let Some((min_str, sec_str)) = time_part.split_once(':') {

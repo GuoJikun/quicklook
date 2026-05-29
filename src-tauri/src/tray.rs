@@ -97,7 +97,7 @@ pub fn create_tray(app: &mut App) -> tauri::Result<()> {
                 });
             },
             "setting" => {
-                println!("Setting");
+                log::debug!("Setting");
                 // 打开设置窗口
                 if let Ok(webview_window) = helper::get_webview_window(app, "settings", "/settings")
                 {
@@ -107,8 +107,13 @@ pub fn create_tray(app: &mut App) -> tauri::Result<()> {
             },
             "auto_start" => {
                 let autostart_manager = app.autolaunch();
-                // let is_enabled = autostart_manager.is_enabled();
-                let store = app.store("config.data").unwrap();
+                let store = match app.store("config.data") {
+                    Ok(s) => s,
+                    Err(e) => {
+                        log::warn!("Failed to open config.data store: {:?}", e);
+                        return;
+                    },
+                };
                 let store_auto_start = store
                     .get("autostart")
                     .unwrap_or(serde_json::Value::Bool(true));
@@ -117,12 +122,16 @@ pub fn create_tray(app: &mut App) -> tauri::Result<()> {
                 if let Some(enabled) = is_enabled {
                     if enabled {
                         let _ = autostart_manager.disable();
-                        let _ = auto_start.set_text("启用开机自启").unwrap();
+                        let _ = auto_start
+                            .set_text("启用开机自启")
+                            .map_err(|e| log::warn!("set_text 失败: {:?}", e));
                         store.set("autostart", serde_json::Value::Bool(false));
                         log::info!("自启动设置为禁用");
                     } else {
                         let _ = autostart_manager.enable();
-                        let _ = auto_start.set_text("关闭开机自启").unwrap();
+                        let _ = auto_start
+                            .set_text("关闭开机自启")
+                            .map_err(|e| log::warn!("set_text 失败: {:?}", e));
                         store.set("autostart", serde_json::Value::Bool(true));
                         log::info!("自启动设置为开启");
                     }

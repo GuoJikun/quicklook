@@ -38,30 +38,34 @@ pub fn open_by_default(file_path: &str, hwnd: HWND) -> windows::core::Result<()>
     Ok(())
 }
 
+struct ComGuard;
+
+impl Drop for ComGuard {
+    fn drop(&mut self) {
+        unsafe { Com::CoUninitialize() };
+    }
+}
+
 #[allow(unused)]
 pub fn show_open_with_dialog(file_path: &str, hwnd: HWND) -> windows::core::Result<()> {
-    // 初始化 COM
     unsafe { Com::CoInitializeEx(None, Com::COINIT_APARTMENTTHREADED) };
+    let _guard = ComGuard;
 
-    // 配置 OPENASINFO 结构
     let file_path_wide: Vec<u16> = file_path.encode_utf16().chain(std::iter::once(0)).collect();
     let file_path_wide = PCWSTR(file_path_wide.as_ptr());
     let open_as_info = Shell::OPENASINFO {
         pcszFile: file_path_wide,
-        pcszClass: PCWSTR::null(), // 文件类型 (可选)
-        oaifInFlags: Shell::OAIF_ALLOW_REGISTRATION | Shell::OAIF_EXEC, // 允许注册 & 立即执行
+        pcszClass: PCWSTR::null(),
+        oaifInFlags: Shell::OAIF_ALLOW_REGISTRATION | Shell::OAIF_EXEC,
     };
 
-    // 调用 SHOpenWithDialog 打开“打开方式”对话框
     unsafe {
         Shell::SHOpenWithDialog(Some(hwnd), &open_as_info)?;
     }
 
-    // 释放 COM
-    unsafe { Com::CoUninitialize() };
-
     Ok(())
 }
+
 #[allow(unused)]
 pub fn get_default_program_name(path: &str) -> Result<String, String> {
     let path = Path::new(path);
@@ -121,7 +125,7 @@ pub fn is_rename_mode() -> bool {
             return false;
         }
         let class_name = get_window_class_name(hwnd);
-        println!("#### class_name: {}", class_name);
+        log::debug!("class_name: {}", class_name);
         // 常见 Explorer 的重命名输入框类名为 "WorkerW" → "SHELLDLL_DefView" → "SysListView32" 等，
         // 也可能是直接 "Edit"。这里可以视具体情况判断。
         class_name.contains("Edit")

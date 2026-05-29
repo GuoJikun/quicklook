@@ -12,19 +12,18 @@ mod tray;
 #[path = "./command.rs"]
 mod command;
 use command::{
-    archive, cancel_video_conversion, check_ffmpeg, clear_cache, convert_video_to_hls,
-    document, get_default_program_name, get_monitor_info, parse_lrc, psd_to_png, read_audio_info,
+    archive, cancel_video_conversion, check_ffmpeg, clear_cache, convert_video_to_hls, document,
+    get_default_program_name, get_monitor_info, parse_lrc, psd_to_png, read_audio_info,
     set_log_level, show_open_with_dialog,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let mut builder = tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_store::Builder::new().build());
+    let mut builder = tauri::Builder::default();
 
     // 注册插件
     builder = builder
+        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_single_instance::init(|_app, _args, _cwd| {}))
         .plugin(tauri_plugin_shell::init())
@@ -56,7 +55,7 @@ pub fn run() {
             let _ = app.listen("config_update", move |event| {
                 let handle = handle_clone.clone();
 
-                println!("update event: {:?}", event);
+                log::debug!("update event: {:?}", event);
                 if let Ok(conf) = helper::config::read_config(&handle_clone) {
                     handle.manage(conf);
                 }
@@ -79,7 +78,7 @@ pub fn run() {
                     .map(|v| v as usize)
                     .unwrap_or(0); // 默认日志级别为 Off
                 let _ = set_log_level(level);
-                println!("当前日志级别: {:?}", level);
+                log::debug!("当前日志级别: {:?}", level);
 
                 // 自动启动
                 let config_autostart = store
