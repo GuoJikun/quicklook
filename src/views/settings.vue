@@ -166,6 +166,19 @@ const handleClearCache = async () => {
         clearingCache.value = false
     }
 }
+
+const clearingImageCache = ref<boolean>(false)
+const handleClearImageCache = async () => {
+    clearingImageCache.value = true
+    try {
+        await invoke('clear_image_cache')
+        ElMessage.success('图片缓存已清理')
+    } catch (e) {
+        ElMessage.error(`清理图片缓存失败：${e}`)
+    } finally {
+        clearingImageCache.value = false
+    }
+}
 </script>
 
 <template>
@@ -298,6 +311,21 @@ const handleClearCache = async () => {
                 </div>
                 <div style="margin-top: 8px; font-size: 13px; color: var(--el-text-color-secondary)">
                     清理由 ffmpeg 视频转码生成的临时 HLS 缓存文件。
+                </div>
+                <div class="flex-col-center" style="margin-top: 12px">
+                    <span>清理图片缓存：</span>
+                    <el-button
+                        size="small"
+                        type="danger"
+                        plain
+                        :loading="clearingImageCache"
+                        style="margin-left: 16px"
+                        @click="handleClearImageCache"
+                        >清理缓存</el-button
+                    >
+                </div>
+                <div style="margin-top: 8px; font-size: 13px; color: var(--el-text-color-secondary)">
+                    清理由图片预览（含 PSD）转码生成的临时 PNG 缓存文件。
                 </div>
             </SettingItem>
             <SettingItem title="日志" id="log">

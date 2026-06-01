@@ -34,7 +34,11 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
     path.hash(&mut hasher);
     let hash = hasher.finish();
 
-    let mut temp_dir = std::env::temp_dir();
+    let mut videos_dir = std::env::temp_dir();
+    videos_dir.push("quicklook_videos");
+    std::fs::create_dir_all(&videos_dir).map_err(|e| e.to_string())?;
+
+    let mut temp_dir = videos_dir;
     temp_dir.push(format!("quicklook_hls_{:x}", hash));
 
     let m3u8_path = temp_dir.join("index.m3u8");
@@ -280,8 +284,12 @@ pub fn cancel_video_conversion() {
 /// 清理所有由 quicklook 生成的 ffmpeg HLS 转码缓存目录。
 /// 返回被删除的目录数量。
 pub fn clear_ffmpeg_cache() -> Result<u32, String> {
-    let temp_dir = std::env::temp_dir();
-    let entries = std::fs::read_dir(&temp_dir).map_err(|e| e.to_string())?;
+    let videos_dir = std::env::temp_dir().join("quicklook_videos");
+    if !videos_dir.exists() {
+        log::info!("quicklook_videos 目录不存在，无需清理");
+        return Ok(0);
+    }
+    let entries = std::fs::read_dir(&videos_dir).map_err(|e| e.to_string())?;
 
     let mut removed = 0u32;
     for entry in entries.flatten() {

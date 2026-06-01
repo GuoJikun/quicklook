@@ -95,6 +95,30 @@ pub fn set_log_level(level: usize) -> Result<(), String> {
 
 #[command]
 pub fn psd_to_png(path: &str) -> Result<String, String> {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+
+    let mut hasher = DefaultHasher::new();
+    path.hash(&mut hasher);
+    if let Ok(meta) = std::fs::metadata(path) {
+        if let Ok(modified) = meta.modified() {
+            modified.hash(&mut hasher);
+        }
+    }
+    let hash = hasher.finish();
+
+    let mut images_dir: PathBuf = std::env::temp_dir();
+    images_dir.push("quicklook_images");
+    std::fs::create_dir_all(&images_dir).map_err(|e| e.to_string())?;
+
+    let mut temp_path = images_dir;
+    temp_path.push(format!("quicklook_psd_{:x}.png", hash));
+
+    if temp_path.exists() {
+        log::info!("命中 PSD 缓存: {:?}", temp_path);
+        return Ok(temp_path.to_string_lossy().to_string());
+    }
+
     let file_bytes =
         std::fs::read(path).map_err(|e| format!("psd:: 读取文件失败: {}", e))?;
 
@@ -107,9 +131,6 @@ pub fn psd_to_png(path: &str) -> Result<String, String> {
     let img = image::RgbaImage::from_raw(width, height, rgba)
         .ok_or_else(|| "psd:: 构建 RgbaImage 失败".to_string())?;
 
-    let mut temp_path: PathBuf = std::env::temp_dir();
-    temp_path.push("quicklook_psd_preview.png");
-
     img.save_with_format(&temp_path, image::ImageFormat::Png)
         .map_err(|e| e.to_string())?;
 
@@ -118,12 +139,33 @@ pub fn psd_to_png(path: &str) -> Result<String, String> {
 
 #[command]
 pub fn image_to_png(path: &str) -> Result<String, String> {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+
+    let mut hasher = DefaultHasher::new();
+    path.hash(&mut hasher);
+    if let Ok(meta) = std::fs::metadata(path) {
+        if let Ok(modified) = meta.modified() {
+            modified.hash(&mut hasher);
+        }
+    }
+    let hash = hasher.finish();
+
+    let mut images_dir: PathBuf = std::env::temp_dir();
+    images_dir.push("quicklook_images");
+    std::fs::create_dir_all(&images_dir).map_err(|e| e.to_string())?;
+
+    let mut temp_path = images_dir;
+    temp_path.push(format!("quicklook_image_{:x}.png", hash));
+
+    if temp_path.exists() {
+        log::info!("命中图片缓存: {:?}", temp_path);
+        return Ok(temp_path.to_string_lossy().to_string());
+    }
+
     let img = image::open(path).map_err(|e| format!("image:: 读取图片失败: {}", e))?;
 
     let img = img.to_rgba8();
-
-    let mut temp_path: PathBuf = std::env::temp_dir();
-    temp_path.push("quicklook_image_preview.png");
 
     img.save_with_format(&temp_path, image::ImageFormat::Png)
         .map_err(|e| e.to_string())?;
@@ -141,12 +183,42 @@ pub fn parse_lrc(path: &str) -> Result<audio::Lrc, String> {
     audio::parse_lrc(path)
 }
 
-/// 汇总清理所有 quicklook 产生的缓存，目前包含 ffmpeg HLS 转码缓存。
+/// 清理图片转码缓存目录。
+/// 返回被删除的文件数量。
+#[command]
+pub fn clear_image_cache() -> Result<u32, String> {
+    let images_dir = std::env::temp_dir().join("quicklook_images");
+    if !images_dir.exists() {
+        log::info!("quicklook_images 目录不存在，无需清理");
+        return Ok(0);
+    }
+    let entries = std::fs::read_dir(&images_dir).map_err(|e| e.to_string())?;
+
+    let mut removed = 0u32;
+    for entry in entries.flatten() {
+        if entry.path().is_file() {
+            match std::fs::remove_file(entry.path()) {
+                Ok(_) => {
+                    removed += 1;
+                    log::info!("已清理图片缓存: {}", entry.path().display());
+                },
+                Err(e) => {
+                    log::warn!("清理图片缓存失败: {}, 错误: {}", entry.path().display(), e);
+                },
+            }
+        }
+    }
+    log::info!("共清理 {} 个图片缓存文件", removed);
+    Ok(removed)
+}
+
+/// 汇总清理所有 quicklook 产生的缓存，包含 ffmpeg HLS 转码缓存和图片转码缓存。
 /// 返回被删除的目录/文件总数量。
 #[command]
 pub fn clear_cache() -> Result<u32, String> {
     let mut total = 0u32;
     total += ffmp::clear_ffmpeg_cache()?;
+    total += clear_image_cache()?;
     log::info!("缓存清理完成，共删除 {} 个目录/文件", total);
     Ok(total)
 }
