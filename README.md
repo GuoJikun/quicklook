@@ -13,7 +13,7 @@ QuickLook 是一个 windows 平台的快速预览工具。
 - markdown：markdown、md
 - Docs：docx、xls、xlsx、xlsm、xlsb、xla、xlam、ods、csv
 - Code：cpp、js、mjs、cjs、ts、mts、tsx、rs、py、java、html、css、scss、sass、less、styl、c、cs、go、vue、svelte、astro、jsx、json、yml、yaml、toml、bat、ps1、ini、swift、kt、php、h、xml、sql、pug、lua、r、d、vb、pas、scala、m、log
-- Image：jpg、jpeg、png、webp、svg、apng
+- Image：jpg、jpeg、png、webp、svg、apng、tiff、tif、tga、pbm、pgm、ppm、qoi、exr
 - Video：mp4、mkv、webm
 - Auido：mp3
 - Book：pdf
