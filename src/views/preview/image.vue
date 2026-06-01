@@ -17,11 +17,23 @@ const fileInfo = ref<FileInfo>()
 
 const loading = ref(false)
 const imgPath = ref<string>()
+
+const convertFormats = ['psd', 'tiff', 'tif', 'tga', 'pbm', 'pgm', 'ppm', 'qoi', 'exr']
+
 const init = async () => {
     loading.value = true
     let path = fileInfo.value?.path as string
-    if (fileInfo.value?.extension == 'psd') {
-        path = await invoke('psd_to_png', { path })
+    const ext = fileInfo.value?.extension as string
+    if (convertFormats.includes(ext)) {
+        console.log('ext', ext)
+        if (ext === 'psd') {
+            path = await invoke('psd_to_png', { path })
+        } else {
+            console.log(1)
+            path = await invoke('image_to_png', { path })
+
+            console.log(2)
+        }
     }
     imgPath.value = convertFileSrc(path) as string
     loading.value = false
@@ -36,7 +48,7 @@ onMounted(async () => {
     <LayoutPreview :file="fileInfo" :loading="loading">
         <div class="image-support">
             <div class="image-support-inner" id="canvas">
-                <PreviewImage :src="imgPath as string" />
+                <PreviewImage v-if="!loading" :src="imgPath as string" />
             </div>
         </div>
     </LayoutPreview>

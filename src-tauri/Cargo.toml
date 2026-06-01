@@ -64,4 +64,4 @@ quicklook-archive = { path = "../crates/archive" }
 # Document processing library
 quicklook-docs = { path = "../crates/docs" }
 psd = "0.3.5"
-image = { version = "0.25.10", features = ["png", "webp"] }
+image = { version = "0.25.10", features = ["png", "webp", "jpeg", "gif", "bmp", "ico", "tiff", "tga", "pnm", "qoi", "exr"] }

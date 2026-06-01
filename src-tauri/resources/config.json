@@ -16,7 +16,16 @@
         "bmp",
         "ico",
         "svg",
-        "apng"
+        "apng",
+        "psd",
+        "tiff",
+        "tif",
+        "tga",
+        "pbm",
+        "pgm",
+        "ppm",
+        "qoi",
+        "exr"
     ],
     "preview.image.checked": [
         "jpg",
@@ -27,7 +36,16 @@
         "bmp",
         "ico",
         "svg",
-        "apng"
+        "apng",
+        "psd",
+        "tiff",
+        "tif",
+        "tga",
+        "pbm",
+        "pgm",
+        "ppm",
+        "qoi",
+        "exr"
     ],
     "preview.video": [
         "mp4",

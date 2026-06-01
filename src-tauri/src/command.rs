@@ -117,6 +117,21 @@ pub fn psd_to_png(path: &str) -> Result<String, String> {
 }
 
 #[command]
+pub fn image_to_png(path: &str) -> Result<String, String> {
+    let img = image::open(path).map_err(|e| format!("image:: 读取图片失败: {}", e))?;
+
+    let img = img.to_rgba8();
+
+    let mut temp_path: PathBuf = std::env::temp_dir();
+    temp_path.push("quicklook_image_preview.png");
+
+    img.save_with_format(&temp_path, image::ImageFormat::Png)
+        .map_err(|e| e.to_string())?;
+
+    Ok(temp_path.to_string_lossy().to_string())
+}
+
+#[command]
 pub fn read_audio_info(path: &str) -> Option<audio::MusicInfo> {
     audio::read_music_info(path)
 }
