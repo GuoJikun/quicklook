@@ -78,7 +78,7 @@ watch(
 
 <template>
     <div class="layout-header" data-tauri-drag-region>
-        <div class="layout-header-extra no-seleced" data-tauri-drag-region>
+        <div class="layout-header-extra no-selected" data-tauri-drag-region>
             <slot name="logo">
                 <img v-if="props.logo" :src="logo" alt="logo" data-tauri-drag-region />
             </slot>
@@ -118,11 +118,11 @@ watch(
     position: sticky;
     top: 0;
     left: 0;
-    height: 28px;
+    height: var(--layout-header-h);
     font-size: 1.2rem;
     background-color: var(--color-surface);
     color: var(--color-text-primary);
-    gap: 12px;
+    gap: var(--space-3);
     :deep(i.n-icon) {
         cursor: pointer;
         pointer-events: none;
@@ -131,7 +131,7 @@ watch(
         display: inline-flex;
         justify-content: flex-start;
         align-items: center;
-        padding: 0 12px;
+        padding: 0 var(--space-3);
         height: 100%;
         flex: auto;
         max-width: 50%;
@@ -162,13 +162,14 @@ watch(
             justify-content: center;
             align-items: center;
             height: 100%;
+            transition: background-color var(--transition-base), color var(--transition-base);
             &:hover {
                 background-color: var(--color-hover-bg);
             }
             &.is-close {
                 &:hover {
-                    background-color: #f12724;
-                    color: white;
+                    background-color: var(--color-danger);
+                    color: #fff;
                 }
             }
         }

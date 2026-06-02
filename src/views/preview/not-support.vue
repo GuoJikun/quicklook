@@ -15,12 +15,11 @@ defineOptions({
 </template>
 
 <style scoped lang="scss">
-.font-support {
+.not-support {
     width: 100%;
     height: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
-    align-content: center;
 }
 </style>

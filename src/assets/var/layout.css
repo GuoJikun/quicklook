@@ -1,0 +1,46 @@
+:root {
+    /* ==== 尺寸 (Sizes) ==== */
+    --layout-header-h: 28px;
+    --layout-footer-h: 20px;
+
+    /* ==== 圆角 (Radius) ==== */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 10px;
+    --radius-xl: 12px;
+
+    /* ==== 间距 (Spacing) ==== */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+
+    /* ==== 字号 (Font Sizes) ==== */
+    --font-xs: 12px;
+    --font-sm: 13px;
+    --font-md: 14px;
+    --font-lg: 15px;
+    --font-xl: 16px;
+    --font-2xl: 18px;
+    --font-3xl: 24px;
+
+    /* ==== 行高 ==== */
+    --line-tight: 1.4;
+    --line-base: 1.6;
+    --line-loose: 1.8;
+
+    /* ==== 层级 (Z-Index) ==== */
+    --z-base: 0;
+    --z-sticky: 10;
+    --z-fixed: 100;
+    --z-modal: 1000;
+    --z-toast: 2000;
+
+    /* ==== 过渡 (Transitions) ==== */
+    --transition-fast: 0.15s ease;
+    --transition-base: 0.2s ease;
+    --transition-medium: 0.3s ease;
+    --transition-slow: 0.5s ease;
+}

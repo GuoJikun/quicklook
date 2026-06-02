@@ -31,40 +31,43 @@ defineProps<{
 .setting-card {
     background: var(--color-surface);
     border: 1px solid var(--color-border);
-    border-radius: 10px;
+    border-radius: var(--radius-lg);
     padding: 18px 22px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
     scroll-margin-top: 72px;
+    transition:
+        background-color var(--transition-medium),
+        border-color var(--transition-medium);
 
     &-header {
         margin-bottom: 14px;
-        padding-bottom: 12px;
+        padding-bottom: var(--space-3);
         border-bottom: 1px solid var(--color-border);
     }
 
     &-title {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: var(--space-2);
         margin: 0;
     }
 
     &-title-text {
         margin: 0;
-        font-size: 15px;
+        font-size: var(--font-lg);
         font-weight: 600;
         color: var(--color-text-primary);
     }
 
     &-icon {
         color: var(--color-accent);
-        font-size: 18px;
+        font-size: var(--font-2xl);
     }
 
     &-desc {
         margin: 6px 0 0;
-        font-size: 13px;
-        line-height: 1.6;
+        font-size: var(--font-sm);
+        line-height: var(--line-base);
         color: var(--color-text-secondary);
     }
 

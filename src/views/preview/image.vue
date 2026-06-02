@@ -53,7 +53,6 @@ onMounted(async () => {
     display: flex;
     justify-content: center;
     align-items: center;
-    align-content: center;
 
     &-inner {
         width: 100%;

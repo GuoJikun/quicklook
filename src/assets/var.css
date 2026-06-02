@@ -1,20 +1,22 @@
+/* ==== 浅色主题 (Light) ==== */
 :root {
-    /* ==== 明亮主题 (Light) ==== */
-    --color-bg: #f3f3f3; /* 主背景 */
-    --color-surface: #ffffff; /* 卡片/面板 */
-    --color-accent: #0078d4; /* 强调色 */
-    --color-text-primary: #1a1a1a; /* 主文字 */
-    --color-text-secondary: #555555; /* 次要文字 */
-    --color-text-disabled: #999999; /* 禁用文字 */
-    --color-border: #e1e1e1; /* 边框/分割线 */
-    --elevation-hover: rgba(0, 0, 0, 0.08); /* 悬停阴影 */
-    --color-hover-bg: #e5f1fb; /* 悬停背景 */
+    --color-bg: #f3f3f3;
+    --color-surface: #ffffff;
+    --color-accent: #0078d4;
+    --color-text-primary: #1a1a1a;
+    --color-text-secondary: #555555;
+    --color-text-disabled: #999999;
+    --color-border: #e1e1e1;
+    --elevation-hover: rgba(0, 0, 0, 0.08);
+    --color-hover-bg: #e5f1fb;
 
-    /* ==== 按钮 (Button) ==== */
+    --color-danger: #f12724;
+    --color-danger-hover: #d11f1c;
+
     --btn-primary-bg: var(--color-accent);
     --btn-primary-text: #ffffff;
-    --btn-primary-hover-bg: #106ebe; /* 稍深蓝色 */
-    --btn-primary-active-bg: #005a9e; /* 更深蓝色 */
+    --btn-primary-hover-bg: #106ebe;
+    --btn-primary-active-bg: #005a9e;
     --btn-primary-disabled-bg: #cce4f7;
     --btn-primary-disabled-text: #7a7a7a;
 
@@ -30,20 +32,19 @@
     --ht-cell-background-color: var(--color-surface);
     --ht-cell-color: var(--color-text-primary);
     --ht-border-color: var(--color-border);
-
     --ht-header-background-color: var(--color-bg);
     --ht-header-color: var(--color-text-secondary);
     --ht-header-border-color: var(--color-border);
-
     --ht-selection-background-color: var(--color-hover-bg);
     --ht-selection-border-color: var(--color-accent);
-
     --ht-scrollbar-track-color: transparent;
     --ht-scrollbar-thumb-color: var(--color-border);
 }
 
+/* ==== 暗黑主题 (Dark) ==== */
 html.dark {
-    /* ==== 暗黑主题 (Dark) ==== */
+    color-scheme: dark;
+
     --color-bg: #1c1c1c;
     --color-surface: #2b2b2b;
     --color-accent: #0078d4;
@@ -54,7 +55,9 @@ html.dark {
     --elevation-hover: rgba(255, 255, 255, 0.05);
     --color-hover-bg: rgba(0, 120, 212, 0.2);
 
-    /* ==== 按钮 (Button) ==== */
+    --color-danger: #f12724;
+    --color-danger-hover: #ff4d4a;
+
     --btn-primary-bg: var(--color-accent);
     --btn-primary-text: #ffffff;
     --btn-primary-hover-bg: #106ebe;
@@ -74,14 +77,11 @@ html.dark {
     --ht-cell-background-color: var(--color-surface);
     --ht-cell-color: var(--color-text-primary);
     --ht-border-color: var(--color-border);
-
     --ht-header-background-color: var(--color-bg);
     --ht-header-color: var(--color-text-secondary);
     --ht-header-border-color: var(--color-border);
-
     --ht-selection-background-color: var(--color-hover-bg);
     --ht-selection-border-color: var(--color-accent);
-
     --ht-scrollbar-track-color: transparent;
     --ht-scrollbar-thumb-color: var(--color-border);
 }

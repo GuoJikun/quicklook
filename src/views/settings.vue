@@ -395,7 +395,7 @@ const handleClearImageCache = async () => {
     min-height: 100vh;
     background-color: var(--color-bg);
     box-sizing: border-box;
-    padding: 16px 24px 32px;
+    padding: var(--space-4) var(--space-5) var(--space-6);
     overflow-x: clip;
 }
 
@@ -404,17 +404,17 @@ const handleClearImageCache = async () => {
     margin: 0 auto;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: var(--space-4);
 }
 
 .settings-nav {
     position: sticky;
     top: 0;
-    z-index: 10;
+    z-index: var(--z-sticky);
     background: var(--color-surface);
     border: 1px solid var(--color-border);
-    border-radius: 10px;
-    padding: 8px 16px;
+    border-radius: var(--radius-lg);
+    padding: var(--space-2) var(--space-4);
     overflow-x: auto;
     :deep(.el-anchor) {
         display: flex;
@@ -424,16 +424,16 @@ const handleClearImageCache = async () => {
     :deep(.el-anchor__list) {
         display: flex;
         flex-wrap: nowrap;
-        gap: 8px;
+        gap: var(--space-2);
     }
     :deep(.el-anchor__item) {
         padding: 0;
     }
     :deep(.el-anchor-link__title) {
-        font-size: 13px;
+        font-size: var(--font-sm);
         padding: 4px 8px;
         border-radius: 6px;
-        transition: background-color 0.2s;
+        transition: background-color var(--transition-base);
     }
     :deep(.el-anchor-link__title:hover) {
         background-color: var(--color-hover-bg);
@@ -454,18 +454,18 @@ const handleClearImageCache = async () => {
 .format-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 10px;
+    gap: var(--space-3);
 }
 
 .format-card {
     border: 1px solid var(--color-border);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     padding: 10px 12px;
     background: var(--color-bg);
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    transition: border-color 0.2s;
+    gap: var(--space-2);
+    transition: border-color var(--transition-base);
 
     &:hover {
         border-color: var(--color-accent);
@@ -474,21 +474,21 @@ const handleClearImageCache = async () => {
     &-head {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: var(--space-2);
     }
 
     &-code {
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-        font-size: 12px;
+        font-size: var(--font-xs);
         font-weight: 600;
         padding: 2px 8px;
-        border-radius: 4px;
+        border-radius: var(--radius-sm);
         background: var(--color-accent);
         color: #fff;
     }
 
     &-name {
-        font-size: 13px;
+        font-size: var(--font-sm);
         color: var(--color-text-secondary);
     }
 
@@ -511,32 +511,32 @@ const handleClearImageCache = async () => {
     }
 }
 
-.ext-empty {
-    font-size: 13px;
-    color: var(--color-text-disabled);
-    padding: 4px 0;
-}
-
 .ext-input-row {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-2);
     .ext-input {
         flex: 0 0 200px;
     }
+}
+
+.ext-empty {
+    font-size: var(--font-sm);
+    color: var(--color-text-disabled);
+    padding: 4px 0;
 }
 
 .ext-sub {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    padding: 12px 14px;
+    padding: var(--space-3) 14px;
     border: 1px dashed var(--color-border);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     background: var(--color-bg);
 
     &-title {
-        font-size: 13px;
+        font-size: var(--font-sm);
         font-weight: 600;
         color: var(--color-text-primary);
     }
@@ -544,7 +544,7 @@ const handleClearImageCache = async () => {
     &-tip {
         margin-left: 6px;
         font-weight: normal;
-        font-size: 12px;
+        font-size: var(--font-xs);
         color: var(--el-color-warning);
     }
 }
@@ -553,7 +553,7 @@ const handleClearImageCache = async () => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
+    gap: var(--space-4);
     padding: 4px 0;
 
     &-label {
@@ -565,13 +565,13 @@ const handleClearImageCache = async () => {
     }
 
     &-title {
-        font-size: 14px;
+        font-size: var(--font-md);
         font-weight: 500;
         color: var(--color-text-primary);
     }
 
     &-desc {
-        font-size: 12px;
+        font-size: var(--font-xs);
         color: var(--color-text-secondary);
         line-height: 1.5;
     }
@@ -584,17 +584,17 @@ const handleClearImageCache = async () => {
 .cache-list {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: var(--space-3);
 }
 
 .cache-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
-    padding: 12px 14px;
+    gap: var(--space-4);
+    padding: var(--space-3) 14px;
     border: 1px solid var(--color-border);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     background: var(--color-bg);
 
     &-info {
@@ -606,13 +606,13 @@ const handleClearImageCache = async () => {
     }
 
     &-title {
-        font-size: 14px;
+        font-size: var(--font-md);
         font-weight: 500;
         color: var(--color-text-primary);
     }
 
     &-desc {
-        font-size: 12px;
+        font-size: var(--font-xs);
         color: var(--color-text-secondary);
         line-height: 1.5;
     }
@@ -621,12 +621,12 @@ const handleClearImageCache = async () => {
 .log-row {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--space-3);
     flex-wrap: wrap;
 }
 
 .log-label {
-    font-size: 14px;
+    font-size: var(--font-md);
     font-weight: 500;
     color: var(--color-text-primary);
 }
@@ -635,10 +635,10 @@ const handleClearImageCache = async () => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
-    padding: 12px 14px;
+    gap: var(--space-4);
+    padding: var(--space-3) 14px;
     border: 1px solid var(--color-border);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     background: var(--color-bg);
     flex-wrap: wrap;
 }
@@ -650,12 +650,12 @@ const handleClearImageCache = async () => {
 }
 
 .about-version-label {
-    font-size: 12px;
+    font-size: var(--font-xs);
     color: var(--color-text-secondary);
 }
 
 .about-version-value {
-    font-size: 16px;
+    font-size: var(--font-xl);
     font-weight: 600;
     color: var(--color-text-primary);
     font-variant-numeric: tabular-nums;

@@ -30,14 +30,13 @@ init()
         left: 0;
         bottom: 0;
         width: 100%;
-        font-size: 12px;
+        font-size: var(--font-xs);
     }
     &-body {
         padding: 28px 0 20px;
         display: flex;
         justify-content: center;
         align-items: center;
-        align-content: center;
         height: 100%;
     }
 }

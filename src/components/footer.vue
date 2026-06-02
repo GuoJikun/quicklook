@@ -18,15 +18,14 @@ const { file } = defineProps<Props>()
 
 <style scoped lang="scss">
 .footer {
-    height: 20px;
-    padding: 0 8px;
+    height: var(--layout-footer-h);
+    padding: 0 var(--space-2);
     background-color: var(--color-surface);
     color: var(--color-text-primary);
     display: flex;
     align-items: center;
-    align-content: center;
-    font-size: 12px;
-    gap: 12px;
+    font-size: var(--font-xs);
+    gap: var(--space-3);
     user-select: none;
     &-item {
         zoom: 0.8;

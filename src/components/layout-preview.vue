@@ -27,25 +27,25 @@ const props = defineProps<Props>()
     height: 100vh;
     overflow: hidden;
     position: relative;
+    display: flex;
+    flex-direction: column;
+
     &-header {
-        position: sticky;
-        left: 0;
-        top: 0;
-        width: 100%;
+        flex: 0 0 var(--layout-header-h);
+        height: var(--layout-header-h);
     }
+
     &-footer {
-        position: absolute;
-        left: 0;
-        bottom: 0;
-        width: 100%;
-        font-size: 12px;
+        flex: 0 0 var(--layout-footer-h);
+        height: var(--layout-footer-h);
     }
+
     &-body {
-        height: calc(100% - 48px);
+        flex: 1;
+        min-height: 0;
         display: flex;
         justify-content: center;
         align-items: center;
-        align-content: center;
     }
 }
 </style>

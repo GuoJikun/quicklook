@@ -68,10 +68,9 @@ onMounted(() => {
     display: flex;
     justify-content: center;
     align-items: center;
-    align-content: center;
     background-color: var(--color-bg);
     &-inner {
-        font-size: 24px;
+        font-size: var(--font-3xl);
         background-color: transparent;
     }
     & p {
