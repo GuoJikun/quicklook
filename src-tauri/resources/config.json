@@ -25,7 +25,9 @@
         "pgm",
         "ppm",
         "qoi",
-        "exr"
+        "exr",
+        "heic",
+        "heif"
     ],
     "preview.image.checked": [
         "jpg",
@@ -45,13 +47,14 @@
         "pgm",
         "ppm",
         "qoi",
-        "exr"
+        "exr",
+        "heic",
+        "heif"
     ],
     "preview.video": [
         "mp4",
         "webm",
         "mkv",
-        "flv",
         "avi",
         "mov",
         "wmv",
@@ -65,7 +68,6 @@
         "mp4",
         "webm",
         "mkv",
-        "flv",
         "avi",
         "mov",
         "wmv",
@@ -76,16 +78,14 @@
         "3g2"
     ],
     "preview.audio": [
-        "m4a",
         "mp3",
-        "3gp",
-        "ogg"
+        "ogg",
+        "m4a"
     ],
     "preview.audio.checked": [
-        "m4a",
         "mp3",
-        "3gp",
-        "ogg"
+        "ogg",
+        "m4a"
     ],
     "preview.doc": [
         "docx",
@@ -110,6 +110,7 @@
         "csv"
     ],
     "preview.code": [
+        "txt",
         "cpp",
         "js",
         "mjs",
@@ -125,7 +126,9 @@
         "scss",
         "sass",
         "less",
+        "styl",
         "c",
+        "cs",
         "go",
         "vue",
         "svelte",
@@ -144,9 +147,19 @@
         "h",
         "xml",
         "sql",
-        "svg"
+        "pug",
+        "lua",
+        "r",
+        "d",
+        "vb",
+        "pas",
+        "scala",
+        "m",
+        "log",
+        "bash"
     ],
     "preview.code.checked": [
+        "txt",
         "cpp",
         "js",
         "mjs",
@@ -162,7 +175,9 @@
         "scss",
         "sass",
         "less",
+        "styl",
         "c",
+        "cs",
         "go",
         "vue",
         "svelte",
@@ -180,7 +195,17 @@
         "php",
         "h",
         "xml",
-        "sql"
+        "sql",
+        "pug",
+        "lua",
+        "r",
+        "d",
+        "vb",
+        "pas",
+        "scala",
+        "m",
+        "log",
+        "bash"
     ],
     "preview.font": [
         "ttf",
@@ -195,10 +220,26 @@
         "woff"
     ],
     "preview.archive": [
-        "zip"
+        "zip",
+        "7z",
+        "tar",
+        "gz",
+        "tgz",
+        "bz2",
+        "tbz2",
+        "xz",
+        "txz"
     ],
     "preview.archive.checked": [
-        "zip"
+        "zip",
+        "7z",
+        "tar",
+        "gz",
+        "tgz",
+        "bz2",
+        "tbz2",
+        "xz",
+        "txz"
     ],
     "preview.book": [
         "pdf"
