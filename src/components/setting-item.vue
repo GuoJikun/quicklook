@@ -1,33 +1,77 @@
 <script lang="ts" setup>
-const props = defineProps<{
+import type { Component } from 'vue'
+
+defineProps<{
+    id?: string
     title: string
-    content?: string
+    description?: string
+    icon?: Component
 }>()
 </script>
 
 <template>
-    <div class="setting-item">
-        <div class="setting-item-header">
-            <span>{{ props.title }}：</span>
+    <section :id="id" class="setting-card">
+        <header v-if="title || $slots.header" class="setting-card-header">
+            <div class="setting-card-title">
+                <el-icon v-if="icon" class="setting-card-icon">
+                    <component :is="icon" />
+                </el-icon>
+                <h3 class="setting-card-title-text">{{ title }}</h3>
+            </div>
+            <p v-if="description" class="setting-card-desc">{{ description }}</p>
+            <slot name="header" />
+        </header>
+        <div class="setting-card-body">
+            <slot />
         </div>
-        <div class="setting-item-content">
-            <slot>{{ props.content }}</slot>
-        </div>
-    </div>
+    </section>
 </template>
 
 <style scoped lang="scss">
-.setting-item {
-    line-height: 1.6em;
-    padding: 8px 0;
+.setting-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    padding: 18px 22px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+    scroll-margin-top: 72px;
+
     &-header {
-        font-size: 16px;
-        font-weight: 700;
-        margin-bottom: 4px;
-        color: #555;
+        margin-bottom: 14px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--color-border);
     }
-    &-content {
-        padding: 0 12px;
+
+    &-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0;
+    }
+
+    &-title-text {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--color-text-primary);
+    }
+
+    &-icon {
+        color: var(--color-accent);
+        font-size: 18px;
+    }
+
+    &-desc {
+        margin: 6px 0 0;
+        font-size: 13px;
+        line-height: 1.6;
+        color: var(--color-text-secondary);
+    }
+
+    &-body {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
     }
 }
 </style>
