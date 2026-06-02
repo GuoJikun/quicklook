@@ -150,6 +150,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ar"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d67af77d68a931ecd5cbd8a3b5987d63a1d1d1278f7f6a60ae33db485cdebb69"
+
+[[package]]
 name = "arbitrary"
 version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2117,6 +2123,50 @@ dependencies = [
 ]
 
 [[package]]
+name = "hadris-common"
+version = "1.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6a9dba84a6cbcceae87e6ae05678baa5ee166ac67d81d200f7bfa407b0ed06db"
+dependencies = [
+ "chrono",
+ "crc",
+ "hadris-io",
+ "noalloc",
+ "rand 0.9.4",
+ "zerocopy",
+]
+
+[[package]]
+name = "hadris-cpio"
+version = "1.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "edac7af4b03d00f5561291b0c6feacd5628cd82a30cdbf77620d565867c926f0"
+dependencies = [
+ "hadris-common",
+ "hadris-io",
+ "hadris-macros",
+]
+
+[[package]]
+name = "hadris-io"
+version = "1.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a0e6c5ab7e56eeef44f4aaee489bcec9fee52b329cfd1b4388799bb35ee69654"
+dependencies = [
+ "bytemuck",
+ "cfg-if",
+]
+
+[[package]]
+name = "hadris-macros"
+version = "1.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c391784dcf01c2711219a7a614c71f62fe16284b00f96e8be9ed882f1b82e116"
+dependencies = [
+ "proc-macro2",
+]
+
+[[package]]
 name = "half"
 version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3108,6 +3158,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "noalloc"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a2537501480803dd22fbd79a39ea83318caba3ba936f7554f7139f4180faa94"
+
+[[package]]
 name = "nodrop"
 version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4091,10 +4147,13 @@ dependencies = [
 name = "quicklook-archive"
 version = "0.1.0"
 dependencies = [
+ "ar",
  "bzip2",
  "chrono",
  "flate2",
+ "hadris-cpio",
  "log",
+ "ruzstd",
  "serde",
  "serde_json",
  "sevenz-rust",
@@ -4649,6 +4708,12 @@ name = "rustversion"
 version = "1.0.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d"
+
+[[package]]
+name = "ruzstd"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7c1c839d570d835527c9a5e4db7cb2198683a988cb9d7293fc8674e6bd58fc8"
 
 [[package]]
 name = "ryu"

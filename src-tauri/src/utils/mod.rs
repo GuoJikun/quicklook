@@ -252,6 +252,27 @@ static FILE_TYPE_MAPPING: LazyLock<HashMap<&'static str, &'static str>> =
             ("tbz2", "Archive"), // tar.bz2 的简写
             ("xz", "Archive"),   // xz 压缩文件
             ("txz", "Archive"),  // tar.xz 的简写
+            ("zst", "Archive"),  // zstandard 压缩文件
+            ("tzst", "Archive"), // tar.zst 的简写
+            ("cpio", "Archive"), // CPIO 归档
+            ("ar", "Archive"),   // Unix ar 归档
+            ("deb", "Archive"),  // Debian 软件包（外层 ar）
+            ("a", "Archive"),    // 静态库
+            // ZIP 本质但带特殊扩展名
+            ("jar", "Archive"),  // Java 归档
+            ("war", "Archive"),  // Java Web 归档
+            ("ear", "Archive"),  // Java Enterprise 归档
+            ("apk", "Archive"),  // Android 应用包
+            ("aar", "Archive"),  // Android 归档
+            ("whl", "Archive"),  // Python wheel
+            ("vsix", "Archive"), // VS Code 扩展
+            ("nupkg", "Archive"),// NuGet 包
+            ("crx", "Archive"),  // Chrome 扩展
+            ("xpi", "Archive"),  // Firefox 扩展
+            ("egg", "Archive"),  // Python egg
+            ("kra", "Archive"),  // Krita 文档
+            ("xps", "Archive"),  // XML Paper Specification
+            ("oxps", "Archive"), // OpenXPS
             // 书籍文件
             ("pdf", "Book"),
             // 代码文件

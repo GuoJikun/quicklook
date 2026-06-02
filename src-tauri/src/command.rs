@@ -41,7 +41,14 @@ pub fn archive(path: &str, mode: &str) -> Result<Vec<Extract>, String> {
         "gz" | "tgz" => extractors::tar::list_tar_gz_entries(path).map_err(|e| e.to_string()),
         "bz2" | "tbz2" => extractors::tar::list_tar_bz2_entries(path).map_err(|e| e.to_string()),
         "xz" | "txz" => extractors::tar::list_tar_xz_entries(path).map_err(|e| e.to_string()),
+        "zst" | "tzst" => extractors::zst::list_tar_zst_entries(path).map_err(|e| e.to_string()),
         "7z" => extractors::sevenz::list_7z_entries(path).map_err(|e| e.to_string()),
+        "cpio" => extractors::cpio::list_cpio_entries(path).map_err(|e| e.to_string()),
+        "ar" | "deb" | "a" => extractors::ar::list_ar_entries(path).map_err(|e| e.to_string()),
+        "jar" | "war" | "ear" | "apk" | "aar" | "whl" | "vsix" | "nupkg"
+        | "crx" | "xpi" | "egg" | "kra" | "xps" | "oxps" => {
+            extractors::zip::zip_extract(path).map_err(|e| e.to_string())
+        },
         _ => Err("不支持的压缩格式".to_string()),
     };
 

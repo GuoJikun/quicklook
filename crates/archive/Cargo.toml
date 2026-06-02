@@ -25,12 +25,18 @@ flate2 = { version = "1.0", default-features = false, features = [
 bzip2 = { version = "0.5.0", default-features = false }
 xz2 = { version = "0.1.0", default-features = false }
 sevenz-rust = "0.6.0"
+ruzstd = { version = "0.8.0", default-features = false, features = ["std"] }
+hadris-cpio = "1.1"
+ar = "0.9"
 # libarchive = "0.1.1"  # 这个库需要系统依赖，暂时注释掉
 log = "0.4"
 
 [features]
-default = ["zip", "tar", "sevenz"]
+default = ["zip", "tar", "sevenz", "zstd", "cpio", "ar"]
 zip = []
 tar = []
 sevenz = []
+zstd = []
+cpio = []
+ar = []
 libarchive = []

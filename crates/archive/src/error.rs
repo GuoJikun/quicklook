@@ -5,6 +5,7 @@ pub enum ArchiveError {
     IoError(std::io::Error),
     ZipError(zip::result::ZipError),
     SevenZError(sevenz_rust::Error),
+    CpioError(hadris_cpio::error::CpioError),
     UnsupportedFormat(String),
     InvalidPath(String),
     Other(String),
@@ -16,6 +17,7 @@ impl fmt::Display for ArchiveError {
             ArchiveError::IoError(err) => write!(f, "IO error: {err}"),
             ArchiveError::ZipError(err) => write!(f, "ZIP error: {err}"),
             ArchiveError::SevenZError(err) => write!(f, "7Z error: {err}"),
+            ArchiveError::CpioError(err) => write!(f, "CPIO error: {err}"),
             ArchiveError::UnsupportedFormat(fmt) => write!(f, "Unsupported format: {fmt}"),
             ArchiveError::InvalidPath(path) => write!(f, "Invalid path: {path}"),
             ArchiveError::Other(msg) => write!(f, "Error: {msg}"),
@@ -29,6 +31,7 @@ impl std::error::Error for ArchiveError {
             ArchiveError::IoError(err) => Some(err),
             ArchiveError::ZipError(err) => Some(err),
             ArchiveError::SevenZError(err) => Some(err),
+            ArchiveError::CpioError(err) => Some(err),
             _ => None,
         }
     }
@@ -49,5 +52,11 @@ impl From<zip::result::ZipError> for ArchiveError {
 impl From<sevenz_rust::Error> for ArchiveError {
     fn from(err: sevenz_rust::Error) -> Self {
         ArchiveError::SevenZError(err)
+    }
+}
+
+impl From<hadris_cpio::error::CpioError> for ArchiveError {
+    fn from(err: hadris_cpio::error::CpioError) -> Self {
+        ArchiveError::CpioError(err)
     }
 }
