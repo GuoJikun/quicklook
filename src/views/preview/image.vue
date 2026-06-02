@@ -18,22 +18,14 @@ const fileInfo = ref<FileInfo>()
 const loading = ref(false)
 const imgPath = ref<string>()
 
-const convertFormats = ['psd', 'tiff', 'tif', 'tga', 'pbm', 'pgm', 'ppm', 'qoi', 'exr']
+const convertFormats = ['psd', 'tiff', 'tif', 'tga', 'pbm', 'pgm', 'ppm', 'qoi', 'exr', 'heic', 'heif']
 
 const init = async () => {
     loading.value = true
     let path = fileInfo.value?.path as string
     const ext = fileInfo.value?.extension as string
     if (convertFormats.includes(ext)) {
-        console.log('ext', ext)
-        if (ext === 'psd') {
-            path = await invoke('psd_to_png', { path })
-        } else {
-            console.log(1)
-            path = await invoke('image_to_png', { path })
-
-            console.log(2)
-        }
+        path = await invoke('convert_to_png', { path })
     }
     imgPath.value = convertFileSrc(path) as string
     loading.value = false

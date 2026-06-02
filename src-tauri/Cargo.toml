@@ -65,3 +65,13 @@ quicklook-archive = { path = "../crates/archive" }
 quicklook-docs = { path = "../crates/docs" }
 psd = "0.3.5"
 image = { version = "0.25.10", features = ["png", "webp", "jpeg", "gif", "bmp", "ico", "tiff", "tga", "pnm", "qoi", "exr"] }
+libheif-rs = { version = "2.7", features = ["image"] }
+
+[package.metadata.vcpkg]
+git = "https://github.com/microsoft/vcpkg"
+tag = "2026.05.25"
+dependencies = ["libheif"]
+
+[package.metadata.vcpkg.target]
+x86_64-pc-windows-msvc = { triplet = "x64-windows-static-md" }
+aarch64-pc-windows-msvc = { triplet = "arm64-windows-static-md" }

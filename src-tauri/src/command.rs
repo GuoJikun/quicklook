@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use tauri::{command, AppHandle, Manager};
 use windows::Win32::Foundation::HWND;
 
-use crate::helper::{audio, ffmp, monitor, win};
+use crate::helper::{audio, ffmp, image as image_helper, monitor, win};
 
 #[command]
 pub fn check_ffmpeg() -> bool {
@@ -93,8 +93,10 @@ pub fn set_log_level(level: usize) -> Result<(), String> {
     Ok(())
 }
 
+/// 将 PSD、HEIC/HEIF 等图片格式转换为 PNG 并缓存。
+/// 返回转换后 PNG 文件的路径。
 #[command]
-pub fn psd_to_png(path: &str) -> Result<String, String> {
+pub fn convert_to_png(path: &str) -> Result<String, String> {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
 
@@ -112,63 +114,24 @@ pub fn psd_to_png(path: &str) -> Result<String, String> {
     std::fs::create_dir_all(&images_dir).map_err(|e| e.to_string())?;
 
     let mut temp_path = images_dir;
-    temp_path.push(format!("quicklook_psd_{:x}.png", hash));
-
-    if temp_path.exists() {
-        log::info!("命中 PSD 缓存: {:?}", temp_path);
-        return Ok(temp_path.to_string_lossy().to_string());
-    }
-
-    let file_bytes =
-        std::fs::read(path).map_err(|e| format!("psd:: 读取文件失败: {}", e))?;
-
-    let psd_obj = psd::Psd::from_bytes(&file_bytes)
-        .map_err(|e| format!("psd:: 从 bytes 解析错误: {}", e))?;
-
-    let rgba = psd_obj.rgba();
-    let width = psd_obj.width();
-    let height = psd_obj.height();
-    let img = image::RgbaImage::from_raw(width, height, rgba)
-        .ok_or_else(|| "psd:: 构建 RgbaImage 失败".to_string())?;
-
-    img.save_with_format(&temp_path, image::ImageFormat::Png)
-        .map_err(|e| e.to_string())?;
-
-    Ok(temp_path.to_string_lossy().to_string())
-}
-
-#[command]
-pub fn image_to_png(path: &str) -> Result<String, String> {
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
-
-    let mut hasher = DefaultHasher::new();
-    path.hash(&mut hasher);
-    if let Ok(meta) = std::fs::metadata(path) {
-        if let Ok(modified) = meta.modified() {
-            modified.hash(&mut hasher);
-        }
-    }
-    let hash = hasher.finish();
-
-    let mut images_dir: PathBuf = std::env::temp_dir();
-    images_dir.push("quicklook_images");
-    std::fs::create_dir_all(&images_dir).map_err(|e| e.to_string())?;
-
-    let mut temp_path = images_dir;
-    temp_path.push(format!("quicklook_image_{:x}.png", hash));
+    temp_path.push(format!("quicklook_{:x}.png", hash));
 
     if temp_path.exists() {
         log::info!("命中图片缓存: {:?}", temp_path);
         return Ok(temp_path.to_string_lossy().to_string());
     }
 
-    let img = image::open(path).map_err(|e| format!("image:: 读取图片失败: {}", e))?;
+    let ext = std::path::Path::new(path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
 
-    let img = img.to_rgba8();
-
-    img.save_with_format(&temp_path, image::ImageFormat::Png)
-        .map_err(|e| e.to_string())?;
+    match ext.as_str() {
+        "psd" => image_helper::psd_to_png(path, &temp_path)?,
+        "heic" | "heif" => image_helper::heic_to_png(path, &temp_path)?,
+        _ => image_helper::image_to_png(path, &temp_path)?,
+    }
 
     Ok(temp_path.to_string_lossy().to_string())
 }

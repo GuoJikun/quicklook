@@ -224,6 +224,8 @@ static FILE_TYPE_MAPPING: LazyLock<HashMap<&'static str, &'static str>> =
             ("ppm", "Image"),
             ("qoi", "Image"),
             ("exr", "Image"),
+            ("heic", "Image"),
+            ("heif", "Image"),
             // 视频文件
             ("mp4", "Video"),
             ("webm", "Video"),
