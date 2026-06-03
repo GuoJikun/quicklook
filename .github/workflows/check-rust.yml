@@ -31,7 +31,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: |
-            src-tauri -> target
+            . -> target
 
       - name: Install cargo-vcpkg
         run: cargo install cargo-vcpkg
