@@ -8,6 +8,8 @@ use windows::{
     },
 };
 
+use crate::error::QuickLookError;
+
 #[allow(unused)]
 pub fn get_window_class_name(hwnd: HWND) -> String {
     let mut class_name = [0u16; 256];
@@ -67,12 +69,12 @@ pub fn show_open_with_dialog(file_path: &str, hwnd: HWND) -> windows::core::Resu
 }
 
 #[allow(unused)]
-pub fn get_default_program_name(path: &str) -> Result<String, String> {
+pub fn get_default_program_name(path: &str) -> Result<String, QuickLookError> {
     let path = Path::new(path);
     let ext = path
         .extension()
         .and_then(|ext| ext.to_str())
-        .ok_or("No file extension".to_string())?;
+        .ok_or_else(|| QuickLookError::WindowsApi("No file extension".to_string()))?;
 
     let ext = format!(".{}", ext);
     let ext_wide: Vec<u16> = ext.encode_utf16().chain(std::iter::once(0)).collect();
@@ -101,7 +103,10 @@ pub fn get_default_program_name(path: &str) -> Result<String, String> {
         );
 
         if result != S_OK {
-            return Err(format!("获取 name Buffer 失败 -> {:?}", result));
+            return Err(QuickLookError::WindowsApi(format!(
+                "获取 name Buffer 失败 -> {:?}",
+                result
+            )));
         }
 
         // 转换为字符串

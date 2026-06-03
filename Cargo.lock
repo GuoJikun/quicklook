@@ -145,6 +145,7 @@ dependencies = [
  "tauri-plugin-single-instance",
  "tauri-plugin-store",
  "tauri-plugin-updater",
+ "thiserror 2.0.16",
  "urlencoding",
  "windows",
 ]

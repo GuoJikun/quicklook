@@ -2,6 +2,8 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{LazyLock, Mutex};
 
+use crate::error::QuickLookError;
+
 /// 全局记录正在运行的 ffmpeg 进程 PID 及其对应的临时目录，用于取消时终止进程并清理。
 static FFMPEG_PROCESS: LazyLock<Mutex<Option<(u32, PathBuf)>>> = LazyLock::new(|| Mutex::new(None));
 static FFMPEG_CANCELLED: AtomicBool = AtomicBool::new(false);
@@ -18,7 +20,7 @@ pub fn check_ffmpeg() -> bool {
 /// 将视频转换为 HLS (m3u8) 格式以供播放。
 /// 如果视频已经是 h264 编码，则直接封装为 HLS；否则先转码为 h264 再封装。
 /// 返回生成的 m3u8 文件路径。
-pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
+pub fn convert_video_to_hls(path: &str) -> Result<String, QuickLookError> {
     FFMPEG_CANCELLED.store(false, Ordering::Relaxed);
 
     use std::collections::hash_map::DefaultHasher;
@@ -26,7 +28,7 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
 
     // 确认 ffmpeg 可用
     if !check_ffmpeg() {
-        return Err("ffmpeg 未找到，请确保 ffmpeg 已安装并添加到 PATH 中".to_string());
+        return Err(QuickLookError::FfmpegNotFound);
     }
 
     // 根据文件路径生成唯一临时目录（同一文件复用缓存）
@@ -36,7 +38,7 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
 
     let mut videos_dir = std::env::temp_dir();
     videos_dir.push("quicklook_videos");
-    std::fs::create_dir_all(&videos_dir).map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&videos_dir)?;
 
     let mut temp_dir = videos_dir;
     temp_dir.push(format!("quicklook_hls_{:x}", hash));
@@ -57,14 +59,16 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
 
                 for _ in 0..120 {
                     if FFMPEG_CANCELLED.load(Ordering::Relaxed) {
-                        return Err("ffmpeg 转换已取消".to_string());
+                        return Err(QuickLookError::VideoConversionCancelled);
                     }
                     if m3u8_path.exists() {
                         return Ok(m3u8_result);
                     }
                     std::thread::sleep(std::time::Duration::from_millis(100));
                 }
-                return Err("ffmpeg 正在运行，但 m3u8 尚未就绪，请稍后重试".to_string());
+                return Err(QuickLookError::VideoConversion(
+                    "ffmpeg 正在运行，但 m3u8 尚未就绪，请稍后重试".to_string(),
+                ));
             }
         }
     }
@@ -98,7 +102,7 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
         let _ = std::fs::remove_dir_all(&temp_dir);
     }
 
-    std::fs::create_dir_all(&temp_dir).map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&temp_dir)?;
 
     // 用 ffprobe 检测视频流编解码器
     let codec_result = std::process::Command::new("ffprobe")
@@ -183,7 +187,7 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
             "index.m3u8",
         ])
         .spawn()
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| QuickLookError::VideoConversion(format!("启动 ffmpeg 失败: {}", e)))?;
 
     // 记录 PID 和临时目录，以便在取消时终止进程
     {
@@ -226,7 +230,7 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
         if FFMPEG_CANCELLED.load(Ordering::Relaxed) {
             log::info!("ffmpeg 转换已取消，提前结束等待");
             let _ = std::fs::remove_dir_all(&temp_dir);
-            return Err("ffmpeg 转换已取消".to_string());
+            return Err(QuickLookError::VideoConversionCancelled);
         }
         if m3u8_path.exists() {
             log::info!("m3u8 已就绪，开始边转边播: {:?}", m3u8_path);
@@ -239,7 +243,9 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, String> {
     log::error!("ffmpeg 已启动，但 m3u8 生成超时，正在终止进程并清理临时文件");
     kill_ffmpeg_process();
     let _ = std::fs::remove_dir_all(&temp_dir);
-    Err("ffmpeg 已启动，但 m3u8 生成超时".to_string())
+    Err(QuickLookError::VideoConversion(
+        "ffmpeg 已启动，但 m3u8 生成超时".to_string(),
+    ))
 }
 
 /// 从全局取出正在运行的 ffmpeg 进程记录，终止该进程并删除临时目录。
@@ -283,13 +289,13 @@ pub fn cancel_video_conversion() {
 
 /// 清理所有由 quicklook 生成的 ffmpeg HLS 转码缓存目录。
 /// 返回被删除的目录数量。
-pub fn clear_ffmpeg_cache() -> Result<u32, String> {
+pub fn clear_ffmpeg_cache() -> Result<u32, QuickLookError> {
     let videos_dir = std::env::temp_dir().join("quicklook_videos");
     if !videos_dir.exists() {
         log::info!("quicklook_videos 目录不存在，无需清理");
         return Ok(0);
     }
-    let entries = std::fs::read_dir(&videos_dir).map_err(|e| e.to_string())?;
+    let entries = std::fs::read_dir(&videos_dir)?;
 
     let mut removed = 0u32;
     for entry in entries.flatten() {

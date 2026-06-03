@@ -2,6 +2,8 @@ use lofty::prelude::{AudioFile, ItemKey, TaggedFileExt};
 use lofty::read_from_path;
 use std::path::Path;
 
+use crate::error::QuickLookError;
+
 #[allow(unused)]
 #[derive(Debug, serde::Serialize)]
 pub struct MusicInfo {
@@ -53,8 +55,8 @@ pub struct Lrc {
     content: Vec<LrcLine>,
 }
 #[allow(unused)]
-pub fn parse_lrc(path: &str) -> Result<Lrc, String> {
-    let lrc_content = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
+pub fn parse_lrc(path: &str) -> Result<Lrc, QuickLookError> {
+    let lrc_content = std::fs::read_to_string(path).map_err(|e| QuickLookError::Io(e.to_string()))?;
     let mut lrc = Lrc {
         title: None,
         offset: None,
