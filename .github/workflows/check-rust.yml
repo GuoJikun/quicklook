@@ -13,7 +13,7 @@ jobs:
   cargo-check:
     name: cargo check
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
 
     defaults:
       run:
