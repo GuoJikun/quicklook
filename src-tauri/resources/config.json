@@ -27,7 +27,8 @@
         "qoi",
         "exr",
         "heic",
-        "heif"
+        "heif",
+        "jxl"
     ],
     "preview.image.checked": [
         "jpg",
@@ -49,7 +50,8 @@
         "qoi",
         "exr",
         "heic",
-        "heif"
+        "heif",
+        "jxl"
     ],
     "preview.video": [
         "mp4",

@@ -66,6 +66,7 @@ quicklook-archive = { path = "../crates/archive" }
 quicklook-docs = { path = "../crates/docs" }
 psd = "0.3.5"
 image = { version = "0.25.10", features = ["png", "webp", "jpeg", "gif", "bmp", "ico", "tiff", "tga", "pnm", "qoi", "exr"] }
+jxl-oxide = { version = "0.12", features = ["image"] }
 libheif-rs = { version = "2.7", features = ["image"] }
 
 [package.metadata.vcpkg]
