@@ -1,8 +1,7 @@
-use serde::Serialize;
 use std::string::FromUtf8Error;
 
 /// 统一错误类型，覆盖 quicklook 所有模块的错误场景。
-#[derive(Debug, thiserror::Error, Serialize)]
+#[derive(Debug, thiserror::Error)]
 pub enum QuickLookError {
     // ── IO / 文件 ──────────────────────────────────
     #[error("文件不存在: {0}")]
@@ -63,6 +62,12 @@ pub enum QuickLookError {
 
     #[error("{0}")]
     Other(String),
+}
+
+impl serde::Serialize for QuickLookError {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.to_string())
+    }
 }
 
 /// 便捷 Result 别名。
