@@ -13,7 +13,7 @@ jobs:
   cargo-check:
     name: cargo check
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
 
     defaults:
       run:
@@ -31,7 +31,16 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: |
-            src-tauri -> target
+            . -> target
+
+      - name: Install cargo-vcpkg
+        run: cargo install cargo-vcpkg
+
+      - name: Build vcpkg dependencies
+        run: |
+          if (-not (Test-Path "$env:GITHUB_WORKSPACE/target/vcpkg")) {
+            cargo vcpkg build
+          }
 
       - name: Cargo check
         run: |

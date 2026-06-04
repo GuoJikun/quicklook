@@ -1,3 +1,10 @@
+pub mod commands;
+pub mod error;
+pub mod helper;
+pub mod preview;
+pub mod tray;
+pub mod utils;
+
 use tauri::{Listener, Manager};
 use tauri_plugin_autostart::MacosLauncher;
 #[cfg(not(debug_assertions))]
@@ -5,14 +12,7 @@ use tauri_plugin_autostart::ManagerExt;
 #[cfg(not(debug_assertions))]
 use tauri_plugin_store::StoreExt;
 
-mod helper;
-mod preview;
-mod tray;
-mod utils;
-
-#[path = "./command.rs"]
-mod command;
-use command::{
+use commands::{
     archive, cancel_video_conversion, check_ffmpeg, clear_cache, clear_image_cache,
     convert_video_to_hls, convert_to_png, document, get_default_program_name, get_monitor_info,
     parse_lrc, read_audio_info, set_log_level, show_open_with_dialog,
@@ -55,7 +55,6 @@ pub fn run() {
             let handle_clone = handle.clone();
             let _ = app.listen("config_update", move |event| {
                 let handle = handle_clone.clone();
-
                 log::debug!("update event: {:?}", event);
                 if let Ok(conf) = helper::config::read_config(&handle_clone) {
                     handle.manage(conf);

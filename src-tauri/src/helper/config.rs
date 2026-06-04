@@ -3,6 +3,8 @@ use std::{fs::File, io::BufReader};
 use serde_json::Value;
 use tauri::{path::BaseDirectory, AppHandle, Manager};
 
+use crate::error::QuickLookError;
+
 // 读取resources下的config.json文件
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub struct Config {
@@ -27,7 +29,7 @@ pub struct Config {
 fn extract_str_vec(
     config: &serde_json::Map<String, Value>,
     key: &str,
-) -> Result<Vec<String>, String> {
+) -> Result<Vec<String>, QuickLookError> {
     config
         .get(key)
         .and_then(|v| v.as_array())
@@ -36,20 +38,23 @@ fn extract_str_vec(
                 .filter_map(|v| v.as_str().map(|s| s.to_string()))
                 .collect()
         })
-        .ok_or_else(|| format!("config.json: 缺少或类型错误的键 \"{}\"", key))
+        .ok_or_else(|| QuickLookError::ConfigField(format!("缺少或类型错误的键 \"{}\"", key)))
 }
 
 #[allow(unused)]
-pub fn read_config(app: &AppHandle) -> Result<Config, String> {
+pub fn read_config(app: &AppHandle) -> Result<Config, QuickLookError> {
     let config_path = app
         .path()
         .resolve("config.json", BaseDirectory::Resource)
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| QuickLookError::ConfigRead(e.to_string()))?;
 
-    let file = File::open(config_path).map_err(|e| e.to_string())?;
+    let file = File::open(config_path).map_err(|e| QuickLookError::Io(e.to_string()))?;
     let reader = BufReader::new(file);
-    let config: Value = serde_json::from_reader(reader).map_err(|e| e.to_string())?;
-    let config = config.as_object().ok_or("config.json is not an object")?;
+    let config: Value = serde_json::from_reader(reader)
+        .map_err(|e| QuickLookError::ConfigRead(e.to_string()))?;
+    let config = config
+        .as_object()
+        .ok_or_else(|| QuickLookError::ConfigRead("config.json is not an object".to_string()))?;
     Ok(Config {
         markdown: extract_str_vec(config, "preview.markdown")?,
         markdown_checked: extract_str_vec(config, "preview.markdown.checked")?,
