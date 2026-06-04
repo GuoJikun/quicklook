@@ -226,7 +226,6 @@ watch(duration, val => {
                     v-if="audioInfo.poster"
                     :src="audioInfo.poster as string"
                     alt="封面"
-                    style="max-width: 100%; max-height: 100%"
                 />
                 <div class="audio-poster-overlay">
                     <el-icon class="audio-poster-btn" @click="togglePlay" size="48">
@@ -240,6 +239,9 @@ watch(duration, val => {
                     <div class="audio-title" data-tauri-drag-region>
                         {{ audioInfo.title || fileInfo?.name }}
                     </div>
+                    <div v-if="audioInfo.artist" class="audio-artist" data-tauri-drag-region>
+                        {{ audioInfo.artist }}
+                    </div>
                     <el-scrollbar class="audio-lyric">
                         <template v-if="lrc.content.length">
                             <div
@@ -250,12 +252,13 @@ watch(duration, val => {
                                 <span>{{ line.text }}</span>
                             </div>
                         </template>
-                        <div v-else>
+                        <div v-else class="audio-lyric-empty">
                             <span>暂无歌词</span>
                         </div>
                     </el-scrollbar>
                 </div>
                 <div class="audio-progress">
+                    <span class="audio-progress-time">{{ currentTimeStr }}</span>
                     <el-slider
                         v-model="currentTime"
                         :min="0"
@@ -264,7 +267,7 @@ watch(duration, val => {
                         :format-tooltip="(val: number) => formatTime(val)"
                         class="audio-slider"
                     />
-                    <span class="audio-progress-time">- {{ remainStr }}</span>
+                    <span class="audio-progress-time">-{{ remainStr }}</span>
                 </div>
             </div>
         </div>
@@ -277,127 +280,219 @@ watch(duration, val => {
 </template>
 
 <style scoped lang="scss">
-.lrc-active {
-    color: var(--el-color-primary);
-    font-weight: bold;
-    font-size: 15px;
-    background: rgba(0, 0, 0, 0.08);
-    border-radius: 4px;
-    padding: 2px 6px;
-    transition:
-        background 0.2s,
-        color 0.2s;
-}
-// 封面 hover 显示播放/暂停按钮
-.audio-poster {
-    position: relative;
-}
-.audio-poster-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.3);
-    z-index: -100;
-    opacity: 0;
-    transition: opacity 0.3s;
-}
-.audio-poster:hover .audio-poster-overlay {
-    z-index: 0;
-    opacity: 1;
-    color: var(--color-text-primary);
-}
-.audio-poster-btn {
-    cursor: pointer;
-    color: white;
-}
-
 .audio-wrapper {
     width: 100%;
     height: 100%;
     background-color: var(--color-bg);
     position: relative;
 }
+
 .audio-player {
     display: flex;
     align-items: center;
     height: 100%;
-    padding: 0 16px;
-    gap: 16px;
+    padding: 0 var(--space-5);
+    gap: var(--space-5);
 }
 
 .audio-poster {
     flex: 0 0 160px;
     height: 160px;
-    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    transition: box-shadow var(--transition-medium);
+
+    img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    &:hover {
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+    }
 }
+
+.audio-poster-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(2px);
+    opacity: 0;
+    transition: opacity var(--transition-medium);
+}
+
+.audio-poster:hover .audio-poster-overlay {
+    opacity: 1;
+}
+
+.audio-poster-btn {
+    cursor: pointer;
+    color: white;
+    transition: transform var(--transition-fast);
+
+    &:hover {
+        transform: scale(1.1);
+    }
+}
+
 .audio-ui {
-    flex: auto;
+    flex: 1;
     display: flex;
     flex-direction: column;
     height: 100%;
     justify-content: space-between;
+    min-width: 0;
 }
+
 .audio-info {
-    padding: 12px 0 0;
-    flex: 0 0 calc(100% - 40px);
+    padding-top: var(--space-3);
+    flex: 1;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
+
 .audio-title {
-    font-size: 16px;
-    font-weight: 500;
+    font-size: var(--font-xl);
+    font-weight: 600;
     color: var(--color-text-primary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     text-align: center;
-    margin-bottom: 8px;
+    line-height: var(--line-tight);
 }
-.audio-lyric {
-    font-size: 13px;
+
+.audio-artist {
+    font-size: var(--font-sm);
     color: var(--color-text-secondary);
-    height: calc(100% - 24px);
-    overflow-y: auto;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     text-align: center;
+    margin-top: var(--space-1);
+    margin-bottom: var(--space-2);
+}
+
+.audio-lyric {
+    flex: 1;
+    font-size: var(--font-sm);
+    color: var(--color-text-secondary);
+    text-align: center;
+    line-height: var(--line-loose);
+    overflow: hidden;
+
+    :deep(.el-scrollbar__view) {
+        overflow-x: hidden;
+    }
+
+    > div > div {
+        padding: var(--space-1) var(--space-2);
+        border-radius: var(--radius-sm);
+        transition:
+            color var(--transition-base),
+            background var(--transition-base),
+            transform var(--transition-base);
+    }
+
+    &-empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: var(--color-text-disabled);
+    }
+}
+
+:deep(.lrc-active) {
+    color: var(--el-color-primary) !important;
+    font-weight: 600;
+    font-size: var(--font-lg);
+    background: var(--color-hover-bg);
+    transform: scale(1.02);
 }
 
 .audio-progress {
     flex: 0 0 40px;
     display: flex;
     align-items: center;
-    gap: 12px;
-    --el-slider-button-size: 16px;
+    gap: var(--space-3);
+    padding-bottom: var(--space-1);
+
+    --el-slider-button-size: 14px;
+    --el-slider-height: 4px;
+    --el-slider-runway-bg-color: var(--color-border);
+    --el-slider-main-bg-color: var(--el-color-primary);
+
     &-time {
-        flex: 0 0 50px;
-        text-align: right;
+        flex: 0 0 44px;
+        font-size: var(--font-xs);
+        color: var(--color-text-secondary);
+        font-variant-numeric: tabular-nums;
+
+        &:first-child {
+            text-align: right;
+        }
+
+        &:last-child {
+            text-align: left;
+        }
     }
 }
-.audio-controls {
-    display: flex;
-    align-items: center;
-    padding: 12px;
-    font-size: 34px;
-    &-btn {
-        cursor: pointer;
-        margin: 0 8px;
-        &:hover {
-            color: var(--el-color-primary);
-        }
+
+:deep(.audio-slider) {
+    flex: 1;
+
+    .el-slider__runway {
+        height: 4px;
+    }
+
+    .el-slider__bar {
+        height: 4px;
+    }
+
+    .el-slider__button-wrapper {
+        top: -16px;
+    }
+
+    .el-slider__button {
+        width: 14px;
+        height: 14px;
+        border: 2px solid var(--el-color-primary);
+        transition: transform var(--transition-fast);
+    }
+
+    &:hover .el-slider__button {
+        transform: scale(1.2);
     }
 }
 
 .audio-close {
     position: absolute;
-    top: 0;
-    right: 0;
-    padding: 8px;
+    top: var(--space-2);
+    right: var(--space-2);
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
     cursor: pointer;
+    color: var(--color-text-secondary);
+    transition:
+        color var(--transition-fast),
+        background var(--transition-fast);
+
     &:hover {
-        color: var(--el-color-danger);
+        color: var(--color-danger);
+        background: var(--elevation-hover);
     }
 }
 </style>
