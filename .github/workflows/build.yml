@@ -47,22 +47,15 @@ jobs:
         with:
           workspaces: ". -> target"
 
-      - name: Setup vcpkg
-        run: |
-          git clone https://github.com/microsoft/vcpkg.git --depth 1 C:\vcpkg
-          C:\vcpkg\bootstrap-vcpkg.bat
-        shell: cmd
+      - name: Install cargo-vcpkg
+        run: cargo install cargo-vcpkg
 
-      - name: Install vcpkg dependencies (x64)
-        if: matrix.settings.target == 'windows'
-        run: C:\vcpkg\vcpkg install libheif:x64-windows-static-md
-        shell: cmd
-
-      - name: Install vcpkg dependencies (arm64)
-        if: matrix.settings.target == 'windows-aarch64'
+      - name: Build vcpkg dependencies
         run: |
-          C:\vcpkg\vcpkg install libheif:arm64-windows-static-md
-        shell: cmd
+          if (-not (Test-Path "$env:GITHUB_WORKSPACE/target/vcpkg")) {
+            cargo vcpkg build
+          }
+        shell: pwsh
 
       - name: setup pnpm
         uses: pnpm/action-setup@v2
@@ -85,7 +78,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          VCPKG_ROOT: C:\vcpkg
+          VCPKG_ROOT: ${{ github.workspace }}\target\vcpkg
         with:
           args: ${{ matrix.settings.args }}
           tagName: v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version
