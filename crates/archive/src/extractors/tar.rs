@@ -19,7 +19,9 @@ fn parse_tar_entries<R: Read>(reader: R) -> Result<Vec<Extract>, ArchiveError> {
         let is_dir = header.entry_type().is_dir();
 
         let dt = UNIX_EPOCH + Duration::from_secs(mtime);
-        let last_modified = chrono::DateTime::<chrono::Local>::from(dt).to_rfc3339();
+        let last_modified = chrono::DateTime::<chrono::Local>::from(dt)
+            .format("%Y-%m-%d %H:%M:%S")
+            .to_string();
 
         entries.push(Extract::new(name, size, last_modified, is_dir));
     }

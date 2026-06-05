@@ -1,6 +1,6 @@
 use crate::{ArchiveError, Extract};
+use chrono::NaiveDate;
 use std::path::Path;
-use std::time::UNIX_EPOCH;
 
 /// 列举 RAR 文件条目
 pub fn list_rar_entries<P: AsRef<Path>>(path: P) -> Result<Vec<Extract>, ArchiveError> {
@@ -44,22 +44,30 @@ pub fn list_rar_entries<P: AsRef<Path>>(path: P) -> Result<Vec<Extract>, Archive
     Ok(entries)
 }
 
-/// 将 RAR 文件时间戳转换为 ISO 8601 字符串
-/// RAR 时间格式: 自 1970-01-01 以来的秒数
+/// 将 RAR 文件时间转换为 yyyy-MM-dd HH:mm:ss 格式
+/// RAR header.file_time 是 DOS date/time 打包格式:
+///   高 16 位: 日期 (bit 15-9: 年-1980, bit 8-5: 月, bit 4-0: 日)
+///   低 16 位: 时间 (bit 15-11: 时, bit 10-5: 分, bit 4-0: 秒/2)
 fn rar_time_to_string(file_time: u32) -> String {
-    let seconds = file_time as u64;
-    let duration = std::time::Duration::from_secs(seconds);
-    let datetime = UNIX_EPOCH + duration;
+    if file_time == 0 {
+        return "1970-01-01 00:00:00".to_string();
+    }
 
-    // 转换为 chrono DateTime
-    match datetime.duration_since(UNIX_EPOCH) {
-        Ok(duration) => {
-            let secs = duration.as_secs() as i64;
-            let naive = chrono::DateTime::from_timestamp(secs, 0)
-                .map(|dt| dt.naive_utc())
-                .unwrap_or_default();
-            naive.format("%Y-%m-%dT%H:%M:%SZ").to_string()
-        }
-        Err(_) => "1970-01-01T00:00:00Z".to_string(),
+    let date = (file_time >> 16) as u16;
+    let time = (file_time & 0xFFFF) as u16;
+
+    let year = ((date >> 9) + 1980) as i32;
+    let month = ((date >> 5) & 0x0F) as u32;
+    let day = (date & 0x1F) as u32;
+    let hour = (time >> 11) as u32;
+    let minute = ((time >> 5) & 0x3F) as u32;
+    let second = ((time & 0x1F) * 2) as u32;
+
+    match NaiveDate::from_ymd_opt(year, month, day) {
+        Some(date) => match date.and_hms_opt(hour, minute, second) {
+            Some(dt) => dt.format("%Y-%m-%d %H:%M:%S").to_string(),
+            None => "1970-01-01 00:00:00".to_string(),
+        },
+        None => "1970-01-01 00:00:00".to_string(),
     }
 }
