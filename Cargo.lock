@@ -4332,6 +4332,7 @@ dependencies = [
  "ar",
  "bzip2",
  "chrono",
+ "encoding_rs",
  "flate2",
  "hadris-cpio",
  "log",
