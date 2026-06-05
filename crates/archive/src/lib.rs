@@ -8,6 +8,7 @@ pub mod extractors;
 pub use error::ArchiveError;
 pub use extractors::ar::list_ar_entries;
 pub use extractors::cpio::list_cpio_entries;
+pub use extractors::rar::list_rar_entries;
 pub use extractors::sevenz::list_7z_entries;
 pub use extractors::tar::{list_tar_bz2_entries, list_tar_entries, list_tar_gz_entries, list_tar_xz_entries};
 pub use extractors::zip::{list_zip_entries, zip_extract};
@@ -59,6 +60,7 @@ impl Extract {
             "xz" | "txz" => extractors::tar::list_tar_xz_entries(path)?,
             "zst" | "tzst" => extractors::zst::list_tar_zst_entries(path)?,
             "7z" => extractors::sevenz::list_7z_entries(path)?,
+            "rar" => extractors::rar::list_rar_entries(path)?,
             "cpio" => extractors::cpio::list_cpio_entries(path)?,
             "ar" | "deb" | "a" => extractors::ar::list_ar_entries(path)?,
             // ZIP 本质但带特殊扩展名的格式

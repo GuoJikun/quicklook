@@ -246,6 +246,7 @@ static FILE_TYPE_MAPPING: LazyLock<HashMap<&'static str, &'static str>> =
             // 压缩文件
             ("7z", "Archive"),
             ("zip", "Archive"),
+            ("rar", "Archive"),
             ("tar", "Archive"),
             ("gz", "Archive"),
             ("tgz", "Archive"),  // tar.gz 的简写
@@ -321,6 +322,8 @@ static FILE_TYPE_MAPPING: LazyLock<HashMap<&'static str, &'static str>> =
             ("vb", "Code"),
             ("pas", "Code"),
             ("scala", "Code"),
+            ("dart", "Code"),
+            ("rb", "Code"),
             ("m", "Code"),
             ("log", "Code"),
             ("bash", "Code"),
