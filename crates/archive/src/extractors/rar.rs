@@ -29,7 +29,7 @@ pub fn list_rar_entries<P: AsRef<Path>>(path: P) -> Result<Vec<Extract>, Archive
                     name
                 };
 
-                // 将 RAR 文件时间转换为 ISO 8601 格式
+                // 将 RAR 文件时间转换为 yyyy-MM-dd HH:mm:ss 格式
                 let last_modified = rar_time_to_string(header.file_time);
 
                 entries.push(Extract::new(name, size, last_modified, is_dir));
