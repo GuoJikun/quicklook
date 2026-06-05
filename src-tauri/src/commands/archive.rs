@@ -21,6 +21,8 @@ pub fn archive(path: &str, mode: &str) -> Result<Vec<Extract>, QuickLookError> {
             .map_err(|e| QuickLookError::ArchiveParse(e.to_string())),
         "7z" => extractors::sevenz::list_7z_entries(path)
             .map_err(|e| QuickLookError::ArchiveParse(e.to_string())),
+        "rar" => extractors::rar::list_rar_entries(path)
+            .map_err(|e| QuickLookError::ArchiveParse(e.to_string())),
         "cpio" => extractors::cpio::list_cpio_entries(path)
             .map_err(|e| QuickLookError::ArchiveParse(e.to_string())),
         "ar" | "deb" | "a" => extractors::ar::list_ar_entries(path)

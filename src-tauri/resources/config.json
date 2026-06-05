@@ -156,6 +156,8 @@
         "vb",
         "pas",
         "scala",
+        "dart",
+        "rb",
         "m",
         "log",
         "bash"
@@ -205,6 +207,8 @@
         "vb",
         "pas",
         "scala",
+        "dart",
+        "rb",
         "m",
         "log",
         "bash"
@@ -224,6 +228,7 @@
     "preview.archive": [
         "zip",
         "7z",
+        "rar",
         "tar",
         "gz",
         "tgz",
@@ -255,6 +260,7 @@
     "preview.archive.checked": [
         "zip",
         "7z",
+        "rar",
         "tar",
         "gz",
         "tgz",
