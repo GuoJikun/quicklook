@@ -18,7 +18,7 @@ const fileInfo = ref<FileInfo>()
 const loading = ref(false)
 const imgPath = ref<string>()
 
-const convertFormats = ['psd', 'tiff', 'tif', 'tga', 'pbm', 'pgm', 'ppm', 'qoi', 'exr', 'heic', 'heif']
+const convertFormats = ['psd', 'tiff', 'tif', 'tga', 'pbm', 'pgm', 'ppm', 'qoi', 'exr', 'heic', 'heif', 'jxl']
 
 const init = async () => {
     loading.value = true

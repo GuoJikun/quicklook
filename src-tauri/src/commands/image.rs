@@ -41,6 +41,7 @@ pub fn convert_to_png(path: &str) -> Result<String, QuickLookError> {
     match ext.as_str() {
         "psd" => image_helper::psd_to_png(path, &temp_path)?,
         "heic" | "heif" => image_helper::heic_to_png(path, &temp_path)?,
+        "jxl" => image_helper::jxl_to_png(path, &temp_path)?,
         _ => image_helper::image_to_png(path, &temp_path)?,
     }
 
