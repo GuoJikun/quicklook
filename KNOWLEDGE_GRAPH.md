@@ -86,7 +86,7 @@ E:/private/Rust/quicklook/
 ├── crates/
 │   ├── archive/                   # quicklook-archive
 │   │   ├── src/lib.rs             # Extract, build_tree(), list_archive_tree()
-│   │   └── src/extractors/        # zip, tar, gz, bz2, xz, zst, 7z, cpio, ar
+│   │   └── src/extractors/        # zip, tar, gz, bz2, xz, zst, 7z, rar, cpio, ar
 │   └── docs/                      # quicklook-docs
 │       └── src/lib.rs             # Docs enum (Excel, CSV, DOCX)
 ├── .github/workflows/
@@ -146,7 +146,7 @@ error.rs (统一错误类型: QuickLookError)
 
 | 命令 | 方向 | 前端模块 | 后端入口 | 后端实现 |
 |------|------|----------|----------|----------|
-| `archive` | FE → BE | archive.vue | `commands/archive.rs` | quicklook-archive (7种格式) |
+| `archive` | FE → BE | archive.vue | `commands/archive.rs` | quicklook-archive (8种格式) |
 | `document` | FE → BE | document.vue | `commands/document.rs` | quicklook-docs (Excel/CSV/DOCX) |
 | `convert_to_png` | FE → BE | image.vue | `commands/image.rs` | helper/image (psd/heic) |
 | `clear_image_cache` | FE → BE | settings.vue | `commands/image.rs` | 删除 %TEMP%/quicklook_images/ |
@@ -234,7 +234,7 @@ Video     : mp4, webm, mkv, avi, mov, wmv, mpg, mpeg, m4v, 3gp, 3g2
 Audio     : mp3, ogg, m4a, flac, wav, aac, wma, opus, ape, aiff, aifc, aif
 Book      : pdf
 Font      : ttf, otf, woff2, woff, eot
-Archive   : zip, 7z, tar, gz, tgz, bz2, tbz2, xz, txz, zst, tzst
+Archive   : zip, 7z, rar, tar, gz, tgz, bz2, tbz2, xz, txz, zst, tzst
             cpio, ar, deb, a, jar, war, ear, apk, aar, whl, vsix
             nupkg, crx, xpi, egg, kra, xps, oxps
 Code (50+): cpp, js, mjs, cjs, ts, mts, tsx, rs, py, java, html, css
@@ -352,6 +352,7 @@ Cargo workspace (resolver = "2")
 ├── quicklook-archive (crates/archive/)
 │   ├── zip, tar, flate2, bzip2, xz2
 │   ├── sevenz-rust, ruzstd, hadris-cpio, ar
+│   ├── unrar-ng (RAR 支持)
 │   └── 条件 feature gate (每个格式独立)
 │
 └── quicklook-docs (crates/docs/)
