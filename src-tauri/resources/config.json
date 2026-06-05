@@ -160,7 +160,8 @@
         "rb",
         "m",
         "log",
-        "bash"
+        "bash",
+        "zig"
     ],
     "preview.code.checked": [
         "txt",
@@ -211,7 +212,8 @@
         "rb",
         "m",
         "log",
-        "bash"
+        "bash",
+        "zig"
     ],
     "preview.font": [
         "ttf",

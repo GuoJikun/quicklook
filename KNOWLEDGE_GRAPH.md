@@ -240,7 +240,7 @@ Archive   : zip, 7z, rar, tar, gz, tgz, bz2, tbz2, xz, txz, zst, tzst
 Code (50+): cpp, js, mjs, cjs, ts, mts, tsx, rs, py, java, html, css
             scss, sass, less, styl, c, cs, go, vue, svelte, astro, jsx
             json, yml, yaml, toml, bat, ps1, ini, swift, kt, php, h
-            xml, sql, pug, lua, r, d, vb, pas, scala, m, log, sh, bash, zsh
+            xml, sql, pug, lua, r, d, vb, pas, scala, m, log, sh, bash, zsh, zig
 无扩展名检测: README → markdown, Makefile → makefile, Dockerfile → docker,
            .bashrc → bash, .gitignore → gitignore, ...
 

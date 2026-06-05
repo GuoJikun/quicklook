@@ -327,6 +327,7 @@ static FILE_TYPE_MAPPING: LazyLock<HashMap<&'static str, &'static str>> =
             ("m", "Code"),
             ("log", "Code"),
             ("bash", "Code"),
+            ("zig", "Code"),
             // 应用程序文件
             // ("exe", "App"),
             // ("dmg", "App"),
