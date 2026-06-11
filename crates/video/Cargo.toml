@@ -1,0 +1,18 @@
+[package]
+name = "quicklook-video"
+version = "0.1.0"
+description = "FFmpeg-based video conversion (HLS) for QuickLook"
+authors = ["GuoJikun <guojikun486546@163.com>"]
+license = ""
+repository = "https://github.com/GuoJikun/quicklook.git"
+homepage = "https://github.com/GuoJikun/quicklook"
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+name = "quicklook_video"
+crate-type = ["rlib"]
+
+[dependencies]
+log = "0.4"
+quicklook-error = { path = "../error" }

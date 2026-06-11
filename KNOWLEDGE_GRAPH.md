@@ -12,7 +12,12 @@ QuickLook (Windows 文件快速预览工具, macOS Quick Look 风格)
 └── 工作空间:
     ├── src-tauri/       → app (主应用)
     ├── crates/archive/  → quicklook-archive (压缩文件解析)
-    └── crates/docs/     → quicklook-docs (文档解析)
+    ├── crates/docs/     → quicklook-docs (文档解析)
+    ├── crates/error/    → quicklook-error (统一错误类型)
+    ├── crates/audio/    → quicklook-audio (音频元数据 + LRC)
+    ├── crates/image/    → quicklook-image (图片格式转换)
+    ├── crates/model/    → quicklook-model (3D 模型加载)
+    └── crates/video/    → quicklook-video (FFmpeg 视频转换)
 ```
 
 ## 目录结构
@@ -84,6 +89,16 @@ E:/private/Rust/quicklook/
 │       └── utils/
 │           └── mod.rs             # File 结构体 + FILE_TYPE_MAPPING (120+扩展名)
 ├── crates/
+│   ├── error/                     # quicklook-error
+│   │   └── src/lib.rs             # QuickLookError 统一错误类型
+│   ├── audio/                     # quicklook-audio
+│   │   └── src/lib.rs             # MusicInfo, read_music_info(), Lrc, parse_lrc()
+│   ├── image/                     # quicklook-image
+│   │   └── src/lib.rs             # psd_to_png(), heic_to_png(), jxl_to_png(), image_to_png()
+│   ├── model/                     # quicklook-model
+│   │   └── src/lib.rs             # ModelInfo, load_model(), load_gltf/stl/obj()
+│   ├── video/                     # quicklook-video
+│   │   └── src/lib.rs             # check_ffmpeg(), convert_video_to_hls(), cancel_video_conversion()
 │   ├── archive/                   # quicklook-archive
 │   │   ├── src/lib.rs             # Extract, build_tree(), list_archive_tree()
 │   │   └── src/extractors/        # zip, tar, gz, bz2, xz, zst, 7z, rar, cpio, ar
@@ -341,13 +356,31 @@ Cargo workspace (resolver = "2")
 │   ├── tauri-plugins x 9
 │   ├── windows 0.61 (Win32/COM/UI Automation)
 │   ├── serde + serde_json
-│   ├── thiserror
 │   ├── urlencoding
+│   └── workspace crates (以下全部)
+│
+├── quicklook-error (crates/error/)
+│   ├── thiserror
+│   └── serde
+│
+├── quicklook-audio (crates/audio/)
 │   ├── lofty (音频元数据)
+│   └── quicklook-error
+│
+├── quicklook-image (crates/image/)
 │   ├── image crate (多种图像格式)
 │   ├── psd (Photoshop 解析)
-│   ├── libheif-rs (HEIC/HEIF 解码)
-│   └── workspace crates (quicklook-archive, quicklook-docs)
+│   ├── libheif-rs (HEIC/HEIF 解码，需 vcpkg)
+│   ├── jxl-oxide (JPEG XL 解码)
+│   └── quicklook-error
+│
+├── quicklook-model (crates/model/)
+│   ├── gltf, stl_io, obj (3D 模型解析)
+│   └── quicklook-error
+│
+├── quicklook-video (crates/video/)
+│   ├── log (ffmpeg 进程管理)
+│   └── quicklook-error
 │
 ├── quicklook-archive (crates/archive/)
 │   ├── zip, tar, flate2, bzip2, xz2

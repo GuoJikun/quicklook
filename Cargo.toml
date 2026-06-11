@@ -2,7 +2,12 @@
 members = [
     "src-tauri",
     "crates/archive",
-    "crates/docs"
+    "crates/docs",
+    "crates/error",
+    "crates/audio",
+    "crates/image",
+    "crates/model",
+    "crates/video",
 ]
 resolver = "2"
 [workspace.metadata.rustfmt]

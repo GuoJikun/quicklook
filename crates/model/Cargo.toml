@@ -1,0 +1,22 @@
+[package]
+name = "quicklook-model"
+version = "0.1.0"
+description = "3D model loading (GLTF, STL, OBJ) for QuickLook"
+authors = ["GuoJikun <guojikun486546@163.com>"]
+license = ""
+repository = "https://github.com/GuoJikun/quicklook.git"
+homepage = "https://github.com/GuoJikun/quicklook"
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+name = "quicklook_model"
+crate-type = ["rlib"]
+
+[dependencies]
+gltf = "1.4.1"
+stl_io = "0.11.0"
+obj = "0.10.2"
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+quicklook-error = { path = "../error" }

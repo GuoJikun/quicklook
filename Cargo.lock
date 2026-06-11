@@ -124,20 +124,16 @@ name = "app"
 version = "0.18.1"
 dependencies = [
  "chrono",
- "gltf",
- "image",
- "jxl-oxide",
- "libheif-rs",
- "lofty",
  "log",
- "obj",
- "psd",
  "quicklook-archive",
+ "quicklook-audio",
  "quicklook-docs",
- "regex",
+ "quicklook-error",
+ "quicklook-image",
+ "quicklook-model",
+ "quicklook-video",
  "serde",
  "serde_json",
- "stl_io",
  "tauri",
  "tauri-build",
  "tauri-plugin-autostart",
@@ -149,7 +145,6 @@ dependencies = [
  "tauri-plugin-single-instance",
  "tauri-plugin-store",
  "tauri-plugin-updater",
- "thiserror 2.0.16",
  "urlencoding",
  "windows",
 ]
@@ -4413,6 +4408,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "quicklook-audio"
+version = "0.1.0"
+dependencies = [
+ "lofty",
+ "log",
+ "quicklook-error",
+ "serde",
+]
+
+[[package]]
 name = "quicklook-docs"
 version = "0.1.0"
 dependencies = [
@@ -4420,6 +4425,46 @@ dependencies = [
  "csv",
  "log",
  "serde",
+]
+
+[[package]]
+name = "quicklook-error"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "thiserror 2.0.16",
+]
+
+[[package]]
+name = "quicklook-image"
+version = "0.1.0"
+dependencies = [
+ "image",
+ "jxl-oxide",
+ "libheif-rs",
+ "log",
+ "psd",
+ "quicklook-error",
+]
+
+[[package]]
+name = "quicklook-model"
+version = "0.1.0"
+dependencies = [
+ "gltf",
+ "log",
+ "obj",
+ "quicklook-error",
+ "serde",
+ "stl_io",
+]
+
+[[package]]
+name = "quicklook-video"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "quicklook-error",
 ]
 
 [[package]]
