@@ -68,6 +68,10 @@ psd = "0.3.5"
 image = { version = "0.25.10", features = ["png", "webp", "jpeg", "gif", "bmp", "ico", "tiff", "tga", "pnm", "qoi", "exr"] }
 jxl-oxide = { version = "0.12", features = ["image"] }
 libheif-rs = { version = "2.7", features = ["image"] }
+# 3D model parsing
+gltf = "1.4.1"
+stl_io = "0.11.0"
+obj = "0.10.2"
 
 [package.metadata.vcpkg]
 git = "https://github.com/microsoft/vcpkg"

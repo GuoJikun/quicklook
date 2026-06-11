@@ -24,6 +24,13 @@ pub enum QuickLookError {
     #[error("不支持的文档格式: {0}")]
     UnsupportedDocumentFormat(String),
 
+    // ── 3D 模型 ────────────────────────────────────
+    #[error("3D 模型解析失败: {0}")]
+    ModelParse(String),
+
+    #[error("不支持的 3D 模型格式: {0}")]
+    UnsupportedModelFormat(String),
+
     // ── 图片 ──────────────────────────────────────
     #[error("图片处理失败: {0}")]
     ImageProcessing(String),

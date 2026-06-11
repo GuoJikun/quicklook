@@ -65,6 +65,11 @@ const router = createRouter({
                     name: 'previewDocument',
                     component: () => import('@/views/preview/document.vue'),
                 },
+                {
+                    path: '/preview/model',
+                    name: 'previewModel',
+                    component: () => import('@/views/preview/model.vue'),
+                },
             ],
         },
         {
