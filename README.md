@@ -19,7 +19,7 @@ QuickLook 是一个 windows 平台的快速预览工具。
 - Book：pdf
 - Font：ttf、otf、woff2、woff
 - Archive：zip、7z、rar、tar、gz、tgz、bz2、tbz2、xz、txz、zst、tzst、cpio、ar、a、deb、jar、war、ear、apk、aar、whl、vsix、nupkg、crx、xpi、egg、kra、xps、oxps
-- 3D Model：gltf、glb、stl、obj
+- 3D Model：gltf、glb、stl、obj、ply、fbx、3mf
 
 ## 如何运行项目
 

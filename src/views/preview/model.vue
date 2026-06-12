@@ -7,6 +7,9 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js'
+import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader.js'
+import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js'
+import { ThreeMFLoader } from 'three/examples/jsm/loaders/3MFLoader.js'
 import LayoutPreview from '@/components/layout-preview.vue'
 import type { FileInfo } from '@/utils/typescript'
 
@@ -96,6 +99,66 @@ async function loadStl(url: string): Promise<THREE.Group> {
 async function loadObj(url: string): Promise<THREE.Group> {
     return new Promise((resolve, reject) => {
         new OBJLoader().load(
+            url,
+            group => {
+                group.traverse(child => {
+                    if ((child as THREE.Mesh).isMesh) {
+                        ;(child as THREE.Mesh).material = new THREE.MeshStandardMaterial({
+                            color: 0x8fbcd4,
+                            side: THREE.DoubleSide,
+                        })
+                    }
+                })
+                resolve(group)
+            },
+            undefined,
+            reject,
+        )
+    })
+}
+
+async function loadPly(url: string): Promise<THREE.Group> {
+    return new Promise((resolve, reject) => {
+        new PLYLoader().load(
+            url,
+            geometry => {
+                geometry.computeVertexNormals()
+                const mat = new THREE.MeshStandardMaterial({ color: 0x8fbcd4, side: THREE.DoubleSide })
+                const mesh = new THREE.Mesh(geometry, mat)
+                const group = new THREE.Group()
+                group.add(mesh)
+                resolve(group)
+            },
+            undefined,
+            reject,
+        )
+    })
+}
+
+async function loadFbx(url: string): Promise<THREE.Group> {
+    return new Promise((resolve, reject) => {
+        new FBXLoader().load(
+            url,
+            group => {
+                group.traverse(child => {
+                    if ((child as THREE.Mesh).isMesh) {
+                        ;(child as THREE.Mesh).material = new THREE.MeshStandardMaterial({
+                            color: 0x8fbcd4,
+                            side: THREE.DoubleSide,
+                        })
+                    }
+                })
+                resolve(group)
+            },
+            undefined,
+            reject,
+        )
+    })
+}
+
+async function load3mf(url: string): Promise<THREE.Group> {
+    return new Promise((resolve, reject) => {
+        new ThreeMFLoader().load(
             url,
             group => {
                 group.traverse(child => {
@@ -213,6 +276,12 @@ onMounted(async () => {
             group = await loadStl(assetUrl)
         } else if (ext === 'obj') {
             group = await loadObj(assetUrl)
+        } else if (ext === 'ply') {
+            group = await loadPly(assetUrl)
+        } else if (ext === 'fbx') {
+            group = await loadFbx(assetUrl)
+        } else if (ext === '3mf') {
+            group = await load3mf(assetUrl)
         } else {
             throw new Error(`不支持的格式: .${ext}`)
         }

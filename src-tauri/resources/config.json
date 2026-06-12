@@ -301,12 +301,18 @@
         "gltf",
         "glb",
         "stl",
-        "obj"
+        "obj",
+        "ply",
+        "fbx",
+        "3mf"
     ],
     "preview.model.checked": [
         "gltf",
         "glb",
         "stl",
-        "obj"
+        "obj",
+        "ply",
+        "fbx",
+        "3mf"
     ]
 }

@@ -20,6 +20,9 @@ pub fn load_model(path: &str, extension: &str) -> Result<ModelInfo, QuickLookErr
         "gltf" | "glb" => load_gltf(path),
         "stl" => load_stl(path),
         "obj" => load_obj(path),
+        "ply" => load_ply(path),
+        "fbx" => load_fbx(path),
+        "3mf" => load_3mf(path),
         _ => Err(QuickLookError::UnsupportedModelFormat(
             extension.to_string(),
         )),
@@ -97,5 +100,124 @@ fn load_obj(path: &str) -> Result<ModelInfo, QuickLookError> {
         vertex_count,
         face_count,
         format: "obj".to_string(),
+    })
+}
+
+fn load_ply(path: &str) -> Result<ModelInfo, QuickLookError> {
+    let file = File::open(path).map_err(|e| QuickLookError::ModelParse(e.to_string()))?;
+    let mut reader = BufReader::new(file);
+
+    let ply = ply_rs::parser::Parser::<ply_rs::ply::DefaultElement>::new()
+        .read_ply(&mut reader)
+        .map_err(|e| QuickLookError::ModelParse(e.to_string()))?;
+
+    let vertex_count = ply
+        .payload
+        .get(&"vertex".to_string())
+        .map(|e| e.len())
+        .unwrap_or(0);
+    let face_count = ply
+        .payload
+        .get(&"face".to_string())
+        .map(|e| e.len())
+        .unwrap_or(0);
+
+    Ok(ModelInfo {
+        vertex_count,
+        face_count,
+        format: "ply".to_string(),
+    })
+}
+
+fn load_fbx(path: &str) -> Result<ModelInfo, QuickLookError> {
+    use fbxcel::tree::any::AnyTree;
+
+    let file = File::open(path).map_err(|e| QuickLookError::ModelParse(e.to_string()))?;
+    let reader = BufReader::new(file);
+
+    let tree = AnyTree::from_seekable_reader(reader)
+        .map_err(|e| QuickLookError::ModelParse(e.to_string()))?;
+
+    let mut vertex_count = 0usize;
+    let mut face_count = 0usize;
+
+    match tree {
+        AnyTree::V7400(_version, tree, _footer) => {
+            collect_fbx_stats(tree.root(), &mut vertex_count, &mut face_count);
+        }
+        _ => {
+            return Err(QuickLookError::ModelParse(
+                "Unsupported FBX version".to_string(),
+            ));
+        }
+    }
+
+    Ok(ModelInfo {
+        vertex_count,
+        face_count,
+        format: "fbx".to_string(),
+    })
+}
+
+fn collect_fbx_stats(
+    node: fbxcel::tree::v7400::NodeHandle<'_>,
+    vertex_count: &mut usize,
+    face_count: &mut usize,
+) {
+    let name = node.name();
+    let attrs = node.attributes();
+
+    if name == "Vertices" {
+        if let Some(fbxcel::low::v7400::AttributeValue::ArrF64(v)) = attrs.first() {
+            *vertex_count += v.len() / 3;
+        }
+    } else if name == "PolygonIndex" {
+        if let Some(fbxcel::low::v7400::AttributeValue::ArrI32(v)) = attrs.first() {
+            *face_count += count_faces_from_polygon_index(v);
+        }
+    }
+
+    for child in node.children() {
+        collect_fbx_stats(child, vertex_count, face_count);
+    }
+}
+
+fn count_faces_from_polygon_index(indices: &[i32]) -> usize {
+    let mut count = 0usize;
+    let mut i = 0;
+    while i < indices.len() {
+        if indices[i] < 0 {
+            let n = (!indices[i]) as i32;
+            count += (n - 2) as usize;
+            i += n as usize + 1;
+        } else {
+            count += 1;
+            i += 1;
+        }
+    }
+    count
+}
+
+fn load_3mf(path: &str) -> Result<ModelInfo, QuickLookError> {
+    use lib3mf::Model;
+
+    let file = File::open(path).map_err(|e| QuickLookError::ModelParse(e.to_string()))?;
+    let model = Model::from_reader(file)
+        .map_err(|e| QuickLookError::ModelParse(e.to_string()))?;
+
+    let mut vertex_count = 0usize;
+    let mut face_count = 0usize;
+
+    for object in &model.resources.objects {
+        if let Some(ref mesh) = object.mesh {
+            vertex_count += mesh.vertices.len();
+            face_count += mesh.triangles.len();
+        }
+    }
+
+    Ok(ModelInfo {
+        vertex_count,
+        face_count,
+        format: "3mf".to_string(),
     })
 }

@@ -97,7 +97,7 @@ E:/private/Rust/quicklook/
 │   ├── image/                     # quicklook-image
 │   │   └── src/lib.rs             # psd_to_png(), heic_to_png(), jxl_to_png(), image_to_png()
 │   ├── model/                     # quicklook-model
-│   │   └── src/lib.rs             # ModelInfo, load_model(), load_gltf/stl/obj()
+│   │   └── src/lib.rs             # ModelInfo, load_model(), load_gltf/stl/obj/ply/fbx/3mf()
 │   ├── video/                     # quicklook-video
 │   │   └── src/lib.rs             # check_ffmpeg(), convert_video_to_hls(), cancel_video_conversion()
 │   ├── archive/                   # quicklook-archive
@@ -177,7 +177,7 @@ error.rs (统一错误类型: QuickLookError)
 | `show_open_with_dialog` | FE → BE | header.vue | `commands/system.rs` | helper/win (SHOpenWithDialog) |
 | `get_default_program_name` | FE → BE | header.vue | `commands/system.rs` | helper/win (AssocQueryStringW) |
 | `set_log_level` | FE → BE | lib.rs / settings.vue | `commands/system.rs` | log::set_max_level |
-| `load_model` | FE → BE | model.vue | `commands/model.rs` | quicklook-model (gltf/stl/obj) |
+| `load_model` | FE → BE | model.vue | `commands/model.rs` | quicklook-model (gltf/stl/obj/ply/fbx/3mf) |
 
 ## 空格键预览完整流程
 
@@ -260,7 +260,7 @@ Code (50+): cpp, js, mjs, cjs, ts, mts, tsx, rs, py, java, html, css
             scss, sass, less, styl, c, cs, go, vue, svelte, astro, jsx
             json, yml, yaml, toml, bat, ps1, ini, swift, kt, php, h
             xml, sql, pug, lua, r, d, vb, pas, scala, m, log, sh, bash, zsh, zig
-Model3D   : gltf, glb, stl, obj
+Model3D   : gltf, glb, stl, obj, ply, fbx, 3mf
 无扩展名检测: README → markdown, Makefile → makefile, Dockerfile → docker,
            .bashrc → bash, .gitignore → gitignore, ...
 
@@ -307,7 +307,7 @@ App.vue
     │       │   ├── Font:   <div style="font-family: MyFont"> 示例
     │       │   ├── Book:   <canvas> (Leafer) + 侧栏大纲
     │       │   ├── Archive: <el-tree> (Element Plus)
-    │       │   ├── Model:   Three.js WebGL (gltf/stl/obj)
+    │       │   ├── Model:   Three.js WebGL (gltf/stl/obj/ply/fbx/3mf)
     │       │   └── Document:
     │       │       ├── Excel: ExcelView (Handsontable + 多 sheet 标签页)
     │       │       └── DOCX:  <div ref="docxContainer">
@@ -384,7 +384,7 @@ Cargo workspace (resolver = "2")
 │   └── quicklook-error
 │
 ├── quicklook-model (crates/model/)
-│   ├── gltf, stl_io, obj (3D 模型解析)
+│   ├── gltf, stl_io, obj, ply-rs, fbxcel, lib3mf (3D 模型解析)
 │   └── quicklook-error
 │
 ├── quicklook-video (crates/video/)
