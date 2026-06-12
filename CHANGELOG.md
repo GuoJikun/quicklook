@@ -4,6 +4,9 @@
 
 **更新内容**
 
+* refactor: 统一错误处理并拆分 command/preview 模块
+* feat: 添加 jxl 格式支持
+* feat: 增加 rar rb dart 格式支持
 * 添加 Model 类型支持（gltf、glb、stl、obj）
 
 ## v0.20.0 (2026-06-02)
