@@ -34,6 +34,7 @@ const getConfig = async (): Promise<FormatSupport[]> => {
         { name: '字体', code: 'Font', data: data['preview.font.checked'] },
         { name: '压缩包', code: 'Archive', data: data['preview.archive.checked'] },
         { name: '书籍', code: 'Book', data: data['preview.book.checked'] },
+        { name: '3D模型', code: 'Model', data: data['preview.model.checked'] },
     ]
 }
 

@@ -296,5 +296,17 @@
     ],
     "preview.book.checked": [
         "pdf"
+    ],
+    "preview.model": [
+        "gltf",
+        "glb",
+        "stl",
+        "obj"
+    ],
+    "preview.model.checked": [
+        "gltf",
+        "glb",
+        "stl",
+        "obj"
     ]
 }

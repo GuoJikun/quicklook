@@ -30,7 +30,7 @@ E:/private/Rust/quicklook/
 ├── src/                           # 前端源码
 │   ├── main.ts                    # 入口: Pinia + Router + Element Plus + Sentry
 │   ├── App.vue                    # 根组件 (<RouterView>)
-│   ├── router/index.ts            # 14 个路由
+│   ├── router/index.ts            # 15 个路由
 │   ├── stores/index.ts            # Pinia store (音视频配置列表)
 │   ├── hooks/                     # theme.ts, use-window.ts
 │   ├── utils/                     # index.ts, typescript.ts, theme.ts, sentry.ts
@@ -40,7 +40,7 @@ E:/private/Rust/quicklook/
 │       ├── home/index.vue         # 占位首页
 │       ├── settings.vue           # 设置页
 │       ├── upgrade.vue            # 更新页
-│       └── preview/               # 10 个预览视图
+│       └── preview/               # 11 个预览视图
 │           ├── index.vue          # 预览外壳 (Escape 关闭)
 │           ├── code.vue           # Shiki 高亮
 │           ├── md.vue             # Markdown 渲染
@@ -50,6 +50,7 @@ E:/private/Rust/quicklook/
 │           ├── font.vue           # 字体预览
 │           ├── book.vue           # PDF 阅读 (pdfjs + Leafer)
 │           ├── archive.vue        # 压缩包目录树
+│           ├── model.vue          # 3D 模型预览 (Three.js)
 │           ├── document.vue       # Excel/DOCX 渲染
 │           ├── not-support.vue    # 不支持提示
 │           └── components/preview-image.vue
@@ -124,7 +125,7 @@ lib.rs (Tauri Builder)
   │   ├── app.listen("config_update")   → 热更新配置
   │   ├── preview::init_preview_file()  → 安装键盘钩子
   │   └── tray::create_tray()           → 系统托盘
-  └── invoke_handler (注册 13 个 command)
+  └── invoke_handler (注册 14 个 command)
 
 commands/ (IPC 入口)     helper/ (业务逻辑)     crates/ (工作空间)
 ┌──────────┐            ┌────────────┐        ┌──────────────────┐
@@ -133,6 +134,7 @@ commands/ (IPC 入口)     helper/ (业务逻辑)     crates/ (工作空间)
 │ image    │─────────── │ image.rs   │        └──────────────────┘
 │ audio    │─────────── │ audio.rs   │
 │ video    │─────────── │ ffmp.rs    │
+│ model    │─────────── │            │        │ quicklook-model  │
 │ system   │──┬──────── │ win.rs     │
 │          │  ├──────── │ monitor.rs │
 │          │  ├──────── │ config.rs  │
@@ -157,7 +159,7 @@ error.rs (统一错误类型: QuickLookError)
 
 ```
 
-## IPC 命令清单 (13 个)
+## IPC 命令清单 (14 个)
 
 | 命令 | 方向 | 前端模块 | 后端入口 | 后端实现 |
 |------|------|----------|----------|----------|
@@ -175,6 +177,7 @@ error.rs (统一错误类型: QuickLookError)
 | `show_open_with_dialog` | FE → BE | header.vue | `commands/system.rs` | helper/win (SHOpenWithDialog) |
 | `get_default_program_name` | FE → BE | header.vue | `commands/system.rs` | helper/win (AssocQueryStringW) |
 | `set_log_level` | FE → BE | lib.rs / settings.vue | `commands/system.rs` | log::set_max_level |
+| `load_model` | FE → BE | model.vue | `commands/model.rs` | quicklook-model (gltf/stl/obj) |
 
 ## 空格键预览完整流程
 
@@ -206,6 +209,7 @@ window.rs: PreviewFile::preview_file()
         │     └── Image    → /preview/image?...
         │     └── Audio    → /preview/audio?...
         │     └── Video    → /preview/video?...
+        │     └── Model3D  → /preview/model?...
         │     └── ...
         │
         │  5. 窗口管理
@@ -256,6 +260,7 @@ Code (50+): cpp, js, mjs, cjs, ts, mts, tsx, rs, py, java, html, css
             scss, sass, less, styl, c, cs, go, vue, svelte, astro, jsx
             json, yml, yaml, toml, bat, ps1, ini, swift, kt, php, h
             xml, sql, pug, lua, r, d, vb, pas, scala, m, log, sh, bash, zsh, zig
+Model3D   : gltf, glb, stl, obj
 无扩展名检测: README → markdown, Makefile → makefile, Dockerfile → docker,
            .bashrc → bash, .gitignore → gitignore, ...
 
@@ -278,6 +283,7 @@ Code (50+): cpp, js, mjs, cjs, ts, mts, tsx, rs, py, java, html, css
 | `/preview/md` | MdSupport | Markdown 渲染 |
 | `/preview/book` | BookSupport | PDF 阅读 |
 | `/preview/archive` | ArchiveSupport | 压缩包目录树 |
+| `/preview/model` | ModelSupport | 3D 模型预览 (Three.js) |
 | `/preview/document` | DocumentSupport | Excel/CSV/DOCX |
 | `/settings` | Settings | 设置页面 |
 | `/upgrade` | Upgrade | 更新管理 |
@@ -301,6 +307,7 @@ App.vue
     │       │   ├── Font:   <div style="font-family: MyFont"> 示例
     │       │   ├── Book:   <canvas> (Leafer) + 侧栏大纲
     │       │   ├── Archive: <el-tree> (Element Plus)
+    │       │   ├── Model:   Three.js WebGL (gltf/stl/obj)
     │       │   └── Document:
     │       │       ├── Excel: ExcelView (Handsontable + 多 sheet 标签页)
     │       │       └── DOCX:  <div ref="docxContainer">
@@ -343,7 +350,9 @@ resources/config.json (编译时内嵌)
 ├── preview.audio: string[]
 ├── preview.audio.checked: string[]
 ├── preview.video: string[]
-└── preview.video.checked: string[]
+├── preview.video.checked: string[]
+├── preview.model: string[]        (3D 模型格式白名单)
+└── preview.model.checked: string[]
 ```
 
 ## Rust 工作空间依赖

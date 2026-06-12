@@ -47,6 +47,12 @@
 
 - [lofty](https://github.com/Serial-ATA/lofty-rs) — 音频元数据读取
 
+**3D 模型解析（crates/model）**
+
+- [gltf](https://github.com/gltf-rs/gltf) — glTF/GLB 格式解析
+- [stl_io](https://github.com/huonw/stl_io) — STL 格式解析
+- [obj](https://github.com/nickel-org/rust-obj) — OBJ 格式解析
+
 ## JavaScript / TypeScript 依赖
 
 **框架与 UI**
@@ -78,6 +84,11 @@
 **代码高亮**
 
 - [shiki](https://github.com/shikijs/shiki) — 基于 VS Code TextMate 的代码高亮（含 markdown-it 集成）
+
+**3D 渲染**
+
+- [three](https://github.com/mrdoob/three.js) — WebGL 3D 渲染引擎（含 GLTFLoader / STLLoader / OBJLoader / OrbitControls）
+- [@types/three](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/three) — Three.js 类型定义
 
 **表格**
 
