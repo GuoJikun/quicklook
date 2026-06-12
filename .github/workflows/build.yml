@@ -14,9 +14,11 @@ jobs:
         settings:
           - platform: windows-latest
             args: "--target x86_64-pc-windows-msvc"
+            rust-target: "x86_64-pc-windows-msvc"
             target: "windows"
           - platform: windows-latest
             args: "--target aarch64-pc-windows-msvc"
+            rust-target: "aarch64-pc-windows-msvc"
             target: "windows-aarch64"
 
     runs-on: ${{ matrix.settings.platform }}
@@ -52,8 +54,8 @@ jobs:
 
       - name: Build vcpkg dependencies
         run: |
-          if (-not (Test-Path "$env:GITHUB_WORKSPACE/target/vcpkg")) {
-            cargo vcpkg build --manifest-path crates/image/Cargo.toml
+          if (-not (Test-Path "$env:GITHUB_WORKSPACE/target/vcpkg/installed/${{ matrix.settings.rust-target }}")) {
+            cargo vcpkg build --manifest-path crates/image/Cargo.toml --target ${{ matrix.settings.rust-target }}
           }
         shell: pwsh
 
