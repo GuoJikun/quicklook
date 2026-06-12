@@ -37,6 +37,7 @@ impl WebRoute {
             "Book" => WebRoute::new("/preview/book".to_string(), file_info),
             "Archive" => WebRoute::new("/preview/archive".to_string(), file_info),
             "Doc" => WebRoute::new("/preview/document".to_string(), file_info),
+            "Model3D" => WebRoute::new("/preview/model".to_string(), file_info),
             _ => WebRoute::new("/preview/not-support".to_string(), file_info),
         }
     }

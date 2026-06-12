@@ -124,15 +124,14 @@ name = "app"
 version = "0.18.1"
 dependencies = [
  "chrono",
- "image",
- "jxl-oxide",
- "libheif-rs",
- "lofty",
  "log",
- "psd",
  "quicklook-archive",
+ "quicklook-audio",
  "quicklook-docs",
- "regex",
+ "quicklook-error",
+ "quicklook-image",
+ "quicklook-model",
+ "quicklook-video",
  "serde",
  "serde_json",
  "tauri",
@@ -146,7 +145,6 @@ dependencies = [
  "tauri-plugin-single-instance",
  "tauri-plugin-store",
  "tauri-plugin-updater",
- "thiserror 2.0.16",
  "urlencoding",
  "windows",
 ]
@@ -426,6 +424,12 @@ dependencies = [
  "rustc-demangle",
  "windows-targets 0.52.6",
 ]
+
+[[package]]
+name = "base64"
+version = "0.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e1b586273c5702936fe7b7d6896644d8be71e6314cfe09d3167c95f712589e8"
 
 [[package]]
 name = "base64"
@@ -2062,6 +2066,45 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
 
 [[package]]
+name = "gltf"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3ce1918195723ce6ac74e80542c5a96a40c2b26162c1957a5cd70799b8cacf7"
+dependencies = [
+ "base64 0.13.1",
+ "byteorder",
+ "gltf-json",
+ "image",
+ "lazy_static",
+ "serde_json",
+ "urlencoding",
+]
+
+[[package]]
+name = "gltf-derive"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "14070e711538afba5d6c807edb74bcb84e5dbb9211a3bf5dea0dfab5b24f4c51"
+dependencies = [
+ "inflections",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.106",
+]
+
+[[package]]
+name = "gltf-json"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6176f9d60a7eab0a877e8e96548605dedbde9190a7ae1e80bbcc1c9af03ab14"
+dependencies = [
+ "gltf-derive",
+ "serde",
+ "serde_derive",
+ "serde_json",
+]
+
+[[package]]
 name = "gobject-sys"
 version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2575,6 +2618,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "inflections"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a257582fdcde896fd96463bf2d40eefea0580021c0712a0e2b028b60b47a837a"
+
+[[package]]
 name = "inout"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2944,6 +2993,12 @@ dependencies = [
  "indexmap 2.14.0",
  "selectors 0.24.0",
 ]
+
+[[package]]
+name = "lazy_static"
+version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
 name = "lebe"
@@ -3463,6 +3518,12 @@ checksum = "5c7398b9c8b70908f6371f47ed36737907c87c52af34c268fed0bf0ceb92ead9"
 dependencies = [
  "libc",
 ]
+
+[[package]]
+name = "obj"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "059c95245738cdc7b40078cdd51a23200252a4c0a0a6dd005136152b3f467a4a"
 
 [[package]]
 name = "objc-sys"
@@ -4347,6 +4408,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "quicklook-audio"
+version = "0.1.0"
+dependencies = [
+ "lofty",
+ "log",
+ "quicklook-error",
+ "serde",
+]
+
+[[package]]
 name = "quicklook-docs"
 version = "0.1.0"
 dependencies = [
@@ -4354,6 +4425,46 @@ dependencies = [
  "csv",
  "log",
  "serde",
+]
+
+[[package]]
+name = "quicklook-error"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "thiserror 2.0.16",
+]
+
+[[package]]
+name = "quicklook-image"
+version = "0.1.0"
+dependencies = [
+ "image",
+ "jxl-oxide",
+ "libheif-rs",
+ "log",
+ "psd",
+ "quicklook-error",
+]
+
+[[package]]
+name = "quicklook-model"
+version = "0.1.0"
+dependencies = [
+ "gltf",
+ "log",
+ "obj",
+ "quicklook-error",
+ "serde",
+ "stl_io",
+]
+
+[[package]]
+name = "quicklook-video"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "quicklook-error",
 ]
 
 [[package]]
@@ -5421,6 +5532,12 @@ name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
+
+[[package]]
+name = "stl_io"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "567641995c51a3b8befddb13e1826187bcf7eb7ca8d13746bfd1cc5a22e89fa8"
 
 [[package]]
 name = "string_cache"
