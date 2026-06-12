@@ -6,8 +6,7 @@ Windows 文件快速预览工具（Tauri v2：Rust 后端 + Vue 3 前端）。
 
 - **Rust 检查**依赖 vcpkg：`cargo install cargo-vcpkg`（仅一次），然后：
   ```
-  cd src-tauri
-  cargo vcpkg build    # 构建 libheif（HEIC/HEIF 支持）
+  cargo vcpkg build --manifest-path crates/image/Cargo.toml  # 构建 libheif（HEIC/HEIF 支持）
   cargo check --locked --all-targets
   ```
 - **类型检查**：`pnpm type-check`（vue-tsc --build --force）

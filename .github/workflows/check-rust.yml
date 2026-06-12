@@ -15,11 +15,6 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 40
 
-    defaults:
-      run:
-        shell: pwsh
-        working-directory: src-tauri
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4

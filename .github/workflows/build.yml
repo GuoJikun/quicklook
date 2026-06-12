@@ -53,7 +53,7 @@ jobs:
       - name: Build vcpkg dependencies
         run: |
           if (-not (Test-Path "$env:GITHUB_WORKSPACE/target/vcpkg")) {
-            cargo vcpkg build
+            cargo vcpkg build --manifest-path crates/image/Cargo.toml
           }
         shell: pwsh
 
