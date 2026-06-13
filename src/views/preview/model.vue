@@ -280,6 +280,8 @@ async function loadWrl(url: string): Promise<THREE.Group> {
             url,
             result => {
                 const group = result as unknown as THREE.Group
+                // WRL 通常是 Z-forward，需要旋转 180 度
+                group.rotation.y = Math.PI
                 group.traverse(child => {
                     if ((child as THREE.Mesh).isMesh) {
                         ;(child as THREE.Mesh).material = new THREE.MeshStandardMaterial({
