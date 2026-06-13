@@ -15,7 +15,7 @@ use tauri_plugin_store::StoreExt;
 use commands::{
     archive, cancel_video_conversion, check_ffmpeg, clear_cache, clear_image_cache,
     convert_video_to_hls, convert_to_png, document, get_default_program_name, get_monitor_info,
-    load_model, parse_lrc, read_audio_info, set_log_level, show_open_with_dialog,
+    parse_lrc, read_audio_info, set_log_level, show_open_with_dialog,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -115,7 +115,6 @@ pub fn run() {
             show_open_with_dialog,
             archive,
             document,
-            load_model,
             get_monitor_info,
             get_default_program_name,
             set_log_level,

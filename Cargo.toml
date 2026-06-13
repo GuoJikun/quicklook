@@ -6,7 +6,6 @@ members = [
     "crates/error",
     "crates/audio",
     "crates/image",
-    "crates/model",
     "crates/video",
 ]
 resolver = "2"

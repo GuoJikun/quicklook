@@ -47,15 +47,6 @@
 
 - [lofty](https://github.com/Serial-ATA/lofty-rs) — 音频元数据读取
 
-**3D 模型解析（crates/model）**
-
-- [gltf](https://github.com/gltf-rs/gltf) — glTF/GLB 格式解析
-- [stl_io](https://github.com/huonw/stl_io) — STL 格式解析
-- [obj](https://github.com/nickel-org/rust-obj) — OBJ 格式解析
-- [ply-rs](https://github.com/nickel-org/ply-rs) — PLY (Polygon File Format) 解析
-- [fbxcel](https://github.com/lo48576/fbxcel) — FBX (Filmbox) 格式解析
-- [lib3mf](https://github.com/3mf-consortium/lib3mf-rs) — 3MF (3D Manufacturing Format) 解析
-
 ## JavaScript / TypeScript 依赖
 
 **框架与 UI**
@@ -90,7 +81,7 @@
 
 **3D 渲染**
 
-- [three](https://github.com/mrdoob/three.js) — WebGL 3D 渲染引擎（含 GLTFLoader / STLLoader / OBJLoader / PLYLoader / FBXLoader / 3MFLoader / OrbitControls）
+- [three](https://github.com/mrdoob/three.js) — WebGL 3D 渲染引擎（含 GLTFLoader / STLLoader / OBJLoader / PLYLoader / FBXLoader / 3MFLoader / ColladaLoader / TDSLoader / AMFLoader / VRMLLoader / LWOLoader / OrbitControls，直接加载所有格式）
 - [@types/three](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/three) — Three.js 类型定义
 
 **表格**

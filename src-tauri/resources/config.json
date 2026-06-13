@@ -304,7 +304,13 @@
         "obj",
         "ply",
         "fbx",
-        "3mf"
+        "3mf",
+        "dae",
+        "3ds",
+        "amf",
+        "wrl",
+        "lwo",
+        "lws"
     ],
     "preview.model.checked": [
         "gltf",
@@ -313,6 +319,12 @@
         "obj",
         "ply",
         "fbx",
-        "3mf"
+        "3mf",
+        "dae",
+        "3ds",
+        "amf",
+        "wrl",
+        "lwo",
+        "lws"
     ]
 }

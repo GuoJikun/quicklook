@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, shallowRef, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { invoke, convertFileSrc } from '@tauri-apps/api/core'
+import { convertFileSrc } from '@tauri-apps/api/core'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
@@ -10,15 +10,39 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js'
 import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader.js'
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js'
 import { ThreeMFLoader } from 'three/examples/jsm/loaders/3MFLoader.js'
+import { ColladaLoader } from 'three/examples/jsm/loaders/ColladaLoader.js'
+import { TDSLoader } from 'three/examples/jsm/loaders/TDSLoader.js'
+import { AMFLoader } from 'three/examples/jsm/loaders/AMFLoader.js'
+import { VRMLLoader } from 'three/examples/jsm/loaders/VRMLLoader.js'
+import { LWOLoader } from 'three/examples/jsm/loaders/LWOLoader.js'
 import LayoutPreview from '@/components/layout-preview.vue'
 import type { FileInfo } from '@/utils/typescript'
 
 defineOptions({ name: 'ModelSupport' })
 
 interface ModelInfo {
-    vertex_count: number
-    face_count: number
+    vertexCount: number
+    faceCount: number
     format: string
+}
+
+function getModelStats(object: THREE.Object3D, format: string): ModelInfo {
+    let vertexCount = 0
+    let faceCount = 0
+
+    object.traverse(child => {
+        if ((child as THREE.Mesh).isMesh) {
+            const geometry = (child as THREE.Mesh).geometry
+            vertexCount += geometry.attributes.position.count
+            if (geometry.index) {
+                faceCount += geometry.index.count / 3
+            } else {
+                faceCount += geometry.attributes.position.count / 3
+            }
+        }
+    })
+
+    return { vertexCount, faceCount, format: format.toUpperCase() }
 }
 
 const route = useRoute()
@@ -86,6 +110,8 @@ async function loadStl(url: string): Promise<THREE.Group> {
                 geometry.computeVertexNormals()
                 const mat = new THREE.MeshStandardMaterial({ color: 0x8fbcd4, side: THREE.DoubleSide })
                 const mesh = new THREE.Mesh(geometry, mat)
+                // STL 通常是 Z-up，需要旋转到 Y-up
+                mesh.rotation.x = -Math.PI / 2
                 const group = new THREE.Group()
                 group.add(mesh)
                 resolve(group)
@@ -125,6 +151,8 @@ async function loadPly(url: string): Promise<THREE.Group> {
                 geometry.computeVertexNormals()
                 const mat = new THREE.MeshStandardMaterial({ color: 0x8fbcd4, side: THREE.DoubleSide })
                 const mesh = new THREE.Mesh(geometry, mat)
+                // PLY 通常是 Z-up，需要旋转到 Y-up
+                mesh.rotation.x = -Math.PI / 2
                 const group = new THREE.Group()
                 group.add(mesh)
                 resolve(group)
@@ -161,6 +189,119 @@ async function load3mf(url: string): Promise<THREE.Group> {
         new ThreeMFLoader().load(
             url,
             group => {
+                group.traverse(child => {
+                    if ((child as THREE.Mesh).isMesh) {
+                        ;(child as THREE.Mesh).material = new THREE.MeshStandardMaterial({
+                            color: 0x8fbcd4,
+                            side: THREE.DoubleSide,
+                        })
+                    }
+                })
+                resolve(group)
+            },
+            undefined,
+            reject,
+        )
+    })
+}
+
+async function loadDae(url: string): Promise<THREE.Group> {
+    return new Promise((resolve, reject) => {
+        new ColladaLoader().load(
+            url,
+            result => {
+                if (!result || !result.scene) {
+                    reject(new Error('Failed to load DAE file'))
+                    return
+                }
+                result.scene.traverse(child => {
+                    if ((child as THREE.Mesh).isMesh) {
+                        ;(child as THREE.Mesh).material = new THREE.MeshStandardMaterial({
+                            color: 0x8fbcd4,
+                            side: THREE.DoubleSide,
+                        })
+                    }
+                })
+                resolve(result.scene as unknown as THREE.Group)
+            },
+            undefined,
+            reject,
+        )
+    })
+}
+
+async function load3ds(url: string): Promise<THREE.Group> {
+    return new Promise((resolve, reject) => {
+        new TDSLoader().load(
+            url,
+            group => {
+                // 3DS 通常是 Z-up，需要旋转到 Y-up
+                group.rotation.x = -Math.PI / 2
+                group.traverse(child => {
+                    if ((child as THREE.Mesh).isMesh) {
+                        ;(child as THREE.Mesh).material = new THREE.MeshStandardMaterial({
+                            color: 0x8fbcd4,
+                            side: THREE.DoubleSide,
+                        })
+                    }
+                })
+                resolve(group)
+            },
+            undefined,
+            reject,
+        )
+    })
+}
+
+async function loadAmf(url: string): Promise<THREE.Group> {
+    return new Promise((resolve, reject) => {
+        new AMFLoader().load(
+            url,
+            group => {
+                group.traverse(child => {
+                    if ((child as THREE.Mesh).isMesh) {
+                        ;(child as THREE.Mesh).material = new THREE.MeshStandardMaterial({
+                            color: 0x8fbcd4,
+                            side: THREE.DoubleSide,
+                        })
+                    }
+                })
+                resolve(group)
+            },
+            undefined,
+            reject,
+        )
+    })
+}
+
+async function loadWrl(url: string): Promise<THREE.Group> {
+    return new Promise((resolve, reject) => {
+        new VRMLLoader().load(
+            url,
+            result => {
+                const group = result as unknown as THREE.Group
+                group.traverse(child => {
+                    if ((child as THREE.Mesh).isMesh) {
+                        ;(child as THREE.Mesh).material = new THREE.MeshStandardMaterial({
+                            color: 0x8fbcd4,
+                            side: THREE.DoubleSide,
+                        })
+                    }
+                })
+                resolve(group)
+            },
+            undefined,
+            reject,
+        )
+    })
+}
+
+async function loadLwo(url: string): Promise<THREE.Group> {
+    return new Promise((resolve, reject) => {
+        new LWOLoader().load(
+            url,
+            result => {
+                const group = result as unknown as THREE.Group
                 group.traverse(child => {
                     if ((child as THREE.Mesh).isMesh) {
                         ;(child as THREE.Mesh).material = new THREE.MeshStandardMaterial({
@@ -254,14 +395,6 @@ onMounted(async () => {
     const path = fileInfo.value.path as string
     const ext = (fileInfo.value.extension as string).toLowerCase()
 
-    // Fetch model statistics from Rust backend
-    try {
-        modelInfo.value = await invoke<ModelInfo>('load_model', { path, extension: ext })
-    } catch (e) {
-        // Non-fatal: stats unavailable but we can still render
-        console.warn('load_model error:', e)
-    }
-
     // Init Three.js scene
     if (!canvasRef.value) return
     initScene(canvasRef.value)
@@ -282,19 +415,31 @@ onMounted(async () => {
             group = await loadFbx(assetUrl)
         } else if (ext === '3mf') {
             group = await load3mf(assetUrl)
+        } else if (ext === 'dae') {
+            group = await loadDae(assetUrl)
+        } else if (ext === '3ds') {
+            group = await load3ds(assetUrl)
+        } else if (ext === 'amf') {
+            group = await loadAmf(assetUrl)
+        } else if (ext === 'wrl') {
+            group = await loadWrl(assetUrl)
+        } else if (ext === 'lwo' || ext === 'lws') {
+            group = await loadLwo(assetUrl)
         } else {
             throw new Error(`不支持的格式: .${ext}`)
         }
 
         modelGroup.value = group
+        modelInfo.value = getModelStats(group, ext)
         scene.value!.add(group)
+        scene.value!.updateMatrixWorld(true)
         fitCameraToObject(camera.value!, controls.value!, group)
 
         // Sync grid to model base
         const box = new THREE.Box3().setFromObject(group)
         const center = box.getCenter(new THREE.Vector3())
         const size = box.getSize(new THREE.Vector3())
-        const gridSize = Math.max(size.x, size.z) * 3
+        const gridSize = Math.max(size.x, size.y, size.z) * 3
         scene.value!.children
             .filter(c => c instanceof THREE.GridHelper)
             .forEach(g => {
@@ -353,10 +498,10 @@ onUnmounted(() => {
 
             <!-- Model info panel -->
             <div v-if="modelInfo && !loading && !errorMsg" class="model-info">
-                <span class="info-tag">{{ modelInfo.format.toUpperCase() }}</span>
-                <span class="info-item">顶点 {{ modelInfo.vertex_count.toLocaleString() }}</span>
+                <span class="info-tag">{{ modelInfo.format }}</span>
+                <span class="info-item">顶点 {{ modelInfo.vertexCount.toLocaleString() }}</span>
                 <span class="info-sep">·</span>
-                <span class="info-item">面 {{ modelInfo.face_count.toLocaleString() }}</span>
+                <span class="info-item">面 {{ modelInfo.faceCount.toLocaleString() }}</span>
             </div>
         </div>
     </LayoutPreview>

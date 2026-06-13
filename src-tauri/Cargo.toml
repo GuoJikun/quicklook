@@ -67,7 +67,5 @@ quicklook-error = { path = "../crates/error" }
 quicklook-audio = { path = "../crates/audio" }
 # Image format conversion
 quicklook-image = { path = "../crates/image" }
-# 3D model loading
-quicklook-model = { path = "../crates/model" }
 # FFmpeg video conversion
 quicklook-video = { path = "../crates/video" }

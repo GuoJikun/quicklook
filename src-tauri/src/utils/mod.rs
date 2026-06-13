@@ -285,6 +285,12 @@ static FILE_TYPE_MAPPING: LazyLock<HashMap<&'static str, &'static str>> =
             ("ply", "Model3D"),
             ("fbx", "Model3D"),
             ("3mf", "Model3D"),
+            ("dae", "Model3D"),
+            ("3ds", "Model3D"),
+            ("amf", "Model3D"),
+            ("wrl", "Model3D"),
+            ("lwo", "Model3D"),
+            ("lws", "Model3D"),
             // 代码文件
             ("txt", "Code"),
             ("cpp", "Code"),

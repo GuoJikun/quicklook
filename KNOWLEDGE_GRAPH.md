@@ -16,7 +16,6 @@ QuickLook (Windows 文件快速预览工具, macOS Quick Look 风格)
     ├── crates/error/    → quicklook-error (统一错误类型)
     ├── crates/audio/    → quicklook-audio (音频元数据 + LRC)
     ├── crates/image/    → quicklook-image (图片格式转换)
-    ├── crates/model/    → quicklook-model (3D 模型加载)
     └── crates/video/    → quicklook-video (FFmpeg 视频转换)
 ```
 
@@ -96,8 +95,6 @@ E:/private/Rust/quicklook/
 │   │   └── src/lib.rs             # MusicInfo, read_music_info(), Lrc, parse_lrc()
 │   ├── image/                     # quicklook-image
 │   │   └── src/lib.rs             # psd_to_png(), heic_to_png(), jxl_to_png(), image_to_png()
-│   ├── model/                     # quicklook-model
-│   │   └── src/lib.rs             # ModelInfo, load_model(), load_gltf/stl/obj/ply/fbx/3mf()
 │   ├── video/                     # quicklook-video
 │   │   └── src/lib.rs             # check_ffmpeg(), convert_video_to_hls(), cancel_video_conversion()
 │   ├── archive/                   # quicklook-archive
@@ -125,7 +122,7 @@ lib.rs (Tauri Builder)
   │   ├── app.listen("config_update")   → 热更新配置
   │   ├── preview::init_preview_file()  → 安装键盘钩子
   │   └── tray::create_tray()           → 系统托盘
-  └── invoke_handler (注册 14 个 command)
+  └── invoke_handler (注册 13 个 command)
 
 commands/ (IPC 入口)     helper/ (业务逻辑)     crates/ (工作空间)
 ┌──────────┐            ┌────────────┐        ┌──────────────────┐
@@ -134,7 +131,6 @@ commands/ (IPC 入口)     helper/ (业务逻辑)     crates/ (工作空间)
 │ image    │─────────── │ image.rs   │        └──────────────────┘
 │ audio    │─────────── │ audio.rs   │
 │ video    │─────────── │ ffmp.rs    │
-│ model    │─────────── │            │        │ quicklook-model  │
 │ system   │──┬──────── │ win.rs     │
 │          │  ├──────── │ monitor.rs │
 │          │  ├──────── │ config.rs  │
@@ -159,7 +155,7 @@ error.rs (统一错误类型: QuickLookError)
 
 ```
 
-## IPC 命令清单 (14 个)
+## IPC 命令清单 (13 个)
 
 | 命令 | 方向 | 前端模块 | 后端入口 | 后端实现 |
 |------|------|----------|----------|----------|
@@ -177,7 +173,6 @@ error.rs (统一错误类型: QuickLookError)
 | `show_open_with_dialog` | FE → BE | header.vue | `commands/system.rs` | helper/win (SHOpenWithDialog) |
 | `get_default_program_name` | FE → BE | header.vue | `commands/system.rs` | helper/win (AssocQueryStringW) |
 | `set_log_level` | FE → BE | lib.rs / settings.vue | `commands/system.rs` | log::set_max_level |
-| `load_model` | FE → BE | model.vue | `commands/model.rs` | quicklook-model (gltf/stl/obj/ply/fbx/3mf) |
 
 ## 空格键预览完整流程
 
@@ -209,7 +204,7 @@ window.rs: PreviewFile::preview_file()
         │     └── Image    → /preview/image?...
         │     └── Audio    → /preview/audio?...
         │     └── Video    → /preview/video?...
-        │     └── Model3D  → /preview/model?...
+        │     └── Model3D  → /preview/model?... (Three.js 直接加载)
         │     └── ...
         │
         │  5. 窗口管理
@@ -260,7 +255,7 @@ Code (50+): cpp, js, mjs, cjs, ts, mts, tsx, rs, py, java, html, css
             scss, sass, less, styl, c, cs, go, vue, svelte, astro, jsx
             json, yml, yaml, toml, bat, ps1, ini, swift, kt, php, h
             xml, sql, pug, lua, r, d, vb, pas, scala, m, log, sh, bash, zsh, zig
-Model3D   : gltf, glb, stl, obj, ply, fbx, 3mf
+Model3D   : gltf, glb, stl, obj, ply, fbx, 3mf, dae, 3ds, amf, wrl, lwo, lws
 无扩展名检测: README → markdown, Makefile → makefile, Dockerfile → docker,
            .bashrc → bash, .gitignore → gitignore, ...
 
@@ -307,7 +302,7 @@ App.vue
     │       │   ├── Font:   <div style="font-family: MyFont"> 示例
     │       │   ├── Book:   <canvas> (Leafer) + 侧栏大纲
     │       │   ├── Archive: <el-tree> (Element Plus)
-    │       │   ├── Model:   Three.js WebGL (gltf/stl/obj/ply/fbx/3mf)
+        │       │   ├── Model:   Three.js WebGL (直接加载，无后端依赖)
     │       │   └── Document:
     │       │       ├── Excel: ExcelView (Handsontable + 多 sheet 标签页)
     │       │       └── DOCX:  <div ref="docxContainer">
@@ -381,10 +376,6 @@ Cargo workspace (resolver = "2")
 │   ├── psd (Photoshop 解析)
 │   ├── libheif-rs (HEIC/HEIF 解码，需 vcpkg)
 │   ├── jxl-oxide (JPEG XL 解码)
-│   └── quicklook-error
-│
-├── quicklook-model (crates/model/)
-│   ├── gltf, stl_io, obj, ply-rs, fbxcel, lib3mf (3D 模型解析)
 │   └── quicklook-error
 │
 ├── quicklook-video (crates/video/)
