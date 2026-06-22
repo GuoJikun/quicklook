@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, shallowRef, onMounted } from 'vue'
+import { ref, computed, shallowRef, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { invoke } from '@tauri-apps/api/core'
 import LayoutPreview from '@/components/layout-preview.vue'
@@ -18,23 +18,64 @@ interface PdfPageResult {
     page: number
 }
 
+// 初始渲染倍率（2x 高清）；zoom 超过此值时触发重渲染
+const BASE_RENDER_SCALE = 2.0
+const ZOOM_STEP = 0.25
+const ZOOM_MIN = 0.25
+const ZOOM_MAX = 4.0
+
+/**
+ * 根据当前 zoom 决定渲染倍率：
+ * - zoom ≤ 2：直接用 BASE_RENDER_SCALE，CSS 缩放即可
+ * - zoom > 2：向上取整到最近 0.5，减少不必要的重渲染次数
+ */
+const getRenderScale = (z: number): number => {
+    if (z <= BASE_RENDER_SCALE) return BASE_RENDER_SCALE
+    return Math.ceil(z * 2) / 2
+}
+
 const route = useRoute()
 const fileInfo = ref<FileInfo>()
 const loading = ref(true)
 const error = ref<string>()
 const pageCount = ref(0)
 const currentPage = ref(1)
-// 已渲染页的 base64 DataURL 缓存，key 为 0-based 页码
-const pageCache = shallowRef<Map<number, string>>(new Map())
-const currentImgSrc = ref<string>()
 const pageInput = ref(1)
+
+const zoom = ref(1.0)
+// 当前显示图片的渲染倍率（对应 Rust 渲染时传入的 scale 参数）
+const imgRenderScale = ref(BASE_RENDER_SCALE)
+// 当前 <img> 的自然像素宽度，图片加载后更新
+const naturalImgWidth = ref(0)
+
+// 缓存键 = `${0-based页码}-${渲染倍率}`，避免不同 zoom 级别混用缓存
+const pageCache = shallowRef<Map<string, string>>(new Map())
+const currentImgSrc = ref<string>()
+
+// 根据 naturalImgWidth + zoom + imgRenderScale 动态计算图片显示宽度
+// 公式：displayWidth = naturalWidth * (zoom / renderScale)
+// 例：scale=2 渲染，zoom=1 → 显示 50% 自然宽度；zoom=2 → 1:1；zoom=3（重渲染 scale=3）→ 1:1
+const imgStyle = computed(() => {
+    if (!naturalImgWidth.value) return {}
+    const w = Math.round(naturalImgWidth.value * zoom.value / imgRenderScale.value)
+    return { width: `${w}px` }
+})
+
+const zoomText = computed(() => `${Math.round(zoom.value * 100)}%`)
 
 const renderPage = async (pageIndex: number) => {
     const path = fileInfo.value?.path
     if (!path) return
 
-    if (pageCache.value.has(pageIndex)) {
-        currentImgSrc.value = pageCache.value.get(pageIndex)
+    const renderScale = getRenderScale(zoom.value)
+    const cacheKey = `${pageIndex}-${renderScale}`
+
+    // 先更新渲染倍率，再重置宽度（等 img onload 更新）
+    imgRenderScale.value = renderScale
+    naturalImgWidth.value = 0
+
+    if (pageCache.value.has(cacheKey)) {
+        currentImgSrc.value = pageCache.value.get(cacheKey)
         return
     }
 
@@ -43,10 +84,10 @@ const renderPage = async (pageIndex: number) => {
         const result = await invoke<PdfPageResult>('pdf_render_page', {
             path,
             page: pageIndex,
-            scale: 2.0,
+            scale: renderScale,
         })
         const dataUrl = `data:image/png;base64,${result.base64}`
-        pageCache.value.set(pageIndex, dataUrl)
+        pageCache.value.set(cacheKey, dataUrl)
         currentImgSrc.value = dataUrl
     } catch (e) {
         error.value = String(e)
@@ -74,6 +115,32 @@ const handleJump = () => {
     }
 }
 
+const handleImgLoad = (e: Event) => {
+    naturalImgWidth.value = (e.target as HTMLImageElement).naturalWidth
+}
+
+// 防抖重渲染：zoom 快速变化时只在停止后 200ms 触发
+let zoomTimer: ReturnType<typeof setTimeout> | null = null
+
+const applyZoom = (newZoom: number) => {
+    zoom.value = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, +newZoom.toFixed(2)))
+    const newRenderScale = getRenderScale(zoom.value)
+    if (newRenderScale !== imgRenderScale.value) {
+        if (zoomTimer) clearTimeout(zoomTimer)
+        zoomTimer = setTimeout(() => renderPage(currentPage.value - 1), 200)
+    }
+}
+
+const handleZoomIn = () => applyZoom(zoom.value + ZOOM_STEP)
+const handleZoomOut = () => applyZoom(zoom.value - ZOOM_STEP)
+
+const handleWheel = (e: WheelEvent) => {
+    if (!e.ctrlKey) return
+    e.preventDefault()
+    const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP
+    applyZoom(zoom.value + delta)
+}
+
 onMounted(async () => {
     fileInfo.value = route.query as unknown as FileInfo
     const path = fileInfo.value?.path
@@ -87,6 +154,10 @@ onMounted(async () => {
         error.value = String(e)
         loading.value = false
     }
+})
+
+onUnmounted(() => {
+    if (zoomTimer) clearTimeout(zoomTimer)
 })
 </script>
 
@@ -115,8 +186,12 @@ onMounted(async () => {
                 >
                     &rsaquo;
                 </el-button>
+                <el-divider direction="vertical" />
+                <el-button text size="small" :disabled="zoom <= ZOOM_MIN" @click="handleZoomOut">－</el-button>
+                <span class="book-toolbar-zoom">{{ zoomText }}</span>
+                <el-button text size="small" :disabled="zoom >= ZOOM_MAX" @click="handleZoomIn">＋</el-button>
             </div>
-            <div class="book-content">
+            <div class="book-content" @wheel="handleWheel">
                 <div v-if="error" class="book-error">{{ error }}</div>
                 <div v-else-if="loading && !currentImgSrc" class="book-loading">
                     <el-icon class="is-loading" size="32">
@@ -131,9 +206,11 @@ onMounted(async () => {
                         <img
                             v-if="currentImgSrc"
                             :src="currentImgSrc"
+                            :style="imgStyle"
                             class="book-page-img"
                             alt="PDF page"
                             draggable="false"
+                            @load="handleImgLoad"
                         />
                         <div v-if="loading" class="book-page-overlay">
                             <el-icon class="is-loading" size="24">
@@ -172,6 +249,13 @@ onMounted(async () => {
         &-total {
             color: var(--color-text-primary);
         }
+
+        &-zoom {
+            min-width: 40px;
+            text-align: center;
+            color: var(--color-text-primary);
+            font-variant-numeric: tabular-nums;
+        }
     }
 
     &-content {
@@ -207,9 +291,10 @@ onMounted(async () => {
         padding: 16px;
         position: relative;
         min-height: 100%;
+        // 允许图片超出容器宽度时横向滚动
+        min-width: min-content;
 
         &-img {
-            max-width: 100%;
             height: auto;
             box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
             background-color: #fff;
