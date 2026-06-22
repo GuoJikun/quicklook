@@ -69,3 +69,5 @@ quicklook-audio = { path = "../crates/audio" }
 quicklook-image = { path = "../crates/image" }
 # FFmpeg video conversion
 quicklook-video = { path = "../crates/video" }
+# PDF rendering via PDFium
+quicklook-pdf = { path = "../crates/pdf" }

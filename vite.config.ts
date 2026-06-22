@@ -6,7 +6,6 @@ import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import { sentryVitePlugin } from '@sentry/vite-plugin'
 import pkg from './package.json'
-import { viteStaticCopy } from 'vite-plugin-static-copy'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode, command }) => {
@@ -15,14 +14,6 @@ export default defineConfig(({ mode, command }) => {
     let plugins: PluginOption[] = [
         vue(),
         vueJsx(),
-        viteStaticCopy({
-            targets: [
-                {
-                    src: 'node_modules/pdfjs-dist/cmaps/*',
-                    dest: 'pdfjs/cmaps',
-                },
-            ],
-        }),
     ]
     if (command === 'build') {
         plugins = [

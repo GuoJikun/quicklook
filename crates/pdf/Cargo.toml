@@ -1,0 +1,30 @@
+[package]
+name = "quicklook-pdf"
+version = "0.1.0"
+description = "PDF rendering library for QuickLook using PDFium"
+authors = ["GuoJikun <guojikun486546@163.com>"]
+license = ""
+repository = "https://github.com/GuoJikun/quicklook.git"
+homepage = "https://github.com/GuoJikun/quicklook"
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+name = "quicklook_pdf"
+crate-type = ["rlib"]
+
+[dependencies]
+pdfium-render = { version = "0.8", features = ["thread_safe"] }
+base64 = { version = "0.22", features = [] }
+image = { version = "0.25", features = ["png"] }
+log = "0.4"
+quicklook-error = { path = "../error" }
+
+[package.metadata.vcpkg]
+git = "https://github.com/microsoft/vcpkg"
+tag = "2026.05.25"
+dependencies = ["pdfium"]
+
+[package.metadata.vcpkg.target]
+x86_64-pc-windows-msvc  = { triplet = "x64-windows-static-md" }
+aarch64-pc-windows-msvc = { triplet = "arm64-windows-static-md" }

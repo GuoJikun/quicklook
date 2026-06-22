@@ -15,7 +15,7 @@ use tauri_plugin_store::StoreExt;
 use commands::{
     archive, cancel_video_conversion, check_ffmpeg, clear_cache, clear_image_cache,
     convert_video_to_hls, convert_to_png, document, get_default_program_name, get_monitor_info,
-    parse_lrc, read_audio_info, set_log_level, show_open_with_dialog,
+    parse_lrc, pdf_meta, pdf_render_page, read_audio_info, set_log_level, show_open_with_dialog,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -126,6 +126,8 @@ pub fn run() {
             cancel_video_conversion,
             clear_cache,
             clear_image_cache,
+            pdf_meta,
+            pdf_render_page,
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");

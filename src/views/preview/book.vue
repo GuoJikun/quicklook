@@ -1,299 +1,150 @@
-div<!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import LayoutPreview from '@/components/layout-preview.vue'
+import { ref, shallowRef, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { invoke } from '@tauri-apps/api/core'
+import LayoutPreview from '@/components/layout-preview.vue'
 import type { FileInfo } from '@/utils/typescript'
-import { convertFileSrc } from '@tauri-apps/api/core'
-import * as PDFJS from 'pdfjs-dist'
-import { CollectionTag } from '@element-plus/icons-vue'
-import type { PDFDocumentProxy } from 'pdfjs-dist'
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?url'
-import { App, Canvas, PropertyEvent, ResizeEvent } from 'leafer-ui'
-import '@leafer-in/view' // 导入视口插件
-import '@leafer-in/viewport' // 导入视口插件
-import '@leafer-in/animate' // 导入画布插件
-import '@leafer-in/resize' // 导入画布插件
-import '@leafer-in/color' // 导入滚动条插件
-import { ScrollBar } from '@leafer-in/scroll' // 导入滚动条插件  //
-import { useThrottleFn } from '@vueuse/core'
-
-const route = useRoute()
 
 defineOptions({
     name: 'BookSupport',
 })
 
-let leaferInstance: InstanceType<typeof App> | null = null
-let scrollBarInstance: InstanceType<typeof ScrollBar> | null = null
+interface PdfMeta {
+    page_count: number
+}
+
+interface PdfPageResult {
+    base64: string
+    page: number
+}
+
+const route = useRoute()
 const fileInfo = ref<FileInfo>()
-const pager = ref<{ current: number; total: number; scale: number; rotation: number }>({
-    current: 1,
-    total: 0,
-    scale: 1,
-    rotation: 0,
-})
-const outlineProps = {
-    children: 'items',
-    label: 'title',
-}
+const loading = ref(true)
+const error = ref<string>()
+const pageCount = ref(0)
+const currentPage = ref(1)
+// 已渲染页的 base64 DataURL 缓存，key 为 0-based 页码
+const pageCache = shallowRef<Map<number, string>>(new Map())
+const currentImgSrc = ref<string>()
+const pageInput = ref(1)
 
-const outline = ref<any[]>([])
-let pdfDoc: PDFDocumentProxy | null = null
+const renderPage = async (pageIndex: number) => {
+    const path = fileInfo.value?.path
+    if (!path) return
 
-const loadDocument = (url: string): Promise<PDFDocumentProxy> => {
-    return new Promise((resolve, reject) => {
-        PDFJS.getDocument({
-            url,
-            cMapUrl: '/pdfjs/cmaps/',
-            cMapPacked: true,
+    if (pageCache.value.has(pageIndex)) {
+        currentImgSrc.value = pageCache.value.get(pageIndex)
+        return
+    }
+
+    loading.value = true
+    try {
+        const result = await invoke<PdfPageResult>('pdf_render_page', {
+            path,
+            page: pageIndex,
+            scale: 2.0,
         })
-            .promise.then((pdf: PDFDocumentProxy) => {
-                resolve(pdf)
-            })
-            .catch(e => {
-                reject(e)
-            })
-    })
-}
-
-const parseOutline = async (outlineList: any[]): Promise<any[]> => {
-    const result: any[] = []
-    for (const item of outlineList) {
-        let pageNumber = 1
-        if (item.dest) {
-            if (typeof item.dest === 'string') {
-                // 如果是字符串，直接跳转到对应的页码
-                const pageIndex = parseInt(item.dest, 10) - 1
-                pageNumber = pageIndex + 1
-            }
-
-            // 如果是数组，获取第一个元素作为目标
-            if (Array.isArray(item.dest)) {
-                const ref = item.dest[0]
-                const pageIndex = (await pdfDoc?.getPageIndex(ref)) ?? 0
-                pageNumber = pageIndex + 1
-            }
-        }
-        result.push({
-            title: item.title,
-            page: pageNumber,
-            items: item.items ? await parseOutline(item.items) : [],
-        })
-    }
-    return result
-}
-
-const getMeta = async (pdf: PDFDocumentProxy) => {
-    const outline = (await pdf.getOutline()) ?? []
-    const meta = await pdf.getMetadata()
-    const count = pdf.numPages
-    return {
-        outline: await parseOutline(outline),
-        meta,
-        count,
+        const dataUrl = `data:image/png;base64,${result.base64}`
+        pageCache.value.set(pageIndex, dataUrl)
+        currentImgSrc.value = dataUrl
+    } catch (e) {
+        error.value = String(e)
+    } finally {
+        loading.value = false
     }
 }
-const visible = ref(true)
-const showOutline = () => {
-    visible.value = !visible.value
+
+const goToPage = async (page: number) => {
+    if (page < 1 || page > pageCount.value) return
+    currentPage.value = page
+    pageInput.value = page
+    await renderPage(page - 1)
 }
 
-const goPage = (pageNum: number) => {
-    pager.value.current = pageNum
-    const targetNode = leaferInstance?.tree.children.find((_, i) => i + 1 === pageNum)
-    const moveY = targetNode?.y ?? 0
+const handlePrev = () => goToPage(currentPage.value - 1)
+const handleNext = () => goToPage(currentPage.value + 1)
 
-    const currentY = leaferInstance?.tree.y ?? 0
-
-    let move = 0
-
-    if (moveY < Math.abs(currentY)) {
-        move = currentY == 0 ? moveY : Math.abs(currentY) - moveY
-    } else {
-        move = Math.abs(currentY) - moveY
-    }
-
-    ;(leaferInstance as App).tree.move(0, move, true)
-}
-
-const handleNodeClick = (data: any) => {
-    const page = data.page
-
-    pageNum.value = page
-    goPage(page)
-}
-
-const pageNum = ref<number>(1)
 const handleJump = () => {
-    const page = pageNum.value
-    if (page < 1 || page > pager.value.total) {
-        pageNum.value = pager.value.current
-        return
+    const page = pageInput.value
+    if (page >= 1 && page <= pageCount.value) {
+        goToPage(page)
+    } else {
+        pageInput.value = currentPage.value
     }
-
-    goPage(page)
-}
-
-const renderPage = async () => {
-    if (!pdfDoc) return
-    if (!leaferInstance) return
-
-    const width = leaferInstance.tree.width ?? 0
-
-    let offsetY = 0
-
-    for (let pageNum = 1; pageNum <= pager.value.total; pageNum++) {
-        const page = await pdfDoc.getPage(pageNum)
-
-        const viewport = page.getViewport({
-            scale: pager.value.scale,
-            rotation: pager.value.rotation,
-        })
-
-        const x = (width - viewport.width) / 2
-
-        const canvasNode = new Canvas({
-            x: x,
-            y: offsetY,
-            width: viewport.width,
-            height: viewport.height,
-            scale: pager.value.scale,
-        })
-
-        await page.render({
-            canvasContext: canvasNode.context as unknown as CanvasRenderingContext2D,
-            canvas: null,
-            viewport,
-        }).promise
-
-        canvasNode.paint()
-        leaferInstance.tree.add(canvasNode, pageNum)
-        offsetY += viewport.height + 16
-
-        page.cleanup()
-    }
-}
-
-const initLeader = () => {
-    if (leaferInstance) return
-    leaferInstance = new App({
-        view: 'leafer-canvas',
-        tree: { type: 'document' }, // 给 tree 层添加视口
-        sky: {},
-        fill: '#efefef',
-        zoom: {
-            min: 1,
-            max: 10,
-        },
-    })
-    scrollBarInstance = new ScrollBar(leaferInstance as any, {
-        theme: 'light',
-        minSize: 24,
-    })
-
-    leaferInstance.tree.on(
-        PropertyEvent.LEAFER_CHANGE,
-        useThrottleFn((ev: PropertyEvent) => {
-            const { attrName, newValue } = ev
-            if (attrName === 'y') {
-                const y = Math.abs(Number(newValue) ?? 0)
-                const children = (ev.target as any)?.children || []
-                for (let i = 1; i <= children.length; i++) {
-                    const prevY = children[i - 1].y ?? 0
-                    const currentY = children[i].y ?? 0
-                    if (y > prevY && y < currentY) {
-                        pager.value.current = i
-                        pageNum.value = i
-                        break
-                    }
-                }
-            }
-        }, 10),
-    )
-
-    leaferInstance.on(
-        ResizeEvent.RESIZE,
-        useThrottleFn((ev: ResizeEvent) => {
-            console.log('resize', ev)
-            leaferInstance?.zoom('fit', 0, 'x')
-            scrollBarInstance?.update()
-        }, 80),
-    )
-}
-
-const initPdf = async (src: any) => {
-    if (pdfDoc) {
-        return
-    }
-    PDFJS.GlobalWorkerOptions.workerSrc = pdfWorker
-
-    pager.value.current = 1
-    pdfDoc = await loadDocument(src)
-
-    const meta = await getMeta(pdfDoc)
-    pager.value.total = meta.count
-
-    outline.value = meta.outline || []
 }
 
 onMounted(async () => {
-    initLeader()
+    fileInfo.value = route.query as unknown as FileInfo
+    const path = fileInfo.value?.path
+    if (!path) return
 
-    fileInfo.value = route?.query as unknown as FileInfo
-    const path = convertFileSrc(fileInfo.value.path)
-    await initPdf(path)
-    await renderPage()
+    try {
+        const meta = await invoke<PdfMeta>('pdf_meta', { path })
+        pageCount.value = meta.page_count
+        await renderPage(0)
+    } catch (e) {
+        error.value = String(e)
+        loading.value = false
+    }
 })
 </script>
 
 <template>
     <LayoutPreview :file="fileInfo">
         <div class="book">
-            <div class="book-utils">
-                <div>
-                    <el-link :underline="false" @click="showOutline">
-                        <el-icon size="18px">
-                            <CollectionTag />
-                        </el-icon>
-                    </el-link>
-                </div>
-                <div class="book-utils-operation">
-                    <!-- <el-button-group>
-                        <el-button text :icon="Minus" size="small" @click="handleZoomOut"></el-button>
-                        <el-button text :icon="Plus" size="small" @click="handleZoomIn"></el-button>
-                    </el-button-group> -->
-                    <el-divider direction="vertical"></el-divider>
-                    <div>
-                        <el-input
-                            v-model.number="pageNum"
-                            size="small"
-                            style="width: 50px"
-                            @keydown.enter="handleJump"
-                        ></el-input>
-                        /
-                        <span style="color: var(--color-text-primary)">{{ pager.total }}</span>
-                    </div>
-                    <el-divider direction="vertical"></el-divider>
-                    <!-- <el-button text @click="handleRotate" :icon="RefreshLeft" size="small"></el-button> -->
-                </div>
-                <div></div>
+            <div class="book-toolbar">
+                <el-button
+                    text
+                    :disabled="currentPage <= 1"
+                    @click="handlePrev"
+                >
+                    &lsaquo;
+                </el-button>
+                <el-input
+                    v-model.number="pageInput"
+                    size="small"
+                    style="width: 54px"
+                    @keydown.enter="handleJump"
+                />
+                <span class="book-toolbar-total">/ {{ pageCount }}</span>
+                <el-button
+                    text
+                    :disabled="currentPage >= pageCount"
+                    @click="handleNext"
+                >
+                    &rsaquo;
+                </el-button>
             </div>
-            <div class="book-wrap">
-                <div class="book-outline" v-if="visible">
-                    <el-scrollbar class="scrollbar" :always="false">
-                        <el-tree
-                            :data="outline"
-                            :props="outlineProps"
-                            :highlight-current="true"
-                            @node-click="handleNodeClick"
-                        >
-                        </el-tree>
-                    </el-scrollbar>
+            <div class="book-content">
+                <div v-if="error" class="book-error">{{ error }}</div>
+                <div v-else-if="loading && !currentImgSrc" class="book-loading">
+                    <el-icon class="is-loading" size="32">
+                        <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M512 64a448 448 0 1 1 0 896A448 448 0 0 1 512 64zm0 64a384 384 0 1 0 0 768A384 384 0 0 0 512 128zm0 80a304 304 0 0 1 0 608A304 304 0 0 1 512 208z" fill="currentColor" opacity=".2" />
+                            <path d="M512 208a304 304 0 0 1 304 304h-64a240 240 0 0 0-240-240V208z" fill="currentColor" />
+                        </svg>
+                    </el-icon>
                 </div>
-                <div class="book-canvas" :style="{ width: visible ? 'calc(100% - 300px)' : '100%' }">
-                    <div id="leafer-canvas" style="height: 100%; width: 100%"></div>
-                </div>
+                <el-scrollbar v-else class="book-scroll">
+                    <div class="book-page">
+                        <img
+                            v-if="currentImgSrc"
+                            :src="currentImgSrc"
+                            class="book-page-img"
+                            alt="PDF page"
+                            draggable="false"
+                        />
+                        <div v-if="loading" class="book-page-overlay">
+                            <el-icon class="is-loading" size="24">
+                                <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M512 64a448 448 0 1 1 0 896A448 448 0 0 1 512 64zm0 64a384 384 0 1 0 0 768A384 384 0 0 0 512 128zm0 80a304 304 0 0 1 0 608A304 304 0 0 1 512 208z" fill="currentColor" opacity=".2" />
+                                    <path d="M512 208a304 304 0 0 1 304 304h-64a240 240 0 0 0-240-240V208z" fill="currentColor" />
+                                </svg>
+                            </el-icon>
+                        </div>
+                    </div>
+                </el-scrollbar>
             </div>
         </div>
     </LayoutPreview>
@@ -303,45 +154,79 @@ onMounted(async () => {
 .book {
     width: 100%;
     height: 100%;
-    &-utils {
+    display: flex;
+    flex-direction: column;
+
+    &-toolbar {
+        flex: 0 0 40px;
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        width: 100%;
-        height: 40px;
+        justify-content: center;
+        gap: 8px;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
         background-color: var(--color-bg);
         color: var(--color-text-primary);
         padding: 0 24px;
-        &-operation {
+        font-size: 14px;
+
+        &-total {
+            color: var(--color-text-primary);
+        }
+    }
+
+    &-content {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: #efefef;
+    }
+
+    &-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--el-color-primary);
+    }
+
+    &-error {
+        color: var(--el-color-danger);
+        padding: 16px;
+        font-size: 14px;
+    }
+
+    &-scroll {
+        width: 100%;
+        height: 100%;
+    }
+
+    &-page {
+        display: flex;
+        justify-content: center;
+        padding: 16px;
+        position: relative;
+        min-height: 100%;
+
+        &-img {
+            max-width: 100%;
+            height: auto;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+            background-color: #fff;
+            display: block;
+            user-select: none;
+        }
+
+        &-overlay {
+            position: absolute;
+            inset: 0;
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 100%;
-            font-size: 14px;
+            background-color: rgba(239, 239, 239, 0.6);
+            color: var(--el-color-primary);
         }
-    }
-    &-wrap {
-        width: 100%;
-        height: calc(100% - 40px);
-        overflow: auto;
-        font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
-        font-size: 0;
-    }
-    &-outline {
-        width: 300px;
-        height: 100%;
-        overflow: auto;
-        position: relative;
-        box-shadow: 1px 0 2px rgba(0, 0, 0, 0.1);
-        background-color: var(--color-bg);
-        color: var(--color-text-primary);
-        display: inline-block;
-        font-size: 14px;
-    }
-    &-canvas {
-        height: 100%;
-        display: inline-block;
     }
 }
 </style>
+
