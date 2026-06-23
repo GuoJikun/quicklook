@@ -24,7 +24,7 @@ flate2 = { version = "1.0", default-features = false, features = [
 ] }
 bzip2 = { version = "0.5.0", default-features = false }
 xz2 = { version = "0.1.0", default-features = false }
-sevenz-rust = "0.6.0"
+sevenz-rust = { version = "0.6.0", features = ["aes256"] }
 ruzstd = { version = "0.8.0", default-features = false, features = ["std"] }
 hadris-cpio = "1.1"
 ar = "0.9"
