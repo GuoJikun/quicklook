@@ -13,9 +13,9 @@ use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_store::StoreExt;
 
 use commands::{
-    archive, cancel_video_conversion, check_ffmpeg, clear_cache, clear_image_cache,
-    convert_video_to_hls, convert_to_png, document, get_default_program_name, get_monitor_info,
-    parse_lrc, read_audio_info, set_log_level, show_open_with_dialog,
+    archive, archive_is_password_protected, cancel_video_conversion, check_ffmpeg, clear_cache,
+    clear_image_cache, convert_video_to_hls, convert_to_png, document, get_default_program_name,
+    get_monitor_info, parse_lrc, read_audio_info, set_log_level, show_open_with_dialog,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -114,6 +114,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             show_open_with_dialog,
             archive,
+            archive_is_password_protected,
             document,
             get_monitor_info,
             get_default_program_name,

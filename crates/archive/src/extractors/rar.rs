@@ -3,11 +3,18 @@ use chrono::NaiveDate;
 use std::path::Path;
 
 /// 列举 RAR 文件条目
-pub fn list_rar_entries<P: AsRef<Path>>(path: P) -> Result<Vec<Extract>, ArchiveError> {
+pub fn list_rar_entries<P: AsRef<Path>>(
+    path: P,
+    password: Option<&str>,
+) -> Result<Vec<Extract>, ArchiveError> {
     let path = path.as_ref();
     let path_str = path.to_string_lossy().to_string();
 
-    let archive = unrar::Archive::new(&path_str)
+    let archive = match password {
+        Some(pw) => unrar::Archive::with_password(&path_str, pw.as_bytes()),
+        None => unrar::Archive::new(&path_str),
+    };
+    let archive = archive
         .open_for_listing()
         .map_err(|e| ArchiveError::Other(format!("Failed to open RAR archive: {}", e)))?;
 
@@ -44,7 +51,35 @@ pub fn list_rar_entries<P: AsRef<Path>>(path: P) -> Result<Vec<Extract>, Archive
     Ok(entries)
 }
 
-/// 将 RAR 文件时间转换为 yyyy-MM-dd HH:mm:ss 格式
+/// 检测 RAR 文件是否需要密码
+pub fn is_rar_password_protected<P: AsRef<Path>>(path: P) -> Result<bool, ArchiveError> {
+    let path = path.as_ref();
+    let path_str = path.to_string_lossy().to_string();
+
+    let archive = unrar::Archive::new(&path_str);
+    match archive.open_for_listing() {
+        Err(e) if e.code == unrar::error::Code::MissingPassword => Ok(true),
+        Err(e) => Err(ArchiveError::Other(format!(
+            "Failed to open RAR archive: {}",
+            e
+        ))),
+        Ok(mut open_archive) => {
+            if open_archive.has_encrypted_headers() {
+                return Ok(true);
+            }
+            let to_archive_err = |e: unrar::error::UnrarError| {
+                ArchiveError::Other(format!("Failed to read RAR entry: {}", e))
+            };
+            while let Some(header) = open_archive.read_header().map_err(&to_archive_err)? {
+                if header.entry().is_encrypted() {
+                    return Ok(true);
+                }
+                open_archive = header.skip().map_err(&to_archive_err)?;
+            }
+            Ok(false)
+        }
+    }
+}
 /// RAR header.file_time 是 DOS date/time 打包格式:
 ///   高 16 位: 日期 (bit 15-9: 年-1980, bit 8-5: 月, bit 4-0: 日)
 ///   低 16 位: 时间 (bit 15-11: 时, bit 10-5: 分, bit 4-0: 秒/2)
