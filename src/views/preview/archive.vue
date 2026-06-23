@@ -106,8 +106,14 @@ onMounted(async () => {
                     closeOnClickModal: false,
                 })
                 await loadArchive(val, mode, value ?? undefined)
-            } catch {
-                // 用户点击取消，不做任何操作
+            } catch (err: unknown) {
+                // ElMessageBox.prompt 取消/关闭会 reject: 'cancel' | 'close'
+                if (err === 'cancel' || err === 'close') {
+                    // 用户点击取消，不做任何操作
+                    return
+                }
+                const msg = err instanceof Error ? err.message : String(err)
+                await ElMessageBox.alert(msg, '解压失败')
             }
         } else {
             await loadArchive(val, mode)
