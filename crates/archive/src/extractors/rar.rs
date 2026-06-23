@@ -40,18 +40,18 @@ pub fn list_rar_entries<P: AsRef<Path>>(
                 let last_modified = rar_time_to_string(header.file_time);
 
                 entries.push(Extract::new(name, size, last_modified, is_dir));
-            }
+            },
             Err(e) => {
                 log::warn!("Failed to read RAR entry: {}", e);
                 continue;
-            }
+            },
         }
     }
 
     Ok(entries)
 }
 
-/// 检测 RAR 文件是否需要密码
+/// 检测 RAR 文件是否需要密码（仅头部加密时才需要密码才能列出文件）
 pub fn is_rar_password_protected<P: AsRef<Path>>(path: P) -> Result<bool, ArchiveError> {
     let path = path.as_ref();
     let path_str = path.to_string_lossy().to_string();
@@ -59,25 +59,14 @@ pub fn is_rar_password_protected<P: AsRef<Path>>(path: P) -> Result<bool, Archiv
     let archive = unrar::Archive::new(&path_str);
     match archive.open_for_listing() {
         Err(e) if e.code == unrar::error::Code::MissingPassword => Ok(true),
-        Err(e) => Err(ArchiveError::Other(format!(
-            "Failed to open RAR archive: {}",
-            e
-        ))),
-        Ok(mut open_archive) => {
-            if open_archive.has_encrypted_headers() {
-                return Ok(true);
-            }
-            let to_archive_err = |e: unrar::error::UnrarError| {
-                ArchiveError::Other(format!("Failed to read RAR entry: {}", e))
-            };
-            while let Some(header) = open_archive.read_header().map_err(&to_archive_err)? {
-                if header.entry().is_encrypted() {
-                    return Ok(true);
-                }
-                open_archive = header.skip().map_err(&to_archive_err)?;
-            }
-            Ok(false)
-        }
+        Err(e) => {
+            log::error!("Failed to open RAR archive: {}", e);
+            Err(ArchiveError::Other(format!(
+                "Failed to open RAR archive: {}",
+                e
+            )))
+        },
+        Ok(open_archive) => Ok(open_archive.has_encrypted_headers()),
     }
 }
 /// RAR header.file_time 是 DOS date/time 打包格式:
