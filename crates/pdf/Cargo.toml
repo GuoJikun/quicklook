@@ -19,6 +19,7 @@ base64 = { version = "0.22", features = [] }
 image = { version = "0.25", features = ["png"] }
 log = "0.4"
 quicklook-error = { path = "../error" }
+serde = { version = "1.0", features = ["derive"] }
 
 [package.metadata.vcpkg]
 git = "https://github.com/microsoft/vcpkg"

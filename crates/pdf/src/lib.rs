@@ -40,8 +40,8 @@ pub fn render_page_base64(
     let height = (page.height().value * scale) as u16;
 
     let config = PdfRenderConfig::new()
-        .set_target_width(width)
-        .set_maximum_height(height);
+        .set_target_width(width.into())
+        .set_maximum_height(height.into());
 
     let bitmap = page
         .render_with_config(&config)
