@@ -3,11 +3,18 @@ use chrono::NaiveDate;
 use std::path::Path;
 
 /// 列举 RAR 文件条目
-pub fn list_rar_entries<P: AsRef<Path>>(path: P) -> Result<Vec<Extract>, ArchiveError> {
+pub fn list_rar_entries<P: AsRef<Path>>(
+    path: P,
+    password: Option<&str>,
+) -> Result<Vec<Extract>, ArchiveError> {
     let path = path.as_ref();
     let path_str = path.to_string_lossy().to_string();
 
-    let archive = unrar::Archive::new(&path_str)
+    let archive = match password {
+        Some(pw) => unrar::Archive::with_password(&path_str, pw.as_bytes()),
+        None => unrar::Archive::new(&path_str),
+    };
+    let archive = archive
         .open_for_listing()
         .map_err(|e| ArchiveError::Other(format!("Failed to open RAR archive: {}", e)))?;
 
@@ -33,18 +40,35 @@ pub fn list_rar_entries<P: AsRef<Path>>(path: P) -> Result<Vec<Extract>, Archive
                 let last_modified = rar_time_to_string(header.file_time);
 
                 entries.push(Extract::new(name, size, last_modified, is_dir));
-            }
+            },
             Err(e) => {
                 log::warn!("Failed to read RAR entry: {}", e);
                 continue;
-            }
+            },
         }
     }
 
     Ok(entries)
 }
 
-/// 将 RAR 文件时间转换为 yyyy-MM-dd HH:mm:ss 格式
+/// 检测 RAR 文件是否需要密码（仅头部加密时才需要密码才能列出文件）
+pub fn is_rar_password_protected<P: AsRef<Path>>(path: P) -> Result<bool, ArchiveError> {
+    let path = path.as_ref();
+    let path_str = path.to_string_lossy().to_string();
+
+    let archive = unrar::Archive::new(&path_str);
+    match archive.open_for_listing() {
+        Err(e) if e.code == unrar::error::Code::MissingPassword => Ok(true),
+        Err(e) => {
+            log::error!("Failed to open RAR archive: {}", e);
+            Err(ArchiveError::Other(format!(
+                "Failed to open RAR archive: {}",
+                e
+            )))
+        },
+        Ok(open_archive) => Ok(open_archive.has_encrypted_headers()),
+    }
+}
 /// RAR header.file_time 是 DOS date/time 打包格式:
 ///   高 16 位: 日期 (bit 15-9: 年-1980, bit 8-5: 月, bit 4-0: 日)
 ///   低 16 位: 时间 (bit 15-11: 时, bit 10-5: 分, bit 4-0: 秒/2)

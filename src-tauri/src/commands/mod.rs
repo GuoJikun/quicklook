@@ -6,7 +6,7 @@ pub mod pdf;
 pub mod system;
 pub mod video;
 
-pub use archive::archive;
+pub use archive::{archive, archive_is_password_protected};
 pub use audio::{parse_lrc, read_audio_info};
 pub use document::document;
 pub use image::{clear_image_cache, convert_to_png};

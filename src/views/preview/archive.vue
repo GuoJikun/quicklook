@@ -6,6 +6,7 @@ import type { FileInfo } from '@/utils/typescript'
 import { invoke } from '@tauri-apps/api/core'
 import { formatBytes } from '@/utils/index'
 import { ArrowRight } from '@element-plus/icons-vue'
+import { ElMessageBox } from 'element-plus'
 
 const route = useRoute()
 
@@ -76,15 +77,52 @@ function buildFileTree(files: ExtractedFile[]): FileNode {
 
 const fileInfo = ref<FileInfo>()
 const content = ref<Array<FileNode>>()
+const loading = ref(true)
+
+async function loadArchive(path: string, mode: string, password?: string) {
+    const txt: Array<ExtractedFile> = await invoke('archive', {
+        path,
+        mode,
+        password: password ?? null,
+    })
+    const treeData = buildFileTree(txt)
+    content.value = treeData.children as Array<FileNode>
+}
 
 onMounted(async () => {
     fileInfo.value = route?.query as unknown as FileInfo
     const val = fileInfo.value.path as string
     const mode = fileInfo.value.extension as string
-    const txt: Array<ExtractedFile> = await invoke('archive', { path: val, mode })
-    const treeData = buildFileTree(txt)
 
-    content.value = treeData.children as Array<FileNode> // 根节点是虚拟的，所以直接取子节点
+    try {
+        const isProtected = await invoke<boolean>('archive_is_password_protected', { path: val })
+        if (isProtected) {
+            try {
+                const { value } = await ElMessageBox.prompt('该压缩文件需要密码才能查看', '输入密码', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    inputType: 'password',
+                    inputPlaceholder: '请输入密码',
+                    closeOnClickModal: false,
+                })
+                await loadArchive(val, mode, value ?? undefined)
+            } catch (err: unknown) {
+                // ElMessageBox.prompt 取消/关闭会 reject: 'cancel' | 'close'
+                if (err === 'cancel' || err === 'close') {
+                    // 用户点击取消，不做任何操作
+                    return
+                }
+                const msg = err instanceof Error ? err.message : String(err)
+                await ElMessageBox.alert(msg, '解压失败')
+            }
+        } else {
+            await loadArchive(val, mode)
+        }
+    } catch {
+        // 其他错误静默处理
+    } finally {
+        loading.value = false
+    }
 })
 
 const treeProps = {
@@ -94,7 +132,7 @@ const treeProps = {
 </script>
 
 <template>
-    <LayoutPreview :file="fileInfo">
+    <LayoutPreview :file="fileInfo" :loading="loading">
         <div class="text-support">
             <div class="text-support-inner">
                 <el-tree
