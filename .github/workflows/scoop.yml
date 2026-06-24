@@ -3,6 +3,11 @@ name: Update Scoop Manifest
 on:
   release:
     types: [released]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号（如 0.21.0）'
+        required: true
 
 jobs:
   update-scoop:
@@ -19,14 +24,24 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const release = context.payload.release;
-            const x64Asset = release.assets.find(a => a.name.includes('x64-setup.exe'));
-            const arm64Asset = release.assets.find(a => a.name.includes('arm64-setup.exe'));
-            const version = release.tag_name.replace('v', '');
+            let version, x64_url, arm64_url;
+
+            if (context.payload.release) {
+              const release = context.payload.release;
+              const x64Asset = release.assets.find(a => a.name.includes('x64-setup.exe'));
+              const arm64Asset = release.assets.find(a => a.name.includes('arm64-setup.exe'));
+              version = release.tag_name.replace('v', '');
+              x64_url = x64Asset.browser_download_url;
+              arm64_url = arm64Asset.browser_download_url;
+            } else {
+              version = '${{ github.event.inputs.version }}';
+              x64_url = `https://github.com/GuoJikun/quicklook/releases/download/v${version}/quicklook_${version}_x64-setup.exe`;
+              arm64_url = `https://github.com/GuoJikun/quicklook/releases/download/v${version}/quicklook_${version}_arm64-setup.exe`;
+            }
 
             core.setOutput('version', version);
-            core.setOutput('x64_url', x64Asset.browser_download_url);
-            core.setOutput('arm64_url', arm64Asset.browser_download_url);
+            core.setOutput('x64_url', x64_url);
+            core.setOutput('arm64_url', arm64_url);
 
       - name: Download and hash installers
         id: hash
