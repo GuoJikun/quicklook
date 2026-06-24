@@ -97,14 +97,18 @@ jobs:
           sed -i "s|PLACEHOLDER_ARM64_HASH|${{ steps.hash.outputs.arm64_hash }}|g" bucket/quicklook.json
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v7
-        with:
-          token: ${{ secrets.WINGET_TOKEN }}
-          commit-message: "quicklook: update to v${{ steps.release.outputs.version }}"
-          title: "quicklook: update to v${{ steps.release.outputs.version }}"
-          body: |
-            Automated update of QuickLook to v${{ steps.release.outputs.version }}
-
-            Release: https://github.com/GuoJikun/quicklook/releases/tag/v${{ steps.release.outputs.version }}
-          branch: quicklook-${{ steps.release.outputs.version }}
-          base: master
+        env:
+          GH_TOKEN: ${{ secrets.WINGET_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b quicklook-${{ steps.release.outputs.version }}
+          git add bucket/quicklook.json
+          git commit -m "quicklook: update to v${{ steps.release.outputs.version }}"
+          git push origin quicklook-${{ steps.release.outputs.version }}
+          gh pr create \
+            --repo ScoopInstaller/Extras \
+            --head GuoJikun:quicklook-${{ steps.release.outputs.version }} \
+            --base master \
+            --title "quicklook: update to v${{ steps.release.outputs.version }}" \
+            --body "Automated update of QuickLook to v${{ steps.release.outputs.version }}\n\nRelease: https://github.com/GuoJikun/quicklook/releases/tag/v${{ steps.release.outputs.version }}"
