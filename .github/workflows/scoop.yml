@@ -64,10 +64,10 @@ jobs:
       - name: Write manifest
         run: |
           mkdir -p bucket
-          cat > bucket/quicklook.json << 'MANIFEST'
+          cat > bucket/quicklook-tauri.json << 'MANIFEST'
           {
             "version": "PLACEHOLDER_VERSION",
-            "description": "Windows 平台的文件快速预览工具，类似 macOS Quick Look",
+            "description": "Windows 平台的文件快速预览工具，类似 macOS QuickLook",
             "homepage": "https://github.com/GuoJikun/quicklook",
             "license": "Apache-2.0",
             "architecture": {
@@ -100,11 +100,11 @@ jobs:
           }
           MANIFEST
 
-          sed -i "s|PLACEHOLDER_VERSION|${{ steps.release.outputs.version }}|g" bucket/quicklook.json
-          sed -i "s|PLACEHOLDER_X64_URL|${{ steps.release.outputs.x64_url }}|g" bucket/quicklook.json
-          sed -i "s|PLACEHOLDER_X64_HASH|${{ steps.hash.outputs.x64_hash }}|g" bucket/quicklook.json
-          sed -i "s|PLACEHOLDER_ARM64_URL|${{ steps.release.outputs.arm64_url }}|g" bucket/quicklook.json
-          sed -i "s|PLACEHOLDER_ARM64_HASH|${{ steps.hash.outputs.arm64_hash }}|g" bucket/quicklook.json
+          sed -i "s|PLACEHOLDER_VERSION|${{ steps.release.outputs.version }}|g" bucket/quicklook-tauri.json
+          sed -i "s|PLACEHOLDER_X64_URL|${{ steps.release.outputs.x64_url }}|g" bucket/quicklook-tauri.json
+          sed -i "s|PLACEHOLDER_X64_HASH|${{ steps.hash.outputs.x64_hash }}|g" bucket/quicklook-tauri.json
+          sed -i "s|PLACEHOLDER_ARM64_URL|${{ steps.release.outputs.arm64_url }}|g" bucket/quicklook-tauri.json
+          sed -i "s|PLACEHOLDER_ARM64_HASH|${{ steps.hash.outputs.arm64_hash }}|g" bucket/quicklook-tauri.json
 
       - name: Create Pull Request
         env:
@@ -112,13 +112,13 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -b quicklook-${{ steps.release.outputs.version }}
-          git add bucket/quicklook.json
-          git commit -m "quicklook: update to v${{ steps.release.outputs.version }}"
-          git push origin quicklook-${{ steps.release.outputs.version }}
+          git checkout -b quicklook-tauri-${{ steps.release.outputs.version }}
+          git add bucket/quicklook-tauri.json
+          git commit -m "quicklook-tauri: update to v${{ steps.release.outputs.version }}"
+          git push origin quicklook-tauri-${{ steps.release.outputs.version }}
           gh pr create \
             --repo ScoopInstaller/Extras \
-            --head GuoJikun:quicklook-${{ steps.release.outputs.version }} \
+            --head GuoJikun:quicklook-tauri-${{ steps.release.outputs.version }} \
             --base master \
-            --title "quicklook: update to v${{ steps.release.outputs.version }}" \
+            --title "quicklook-tauri: update to v${{ steps.release.outputs.version }}" \
             --body "Automated update of QuickLook to v${{ steps.release.outputs.version }}\n\nRelease: https://github.com/GuoJikun/quicklook/releases/tag/v${{ steps.release.outputs.version }}"
