@@ -19,6 +19,16 @@ jobs:
           repository: GuoJikun/Extras
           token: ${{ secrets.WINGET_TOKEN }}
 
+      - name: Sync fork with upstream
+        env:
+          GH_TOKEN: ${{ secrets.WINGET_TOKEN }}
+        run: |
+          git remote add upstream https://github.com/ScoopInstaller/Extras.git
+          git fetch upstream
+          git checkout master
+          git reset --hard upstream/master
+          git push origin master --force
+
       - name: Get release info
         id: release
         uses: actions/github-script@v7
