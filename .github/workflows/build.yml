@@ -88,5 +88,5 @@ jobs:
           tagName: v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version
           releaseName: 'v__VERSION__'
           releaseBody: "${{ steps.get_release.outputs.result }}"
-          releaseDraft: true
+          releaseDraft: false
           prerelease: true
