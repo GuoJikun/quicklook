@@ -170,6 +170,19 @@ const handleClearImageCache = async () => {
         clearingImageCache.value = false
     }
 }
+
+const clearingPdfCache = ref<boolean>(false)
+const handleClearPdfCache = async () => {
+    clearingPdfCache.value = true
+    try {
+        const removed = await invoke<number>('clear_pdf_cache')
+        ElMessage.success(`已清理 ${removed} 个 PDF 缓存文件`)
+    } catch (e) {
+        ElMessage.error(`清理 PDF 缓存失败：${e}`)
+    } finally {
+        clearingPdfCache.value = false
+    }
+}
 </script>
 
 <template>
@@ -335,6 +348,16 @@ const handleClearImageCache = async () => {
                                 <div class="cache-item-desc">由图片预览（含 PSD）转码生成的临时 PNG 缓存文件。</div>
                             </div>
                             <el-button type="danger" plain :loading="clearingImageCache" @click="handleClearImageCache">
+                                <el-icon><Delete /></el-icon>
+                                <span style="margin-left: 4px">清理缓存</span>
+                            </el-button>
+                        </div>
+                        <div class="cache-item">
+                            <div class="cache-item-info">
+                                <div class="cache-item-title">PDF 渲染缓存</div>
+                                <div class="cache-item-desc">由 PDF 预览渲染生成的临时 PNG 缓存文件。</div>
+                            </div>
+                            <el-button type="danger" plain :loading="clearingPdfCache" @click="handleClearPdfCache">
                                 <el-icon><Delete /></el-icon>
                                 <span style="margin-left: 4px">清理缓存</span>
                             </el-button>

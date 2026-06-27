@@ -1,5 +1,6 @@
 use crate::error::QuickLookError;
 use crate::helper::{ffmp, monitor, win};
+use quicklook_pdf as pdf_helper;
 use log::LevelFilter;
 use tauri::{command, AppHandle, Manager};
 use windows::Win32::Foundation::HWND;
@@ -36,13 +37,14 @@ pub fn get_default_program_name(path: &str) -> Result<String, QuickLookError> {
     win::get_default_program_name(path)
 }
 
-/// 汇总清理所有 quicklook 产生的缓存，包含 ffmpeg HLS 转码缓存和图片转码缓存。
+/// 汇总清理所有 quicklook 产生的缓存，包含 ffmpeg HLS 转码缓存、图片转码缓存和 PDF 渲染缓存。
 /// 返回被删除的目录/文件总数量。
 #[command]
 pub fn clear_cache() -> Result<u32, QuickLookError> {
     let mut total = 0u32;
     total += ffmp::clear_ffmpeg_cache()?;
     total += crate::commands::image::clear_image_cache()?;
+    total += pdf_helper::clear_pdf_cache()?;
     log::info!("缓存清理完成，共删除 {} 个目录/文件", total);
     Ok(total)
 }

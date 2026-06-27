@@ -1,0 +1,21 @@
+[package]
+name = "quicklook-pdf"
+version = "0.1.0"
+description = "PDF rendering for QuickLook"
+authors = ["GuoJikun <guojikun486546@163.com>"]
+license = ""
+repository = "https://github.com/GuoJikun/quicklook.git"
+homepage = "https://github.com/GuoJikun/quicklook"
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+name = "quicklook_pdf"
+crate-type = ["rlib"]
+
+[dependencies]
+pdfium-render = "0.9"
+image = "0.25"
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+quicklook-error = { path = "../error" }
