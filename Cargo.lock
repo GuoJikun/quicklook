@@ -130,7 +130,6 @@ dependencies = [
  "quicklook-docs",
  "quicklook-error",
  "quicklook-image",
- "quicklook-pdf",
  "quicklook-video",
  "serde",
  "serde_json",
@@ -4448,7 +4447,10 @@ version = "0.1.0"
 dependencies = [
  "calamine",
  "csv",
+ "image",
  "log",
+ "pdfium-render",
+ "quicklook-error",
  "serde",
 ]
 
@@ -4470,17 +4472,6 @@ dependencies = [
  "log",
  "psd",
  "quicklook-error",
-]
-
-[[package]]
-name = "quicklook-pdf"
-version = "0.1.0"
-dependencies = [
- "image",
- "log",
- "pdfium-render",
- "quicklook-error",
- "serde",
 ]
 
 [[package]]

@@ -1,7 +1,7 @@
 use tauri::command;
 
 use crate::error::QuickLookError;
-use quicklook_pdf as pdf_helper;
+use quicklook_docs::pdf as pdf_helper;
 
 /// 渲染 PDF 单页为 PNG。
 #[command(async)]

@@ -69,6 +69,5 @@ quicklook-audio = { path = "../crates/audio" }
 quicklook-image = { path = "../crates/image" }
 # FFmpeg video conversion
 quicklook-video = { path = "../crates/video" }
-# PDF rendering
-quicklook-pdf = { path = "../crates/pdf" }
+# PDF rendering (now in quicklook-docs)
 tokio = { version = "1", features = ["rt"] }

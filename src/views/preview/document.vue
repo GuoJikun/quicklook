@@ -7,6 +7,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { readFile } from '@tauri-apps/plugin-fs'
 
 import Excel from '@/components/document/excel.vue'
+import PdfViewer from './components/pdf-viewer.vue'
 import { renderAsync } from 'docx-preview'
 
 const route = useRoute()
@@ -23,6 +24,7 @@ interface Sheet {
 enum DocType {
     Excel = 'Excel',
     Docx = 'Docx',
+    Pdf = 'Pdf',
     Pptx = 'Pptx',
 }
 
@@ -49,6 +51,14 @@ const getDocxContent = async (path: string) => {
 onMounted(async () => {
     loading.value = true
     fileInfo.value = route?.query as unknown as FileInfo
+
+    // PDF 直接走 PdfViewer 组件
+    if (fileInfo.value.extension === 'pdf') {
+        type.value = DocType.Pdf
+        loading.value = false
+        return
+    }
+
     const val = fileInfo.value.path as string
     const docs: Docs = await invoke('document', { path: val, mode: fileInfo.value.extension })
     type.value = docs.Excel ? DocType.Excel : docs.Docx ? DocType.Docx : DocType.Pptx
@@ -71,7 +81,8 @@ onMounted(async () => {
     <LayoutPreview :file="fileInfo">
         <div class="text-support">
             <div class="text-support-inner" v-loading="loading">
-                <Excel v-if="type === DocType.Excel" :data="content as Array<Sheet>" />
+                <PdfViewer v-if="type === DocType.Pdf" :path="fileInfo!.path" />
+                <Excel v-else-if="type === DocType.Excel" :data="content as Array<Sheet>" />
                 <div v-else-if="type === DocType.Docx">
                     <div ref="docsRef"></div>
                     <div class="docx-style" ref="docsStyleRef"></div>

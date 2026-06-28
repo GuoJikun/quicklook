@@ -1,3 +1,5 @@
+pub mod pdf;
+
 use calamine::Reader;
 use serde::Serialize;
 use std::fs::File;
