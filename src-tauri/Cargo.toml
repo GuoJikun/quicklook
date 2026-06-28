@@ -69,5 +69,7 @@ quicklook-audio = { path = "../crates/audio" }
 quicklook-image = { path = "../crates/image" }
 # FFmpeg video conversion
 quicklook-video = { path = "../crates/video" }
+# Book format parsing (epub/mobi)
+quicklook-book = { path = "../crates/book" }
 # PDF rendering (now in quicklook-docs)
 tokio = { version = "1", features = ["rt"] }
