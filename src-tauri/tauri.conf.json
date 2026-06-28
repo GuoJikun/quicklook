@@ -43,7 +43,8 @@
       "icons/icon.ico"
     ],
     "resources": {
-      "resources/config.json": "config.json"
+      "resources/config.json": "config.json",
+      "dlls/pdfium.dll": "pdfium.dll"
     },
     "windows": {
       "digestAlgorithm": "sha256",

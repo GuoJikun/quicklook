@@ -276,7 +276,7 @@ static FILE_TYPE_MAPPING: LazyLock<HashMap<&'static str, &'static str>> =
             ("xps", "Archive"),  // XML Paper Specification
             ("oxps", "Archive"), // OpenXPS
             // 书籍文件
-            ("pdf", "Book"),
+            ("pdf", "Doc"),
             // 3D 模型文件
             ("gltf", "Model3D"),
             ("glb", "Model3D"),

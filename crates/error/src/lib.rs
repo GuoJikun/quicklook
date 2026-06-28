@@ -63,6 +63,13 @@ pub enum QuickLookError {
     #[error("Windows API 错误: {0}")]
     WindowsApi(String),
 
+    // ── PDF ──────────────────────────────────────
+    #[error("PDF 渲染失败: {0}")]
+    PdfRendering(String),
+
+    #[error("PDF 大纲解析失败: {0}")]
+    PdfOutline(String),
+
     // ── 通用 ──────────────────────────────────────
     #[error("UTF-8 解码错误: {0}")]
     Utf8(String),
