@@ -30,11 +30,11 @@ pub fn get_mobi_info(path: &str) -> Result<MobiInfo, QuickLookError> {
     let author = book.author().unwrap_or_else(|| "未知作者".to_string());
     let description = book.description().unwrap_or_default();
 
-    // 尝试获取内容来判断是否为 HTML
+    // 尝试获取内容来判断是否为 HTML（使用 lossy 避免编码问题导致元数据获取失败）
     let is_html = book
-        .content_as_string()
-        .map(|c| c.trim_start().starts_with('<'))
-        .unwrap_or(false);
+        .content_as_string_lossy()
+        .trim_start()
+        .starts_with('<');
 
     log::info!(
         "[mobi] 解析完成: title={}, author={}, is_html={}",
@@ -46,7 +46,7 @@ pub fn get_mobi_info(path: &str) -> Result<MobiInfo, QuickLookError> {
     Ok(MobiInfo { title, author, description, is_html })
 }
 
-/// 读取 mobi 文件的完整 HTML 内容
+/// 读取 mobi 文件的完整 HTML 内容（先尝试严格解码，失败时回退到 lossy）
 pub fn get_mobi_content(path: &str) -> Result<String, QuickLookError> {
     log::info!("[mobi] get_mobi_content path={}", path);
 
@@ -57,14 +57,17 @@ pub fn get_mobi_content(path: &str) -> Result<String, QuickLookError> {
     let book = Mobi::from_path(path)
         .map_err(|e| QuickLookError::DocumentParse(format!("打开 mobi 失败: {}", e)))?;
 
-    let content = book
-        .content_as_string()
-        .map_err(|e| QuickLookError::DocumentParse(format!("读取 mobi 内容失败: {}", e)))?;
-
-    Ok(content)
+    // 先尝试严格解码，失败时回退到 lossy
+    match book.content_as_string() {
+        Ok(content) => Ok(content),
+        Err(_) => {
+            log::warn!("[mobi] 严格解码失败，使用 lossy 回退");
+            Ok(book.content_as_string_lossy())
+        }
+    }
 }
 
-/// 读取 mobi 文件的内容（容错版本，编码错误时返回 lossy 字符串）
+/// 直接以 lossy 方式读取 mobi 文件内容（无错误路径）
 pub fn get_mobi_content_lossy(path: &str) -> Result<String, QuickLookError> {
     log::info!("[mobi] get_mobi_content_lossy path={}", path);
 

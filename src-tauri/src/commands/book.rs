@@ -77,7 +77,7 @@ pub async fn get_mobi_content(
     path: String,
 ) -> Result<String, QuickLookError> {
     log::info!("[cmd] get_mobi_content path={}", path);
-    let result = tokio::task::spawn_blocking(move || mobi_helper::get_mobi_content_lossy(&path))
+    let result = tokio::task::spawn_blocking(move || mobi_helper::get_mobi_content(&path))
         .await
         .map_err(|e| QuickLookError::DocumentParse(format!("任务执行失败: {}", e)))?;
     match &result {

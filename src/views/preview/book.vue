@@ -35,7 +35,7 @@ interface MobiInfo {
     title: string
     author: string
     description: string
-    has_cover: boolean
+    is_html: boolean
 }
 
 // ── 状态 ──────────────────────────────────────
@@ -91,8 +91,6 @@ async function loadEpubChapter(path: string, index: number) {
             path,
             chapterIndex: index,
         })
-        console.log('loadEpubChapter', index, chapterHtml.value)
-
         currentChapterIndex.value = index
     } catch (e) {
         error.value = (e as Error)?.message || String(e)
@@ -139,7 +137,6 @@ function updateIframeSrcdoc() {
     if (!el) return
     const html = bookType.value === 'epub' ? chapterHtml.value : mobiHtml.value
 
-    console.log('updateIframeSrcdoc', html)
     el.srcdoc = `
         <!DOCTYPE html>
         <html>
@@ -242,6 +239,7 @@ onUnmounted(() => {
                         v-else
                         ref="iframeRef"
                         class="book-content__iframe"
+                        sandbox=""
                     ></iframe>
                 </div>
             </div>
