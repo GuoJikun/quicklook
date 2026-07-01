@@ -43,6 +43,11 @@
 - [calamine](https://github.com/tafia/calamine) — Excel 文件解析
 - [csv](https://github.com/BurntSushi/rust-csv) — CSV 文件解析
 
+**电子书解析（crates/book）**
+
+- [epub](https://crates.io/crates/epub) — EPUB 电子书解析（章节/目录/HTML 提取）
+- [mobi](https://crates.io/crates/mobi) — MOBI 电子书解析（元数据/HTML 内容）
+
 **音频元数据**
 
 - [lofty](https://github.com/Serial-ATA/lofty-rs) — 音频元数据读取
