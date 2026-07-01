@@ -59,6 +59,9 @@ const loading = ref(false)
 const error = ref('')
 const iframeRef = ref<HTMLIFrameElement>()
 
+// 请求序列号，用于丢弃过期响应（防止快速点击竞态）
+let chapterLoadSeq = 0
+
 // ── 工具函数 ──────────────────────────────────
 
 function detectBookType(path: string): 'epub' | 'mobi' {
@@ -84,17 +87,22 @@ async function loadEpubInfo(path: string) {
 }
 
 async function loadEpubChapter(path: string, index: number) {
+    const seq = ++chapterLoadSeq
     loading.value = true
     error.value = ''
     try {
-        chapterHtml.value = await invoke<string>('get_epub_chapter', {
+        const html = await invoke<string>('get_epub_chapter', {
             path,
             chapterIndex: index,
         })
+        if (seq !== chapterLoadSeq) return // 丢弃过期响应
+        chapterHtml.value = html
         currentChapterIndex.value = index
     } catch (e) {
+        if (seq !== chapterLoadSeq) return
         error.value = (e as Error)?.message || String(e)
     } finally {
+        if (seq !== chapterLoadSeq) return
         loading.value = false
         await nextTick()
         updateIframeSrcdoc()
