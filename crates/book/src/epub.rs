@@ -908,9 +908,11 @@ pub fn resolve_epub_link(
         let link_file_name = link_path.rsplit('/').next().unwrap_or(link_path);
         let ch_file_name = ch_file.rsplit('/').next().unwrap_or(ch_file);
 
-        // 策略 2: 带目录前缀匹配
+        // 策略 2: 带目录前缀匹配（处理 ./、../）
         let full_path = if current_dir.is_empty() {
             link_path.to_string()
+        } else if link_path.starts_with("./") || link_path.starts_with("../") {
+            resolve_path(&current_dir, link_path)
         } else {
             format!("{}/{}", current_dir, link_path)
         };
