@@ -83,10 +83,8 @@ async function loadEpubInfo(path: string) {
     try {
         epubInfo.value = await invoke<EpubInfo>('get_epub_info', { path })
         if (epubInfo.value.chapters.length > 0) {
-            // 如果有封面图片，跳过封面章节（通常是第0章）
-            const startIndex = epubInfo.value.cover_data ? 1 : 0
-            const actualIndex = Math.min(startIndex, epubInfo.value.chapters.length - 1)
-            await loadEpubChapter(path, actualIndex)
+            // 默认从第 0 章开始；封面通过侧边栏“封面”入口单独展示
+            await loadEpubChapter(path, 0)
         }
     } catch (e) {
         error.value = (e as Error)?.message || String(e)
