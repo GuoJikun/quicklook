@@ -1,5 +1,5 @@
-use iepub::prelude::*;
 use iepub::prelude::IError;
+use iepub::prelude::*;
 use quicklook_error::QuickLookError;
 use std::fs::File;
 use std::path::Path;
@@ -41,8 +41,7 @@ pub fn get_mobi_info(path: &str) -> Result<MobiInfo, QuickLookError> {
 
     let file = File::open(path)
         .map_err(|e| QuickLookError::DocumentParse(format!("打开 mobi 失败: {}", e)))?;
-    let mut reader = MobiReader::new(file)
-        .map_err(|e| map_iepub_error(path, "打开 mobi", e))?;
+    let mut reader = MobiReader::new(file).map_err(|e| map_iepub_error(path, "打开 mobi", e))?;
     let book = reader
         .load()
         .map_err(|e| map_iepub_error(path, "解析 mobi", e))?;
@@ -72,12 +71,7 @@ pub fn get_mobi_info(path: &str) -> Result<MobiInfo, QuickLookError> {
         is_html
     );
 
-    Ok(MobiInfo {
-        title,
-        author,
-        description,
-        is_html,
-    })
+    Ok(MobiInfo { title, author, description, is_html })
 }
 
 /// 读取 mobi 文件的完整 HTML 内容（拼接所有章节）
@@ -90,8 +84,7 @@ pub fn get_mobi_content(path: &str) -> Result<String, QuickLookError> {
 
     let file = File::open(path)
         .map_err(|e| QuickLookError::DocumentParse(format!("打开 mobi 失败: {}", e)))?;
-    let mut reader = MobiReader::new(file)
-        .map_err(|e| map_iepub_error(path, "打开 mobi", e))?;
+    let mut reader = MobiReader::new(file).map_err(|e| map_iepub_error(path, "打开 mobi", e))?;
     let book = reader
         .load()
         .map_err(|e| map_iepub_error(path, "解析 mobi", e))?;

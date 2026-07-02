@@ -1,7 +1,7 @@
 use crate::error::QuickLookError;
 use crate::helper::{ffmp, monitor, win};
-use quicklook_docs::pdf as pdf_helper;
 use log::LevelFilter;
+use quicklook_docs::pdf as pdf_helper;
 use tauri::{command, AppHandle, Manager};
 use windows::Win32::Foundation::HWND;
 

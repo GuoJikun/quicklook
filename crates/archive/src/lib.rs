@@ -10,7 +10,9 @@ pub use extractors::ar::list_ar_entries;
 pub use extractors::cpio::list_cpio_entries;
 pub use extractors::rar::{is_rar_password_protected, list_rar_entries};
 pub use extractors::sevenz::{is_7z_password_protected, list_7z_entries};
-pub use extractors::tar::{list_tar_bz2_entries, list_tar_entries, list_tar_gz_entries, list_tar_xz_entries};
+pub use extractors::tar::{
+    list_tar_bz2_entries, list_tar_entries, list_tar_gz_entries, list_tar_xz_entries,
+};
 pub use extractors::zip::{is_zip_password_protected, list_zip_entries, zip_extract};
 pub use extractors::zst::list_tar_zst_entries;
 
@@ -42,9 +44,7 @@ impl Extract {
     }
 
     /// 检测归档文件是否需要密码
-    pub fn is_password_protected<P: AsRef<Path>>(
-        archive_path: P,
-    ) -> Result<bool, ArchiveError> {
+    pub fn is_password_protected<P: AsRef<Path>>(archive_path: P) -> Result<bool, ArchiveError> {
         let path = archive_path.as_ref();
         let extension = path
             .extension()
@@ -56,10 +56,8 @@ impl Extract {
             "zip" => extractors::zip::is_zip_password_protected(path),
             "7z" => extractors::sevenz::is_7z_password_protected(path),
             "rar" => extractors::rar::is_rar_password_protected(path),
-            "jar" | "war" | "ear" | "apk" | "aar" | "whl" | "vsix" | "nupkg"
-            | "crx" | "xpi" | "egg" | "kra" | "xps" | "oxps" => {
-                extractors::zip::is_zip_password_protected(path)
-            },
+            "jar" | "war" | "ear" | "apk" | "aar" | "whl" | "vsix" | "nupkg" | "crx" | "xpi"
+            | "egg" | "kra" | "xps" | "oxps" => extractors::zip::is_zip_password_protected(path),
             // TAR/CPIO/AR 等格式不支持加密
             _ => Ok(false),
         }
@@ -89,10 +87,8 @@ impl Extract {
             "cpio" => extractors::cpio::list_cpio_entries(path)?,
             "ar" | "deb" | "a" => extractors::ar::list_ar_entries(path)?,
             // ZIP 本质但带特殊扩展名的格式
-            "jar" | "war" | "ear" | "apk" | "aar" | "whl" | "vsix" | "nupkg"
-            | "crx" | "xpi" | "egg" | "kra" | "xps" | "oxps" => {
-                extractors::zip::list_zip_entries(path, password)?
-            },
+            "jar" | "war" | "ear" | "apk" | "aar" | "whl" | "vsix" | "nupkg" | "crx" | "xpi"
+            | "egg" | "kra" | "xps" | "oxps" => extractors::zip::list_zip_entries(path, password)?,
             // 对于其他格式，返回错误
             _ => return Err(ArchiveError::UnsupportedFormat(extension)),
         };
@@ -125,10 +121,7 @@ impl Extract {
         root_items
     }
 
-    fn build_tree_recursive(
-        items: &mut Vec<Extract>,
-        dirs_map: &HashMap<String, Vec<Extract>>,
-    ) {
+    fn build_tree_recursive(items: &mut Vec<Extract>, dirs_map: &HashMap<String, Vec<Extract>>) {
         for item in items.iter_mut() {
             if item.dir {
                 let key = item.name.trim_end_matches('/');
@@ -200,9 +193,7 @@ pub extern "C" fn archive_free_string(s: *mut std::os::raw::c_char) {
 /// 检测归档文件是否需要密码（C ABI）
 /// 返回值: 1 = 需要密码, 0 = 不需要密码, -1 = 出错
 #[no_mangle]
-pub extern "C" fn archive_is_password_protected(
-    path: *const std::os::raw::c_char,
-) -> i32 {
+pub extern "C" fn archive_is_password_protected(path: *const std::os::raw::c_char) -> i32 {
     use std::ffi::CStr;
 
     if path.is_null() {
