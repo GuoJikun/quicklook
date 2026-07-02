@@ -189,7 +189,7 @@ function updateIframeSrcdoc() {
                     color: #2c2c2c;
                     max-width: 720px;
                     margin: 0 auto;
-                    font-size: 16px;
+                    font-size: ${fontSize.value}px;
                     -webkit-font-smoothing: antialiased;
                 }
 
