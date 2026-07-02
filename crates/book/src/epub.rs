@@ -473,10 +473,7 @@ fn map_iepub_error(_path: &str, context: &str, e: IError) -> QuickLookError {
 fn preload_chapters(path: &str, book: &mut EpubBook) -> Result<Vec<String>, QuickLookError> {
     let total = book.chapters().len();
 
-    // 清空旧缓存，确保使用最新的内联逻辑
-    if let Ok(mut cache) = EPUB_CONTENT_CACHE.lock() {
-        *cache = None;
-    }
+    // 注意：不要在每次预加载时清空全局缓存；缓存失效由 mtime 校验处理。
 
     // 构建资源映射表（图片、CSS 等）
     let resources = build_resource_map(book);
