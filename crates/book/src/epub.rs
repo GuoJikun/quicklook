@@ -62,7 +62,9 @@ fn guess_mime_type(file_name: &str) -> &'static str {
         "image/bmp"
     } else if lower.ends_with(".css") {
         "text/css"
-    } else if lower.ends_with(".ttf") || lower.ends_with(".otf") {
+    } else if lower.ends_with(".ttf") {
+        "font/ttf"
+    } else if lower.ends_with(".otf") {
         "font/otf"
     } else if lower.ends_with(".woff") {
         "font/woff"
