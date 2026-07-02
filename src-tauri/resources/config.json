@@ -292,10 +292,12 @@
         "oxps"
     ],
     "preview.book": [
-        "pdf"
+        "epub",
+        "mobi"
     ],
     "preview.book.checked": [
-        "pdf"
+        "epub",
+        "mobi"
     ],
     "preview.model": [
         "gltf",

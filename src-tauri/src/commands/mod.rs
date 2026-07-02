@@ -1,5 +1,6 @@
 pub mod archive;
 pub mod audio;
+pub mod book;
 pub mod document;
 pub mod image;
 pub mod pdf;
@@ -8,6 +9,9 @@ pub mod video;
 
 pub use archive::{archive, archive_is_password_protected};
 pub use audio::{parse_lrc, read_audio_info};
+pub use book::{
+    get_epub_chapter, get_epub_info, get_mobi_content, get_mobi_info, resolve_epub_link,
+};
 pub use document::document;
 pub use image::{clear_image_cache, convert_to_png};
 pub use pdf::{clear_pdf_cache, get_pdf_outline, get_pdf_page_count, render_pdf_page};

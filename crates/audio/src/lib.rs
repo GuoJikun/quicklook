@@ -59,7 +59,8 @@ pub struct Lrc {
 
 #[allow(unused)]
 pub fn parse_lrc(path: &str) -> Result<Lrc, QuickLookError> {
-    let lrc_content = std::fs::read_to_string(path).map_err(|e| QuickLookError::Io(e.to_string()))?;
+    let lrc_content =
+        std::fs::read_to_string(path).map_err(|e| QuickLookError::Io(e.to_string()))?;
     let mut lrc = Lrc {
         title: None,
         offset: None,

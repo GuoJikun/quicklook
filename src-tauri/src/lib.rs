@@ -14,9 +14,10 @@ use tauri_plugin_store::StoreExt;
 
 use commands::{
     archive, archive_is_password_protected, cancel_video_conversion, check_ffmpeg, clear_cache,
-    clear_image_cache, clear_pdf_cache, convert_video_to_hls, convert_to_png, document,
-    get_default_program_name, get_monitor_info, get_pdf_outline, get_pdf_page_count, parse_lrc,
-    read_audio_info, render_pdf_page, set_log_level, show_open_with_dialog,
+    clear_image_cache, clear_pdf_cache, convert_to_png, convert_video_to_hls, document,
+    get_default_program_name, get_epub_chapter, get_epub_info, get_mobi_content, get_mobi_info,
+    get_monitor_info, get_pdf_outline, get_pdf_page_count, parse_lrc, read_audio_info,
+    render_pdf_page, resolve_epub_link, set_log_level, show_open_with_dialog,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -132,6 +133,11 @@ pub fn run() {
             get_pdf_page_count,
             get_pdf_outline,
             clear_pdf_cache,
+            get_epub_info,
+            get_epub_chapter,
+            resolve_epub_link,
+            get_mobi_info,
+            get_mobi_content,
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -66,54 +66,53 @@ impl File {
 }
 
 /// 无后缀文件名 → Shiki 语言映射
-static BUILD_NAME_TO_LANG: LazyLock<HashMap<&'static str, &'static str>> =
-    LazyLock::new(|| {
-        HashMap::from([
-            // --- 文档类 ---
-            ("README", "markdown"),
-            ("CHANGELOG", "markdown"),
-            ("TODO", "markdown"),
-            ("LICENSE", "text"),
-            ("COPYING", "text"),
-            ("AUTHORS", "text"),
-            ("CONTRIBUTORS", "text"),
-            // --- 构建工具 ---
-            ("Makefile", "makefile"),
-            ("Dockerfile", "docker"),
-            ("Jenkinsfile", "groovy"),
-            ("Rakefile", "ruby"),
-            ("Gemfile", "ruby"),
-            ("Capfile", "ruby"),
-            ("Podfile", "ruby"),
-            ("Fastfile", "ruby"),
-            ("Guardfile", "ruby"),
-            ("Brewfile", "ruby"),
-            ("Procfile", "yaml"),
-            ("Vagrantfile", "ruby"),
-            ("Caskfile", "ruby"),
-            ("Appfile", "ruby"),
-            ("Dangerfile", "ruby"),
-            ("Deliverfile", "ruby"),
-            ("Snapfile", "ruby"),
-            // --- 配置/环境 ---
-            (".npmrc", "ini"),
-            (".yarnrc", "ini"),
-            (".editorconfig", "ini"),
-            (".gitconfig", "ini"),
-            (".env", "ini"),
-            // --- Shell 环境 ---
-            (".bashrc", "bash"),
-            (".zshrc", "bash"),
-            (".profile", "bash"),
-            (".bash_profile", "bash"),
-            // --- 其他特殊 ---
-            ("PKGBUILD", "bash"),     // Arch Linux
-            ("Justfile", "makefile"), // just 任务文件
-            ("Snakefile", "python"),  // Snakemake
-            ("BUILD", "python"),      // Bazel
-            ("WORKSPACE", "python"),  // Bazel
-        ])
-    });
+static BUILD_NAME_TO_LANG: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| {
+    HashMap::from([
+        // --- 文档类 ---
+        ("README", "markdown"),
+        ("CHANGELOG", "markdown"),
+        ("TODO", "markdown"),
+        ("LICENSE", "text"),
+        ("COPYING", "text"),
+        ("AUTHORS", "text"),
+        ("CONTRIBUTORS", "text"),
+        // --- 构建工具 ---
+        ("Makefile", "makefile"),
+        ("Dockerfile", "docker"),
+        ("Jenkinsfile", "groovy"),
+        ("Rakefile", "ruby"),
+        ("Gemfile", "ruby"),
+        ("Capfile", "ruby"),
+        ("Podfile", "ruby"),
+        ("Fastfile", "ruby"),
+        ("Guardfile", "ruby"),
+        ("Brewfile", "ruby"),
+        ("Procfile", "yaml"),
+        ("Vagrantfile", "ruby"),
+        ("Caskfile", "ruby"),
+        ("Appfile", "ruby"),
+        ("Dangerfile", "ruby"),
+        ("Deliverfile", "ruby"),
+        ("Snapfile", "ruby"),
+        // --- 配置/环境 ---
+        (".npmrc", "ini"),
+        (".yarnrc", "ini"),
+        (".editorconfig", "ini"),
+        (".gitconfig", "ini"),
+        (".env", "ini"),
+        // --- Shell 环境 ---
+        (".bashrc", "bash"),
+        (".zshrc", "bash"),
+        (".profile", "bash"),
+        (".bash_profile", "bash"),
+        // --- 其他特殊 ---
+        ("PKGBUILD", "bash"),     // Arch Linux
+        ("Justfile", "makefile"), // just 任务文件
+        ("Snakefile", "python"),  // Snakemake
+        ("BUILD", "python"),      // Bazel
+        ("WORKSPACE", "python"),  // Bazel
+    ])
+});
 
 /// 仅在文件没有后缀时调用
 pub fn detect_language_no_ext(file_name: &str) -> String {
@@ -158,9 +157,15 @@ pub fn get_file_info(
 
     // 如果内置映射表中没有匹配，检查用户自定义扩展名
     let file_type_opt = file_type_opt.or_else(|| {
-        if custom_code_exts.iter().any(|e| e.eq_ignore_ascii_case(&extension)) {
+        if custom_code_exts
+            .iter()
+            .any(|e| e.eq_ignore_ascii_case(&extension))
+        {
             Some("Code".to_string())
-        } else if custom_video_exts.iter().any(|e| e.eq_ignore_ascii_case(&extension)) {
+        } else if custom_video_exts
+            .iter()
+            .any(|e| e.eq_ignore_ascii_case(&extension))
+        {
             Some("Video".to_string())
         } else {
             None
@@ -181,173 +186,174 @@ pub fn get_file_info(
 }
 
 // 返回一个文件扩展名到文件类型的映射
-static FILE_TYPE_MAPPING: LazyLock<HashMap<&'static str, &'static str>> =
-    LazyLock::new(|| {
-        HashMap::from([
-            // md
-            ("markdown", "Markdown"),
-            ("md", "Markdown"),
-            // DOC 文件
-            // ("doc", "Doc"),
-            ("docx", "Doc"),
-            ("xls", "Doc"),
-            ("xlsx", "Doc"),
-            ("xlsm", "Doc"),
-            ("xlsb", "Doc"),
-            ("xla", "Doc"),
-            ("xlam", "Doc"),
-            ("ods", "Doc"),
-            ("csv", "Doc"),
-            // ("ppt", "Doc"),
-            // ("pptx", "Doc"),
-            // 字体文件
-            ("ttf", "Font"),
-            ("otf", "Font"),
-            ("woff2", "Font"),
-            ("woff", "Font"),
-            // 图片文件
-            ("jpg", "Image"),
-            ("jpeg", "Image"),
-            ("png", "Image"),
-            ("gif", "Image"),
-            ("webp", "Image"),
-            ("bmp", "Image"),
-            ("ico", "Image"),
-            ("svg", "Image"),
-            ("apng", "Image"),
-            ("psd", "Image"),
-            ("tiff", "Image"),
-            ("tif", "Image"),
-            ("tga", "Image"),
-            ("pbm", "Image"),
-            ("pgm", "Image"),
-            ("ppm", "Image"),
-            ("qoi", "Image"),
-            ("exr", "Image"),
-            ("heic", "Image"),
-            ("heif", "Image"),
-            ("jxl", "Image"),
-            // 视频文件
-            ("mp4", "Video"),
-            ("webm", "Video"),
-            ("mkv", "Video"),
-            ("avi", "Video"),
-            ("mov", "Video"),
-            ("wmv", "Video"),
-            ("mpg", "Video"),
-            ("mpeg", "Video"),
-            ("m4v", "Video"),
-            ("3gp", "Video"),
-            ("3g2", "Video"),
-            // 音频文件
-            ("mp3", "Audio"),
-            ("ogg", "Audio"),
-            ("m4a", "Audio"),
-            // 压缩文件
-            ("7z", "Archive"),
-            ("zip", "Archive"),
-            ("rar", "Archive"),
-            ("tar", "Archive"),
-            ("gz", "Archive"),
-            ("tgz", "Archive"),  // tar.gz 的简写
-            ("bz2", "Archive"),  // bzip2 压缩文件
-            ("tbz2", "Archive"), // tar.bz2 的简写
-            ("xz", "Archive"),   // xz 压缩文件
-            ("txz", "Archive"),  // tar.xz 的简写
-            ("zst", "Archive"),  // zstandard 压缩文件
-            ("tzst", "Archive"), // tar.zst 的简写
-            ("cpio", "Archive"), // CPIO 归档
-            ("ar", "Archive"),   // Unix ar 归档
-            ("deb", "Archive"),  // Debian 软件包（外层 ar）
-            ("a", "Archive"),    // 静态库
-            // ZIP 本质但带特殊扩展名
-            ("jar", "Archive"),  // Java 归档
-            ("war", "Archive"),  // Java Web 归档
-            ("ear", "Archive"),  // Java Enterprise 归档
-            ("apk", "Archive"),  // Android 应用包
-            ("aar", "Archive"),  // Android 归档
-            ("whl", "Archive"),  // Python wheel
-            ("vsix", "Archive"), // VS Code 扩展
-            ("nupkg", "Archive"),// NuGet 包
-            ("crx", "Archive"),  // Chrome 扩展
-            ("xpi", "Archive"),  // Firefox 扩展
-            ("egg", "Archive"),  // Python egg
-            ("kra", "Archive"),  // Krita 文档
-            ("xps", "Archive"),  // XML Paper Specification
-            ("oxps", "Archive"), // OpenXPS
-            // 书籍文件
-            ("pdf", "Doc"),
-            // 3D 模型文件
-            ("gltf", "Model3D"),
-            ("glb", "Model3D"),
-            ("stl", "Model3D"),
-            ("obj", "Model3D"),
-            ("ply", "Model3D"),
-            ("fbx", "Model3D"),
-            ("3mf", "Model3D"),
-            ("dae", "Model3D"),
-            ("3ds", "Model3D"),
-            ("amf", "Model3D"),
-            ("wrl", "Model3D"),
-            ("lwo", "Model3D"),
-            ("lws", "Model3D"),
-            // 代码文件
-            ("txt", "Code"),
-            ("cpp", "Code"),
-            ("js", "Code"),
-            ("mjs", "Code"),
-            ("cjs", "Code"),
-            ("ts", "Code"),
-            ("mts", "Code"),
-            ("tsx", "Code"),
-            ("rs", "Code"),
-            ("py", "Code"),
-            ("java", "Code"),
-            ("html", "Code"),
-            ("css", "Code"),
-            ("scss", "Code"),
-            ("sass", "Code"),
-            ("less", "Code"),
-            ("styl", "Code"),
-            ("c", "Code"),
-            ("cs", "Code"),
-            ("go", "Code"),
-            ("vue", "Code"),
-            ("svelte", "Code"),
-            ("astro", "Code"),
-            ("jsx", "Code"),
-            ("json", "Code"),
-            ("yml", "Code"),
-            ("yaml", "Code"),
-            ("toml", "Code"),
-            ("bat", "Code"),
-            ("ps1", "Code"),
-            ("ini", "Code"),
-            ("swift", "Code"),
-            ("kt", "Code"),
-            ("php", "Code"),
-            ("h", "Code"),
-            ("xml", "Code"),
-            ("sql", "Code"),
-            ("pug", "Code"),
-            ("lua", "Code"),
-            ("r", "Code"),
-            ("d", "Code"),
-            ("vb", "Code"),
-            ("pas", "Code"),
-            ("scala", "Code"),
-            ("dart", "Code"),
-            ("rb", "Code"),
-            ("m", "Code"),
-            ("log", "Code"),
-            ("bash", "Code"),
-            ("zig", "Code"),
-            // 应用程序文件
-            // ("exe", "App"),
-            // ("dmg", "App"),
-            // ("deb", "App"),
-            // ("rpm", "App"),
-            // ("apk", "App"),
-            // ("appimage", "App"),
-        ])
-    });
+static FILE_TYPE_MAPPING: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| {
+    HashMap::from([
+        // md
+        ("markdown", "Markdown"),
+        ("md", "Markdown"),
+        // DOC 文件
+        // ("doc", "Doc"),
+        ("docx", "Doc"),
+        ("xls", "Doc"),
+        ("xlsx", "Doc"),
+        ("xlsm", "Doc"),
+        ("xlsb", "Doc"),
+        ("xla", "Doc"),
+        ("xlam", "Doc"),
+        ("ods", "Doc"),
+        ("csv", "Doc"),
+        // ("ppt", "Doc"),
+        // ("pptx", "Doc"),
+        // 字体文件
+        ("ttf", "Font"),
+        ("otf", "Font"),
+        ("woff2", "Font"),
+        ("woff", "Font"),
+        // 图片文件
+        ("jpg", "Image"),
+        ("jpeg", "Image"),
+        ("png", "Image"),
+        ("gif", "Image"),
+        ("webp", "Image"),
+        ("bmp", "Image"),
+        ("ico", "Image"),
+        ("svg", "Image"),
+        ("apng", "Image"),
+        ("psd", "Image"),
+        ("tiff", "Image"),
+        ("tif", "Image"),
+        ("tga", "Image"),
+        ("pbm", "Image"),
+        ("pgm", "Image"),
+        ("ppm", "Image"),
+        ("qoi", "Image"),
+        ("exr", "Image"),
+        ("heic", "Image"),
+        ("heif", "Image"),
+        ("jxl", "Image"),
+        // 视频文件
+        ("mp4", "Video"),
+        ("webm", "Video"),
+        ("mkv", "Video"),
+        ("avi", "Video"),
+        ("mov", "Video"),
+        ("wmv", "Video"),
+        ("mpg", "Video"),
+        ("mpeg", "Video"),
+        ("m4v", "Video"),
+        ("3gp", "Video"),
+        ("3g2", "Video"),
+        // 音频文件
+        ("mp3", "Audio"),
+        ("ogg", "Audio"),
+        ("m4a", "Audio"),
+        // 压缩文件
+        ("7z", "Archive"),
+        ("zip", "Archive"),
+        ("rar", "Archive"),
+        ("tar", "Archive"),
+        ("gz", "Archive"),
+        ("tgz", "Archive"),  // tar.gz 的简写
+        ("bz2", "Archive"),  // bzip2 压缩文件
+        ("tbz2", "Archive"), // tar.bz2 的简写
+        ("xz", "Archive"),   // xz 压缩文件
+        ("txz", "Archive"),  // tar.xz 的简写
+        ("zst", "Archive"),  // zstandard 压缩文件
+        ("tzst", "Archive"), // tar.zst 的简写
+        ("cpio", "Archive"), // CPIO 归档
+        ("ar", "Archive"),   // Unix ar 归档
+        ("deb", "Archive"),  // Debian 软件包（外层 ar）
+        ("a", "Archive"),    // 静态库
+        // ZIP 本质但带特殊扩展名
+        ("jar", "Archive"),   // Java 归档
+        ("war", "Archive"),   // Java Web 归档
+        ("ear", "Archive"),   // Java Enterprise 归档
+        ("apk", "Archive"),   // Android 应用包
+        ("aar", "Archive"),   // Android 归档
+        ("whl", "Archive"),   // Python wheel
+        ("vsix", "Archive"),  // VS Code 扩展
+        ("nupkg", "Archive"), // NuGet 包
+        ("crx", "Archive"),   // Chrome 扩展
+        ("xpi", "Archive"),   // Firefox 扩展
+        ("egg", "Archive"),   // Python egg
+        ("kra", "Archive"),   // Krita 文档
+        ("xps", "Archive"),   // XML Paper Specification
+        ("oxps", "Archive"),  // OpenXPS
+        // 书籍文件
+        ("pdf", "Doc"),
+        ("epub", "Book"),
+        ("mobi", "Book"),
+        // 3D 模型文件
+        ("gltf", "Model3D"),
+        ("glb", "Model3D"),
+        ("stl", "Model3D"),
+        ("obj", "Model3D"),
+        ("ply", "Model3D"),
+        ("fbx", "Model3D"),
+        ("3mf", "Model3D"),
+        ("dae", "Model3D"),
+        ("3ds", "Model3D"),
+        ("amf", "Model3D"),
+        ("wrl", "Model3D"),
+        ("lwo", "Model3D"),
+        ("lws", "Model3D"),
+        // 代码文件
+        ("txt", "Code"),
+        ("cpp", "Code"),
+        ("js", "Code"),
+        ("mjs", "Code"),
+        ("cjs", "Code"),
+        ("ts", "Code"),
+        ("mts", "Code"),
+        ("tsx", "Code"),
+        ("rs", "Code"),
+        ("py", "Code"),
+        ("java", "Code"),
+        ("html", "Code"),
+        ("css", "Code"),
+        ("scss", "Code"),
+        ("sass", "Code"),
+        ("less", "Code"),
+        ("styl", "Code"),
+        ("c", "Code"),
+        ("cs", "Code"),
+        ("go", "Code"),
+        ("vue", "Code"),
+        ("svelte", "Code"),
+        ("astro", "Code"),
+        ("jsx", "Code"),
+        ("json", "Code"),
+        ("yml", "Code"),
+        ("yaml", "Code"),
+        ("toml", "Code"),
+        ("bat", "Code"),
+        ("ps1", "Code"),
+        ("ini", "Code"),
+        ("swift", "Code"),
+        ("kt", "Code"),
+        ("php", "Code"),
+        ("h", "Code"),
+        ("xml", "Code"),
+        ("sql", "Code"),
+        ("pug", "Code"),
+        ("lua", "Code"),
+        ("r", "Code"),
+        ("d", "Code"),
+        ("vb", "Code"),
+        ("pas", "Code"),
+        ("scala", "Code"),
+        ("dart", "Code"),
+        ("rb", "Code"),
+        ("m", "Code"),
+        ("log", "Code"),
+        ("bash", "Code"),
+        ("zig", "Code"),
+        // 应用程序文件
+        // ("exe", "App"),
+        // ("dmg", "App"),
+        // ("deb", "App"),
+        // ("rpm", "App"),
+        // ("apk", "App"),
+        // ("appimage", "App"),
+    ])
+});

@@ -30,8 +30,7 @@ fn get_pdfium() -> Result<&'static Pdfium, QuickLookError> {
         log::info!("[pdf] dll_dir={}", dll_dir.display());
         log::info!("[pdf] lib_name={}", lib_name.display());
 
-        let bindings = Pdfium::bind_to_library(&lib_name)
-            .expect("加载 pdfium 库失败");
+        let bindings = Pdfium::bind_to_library(&lib_name).expect("加载 pdfium 库失败");
 
         log::info!("[pdf] pdfium 库加载成功");
 
@@ -51,7 +50,9 @@ fn doc_mutex() -> &'static DocMutex {
     CACHE.get_or_init(|| Mutex::new(None))
 }
 
-fn ensure_doc(path: &str) -> Result<std::sync::MutexGuard<'static, Option<DocCache>>, QuickLookError> {
+fn ensure_doc(
+    path: &str,
+) -> Result<std::sync::MutexGuard<'static, Option<DocCache>>, QuickLookError> {
     let mutex = doc_mutex();
     let mut guard = mutex
         .lock()
@@ -62,10 +63,7 @@ fn ensure_doc(path: &str) -> Result<std::sync::MutexGuard<'static, Option<DocCac
         let doc = pdfium
             .load_pdf_from_file(path, None)
             .map_err(|e| QuickLookError::PdfRendering(format!("打开 PDF 失败: {}", e)))?;
-        *guard = Some(DocCache {
-            path: path.to_string(),
-            doc,
-        });
+        *guard = Some(DocCache { path: path.to_string(), doc });
         log::info!("[pdf] 已缓存文档: {}", path);
     }
 
@@ -75,7 +73,9 @@ fn ensure_doc(path: &str) -> Result<std::sync::MutexGuard<'static, Option<DocCac
 pub fn get_pdf_page_count(path: &str) -> Result<u32, QuickLookError> {
     log::info!("[pdf] get_pdf_page_count path={}", path);
     let guard = ensure_doc(path)?;
-    let cache = guard.as_ref().ok_or_else(|| QuickLookError::PdfRendering("文档未加载".into()))?;
+    let cache = guard
+        .as_ref()
+        .ok_or_else(|| QuickLookError::PdfRendering("文档未加载".into()))?;
     let count = cache.doc.pages().len() as u32;
     log::info!("[pdf] page_count={}", count);
     Ok(count)
@@ -84,13 +84,13 @@ pub fn get_pdf_page_count(path: &str) -> Result<u32, QuickLookError> {
 pub fn get_pdf_outline(path: &str) -> Result<Vec<OutlineItem>, QuickLookError> {
     log::info!("[pdf] get_pdf_outline path={}", path);
     let guard = ensure_doc(path)?;
-    let cache = guard.as_ref().ok_or_else(|| QuickLookError::PdfRendering("文档未加载".into()))?;
+    let cache = guard
+        .as_ref()
+        .ok_or_else(|| QuickLookError::PdfRendering("文档未加载".into()))?;
 
     let bookmarks = cache.doc.bookmarks();
 
-    fn collect_children(
-        bookmark: &pdfium_render::prelude::PdfBookmark<'_>,
-    ) -> Vec<OutlineItem> {
+    fn collect_children(bookmark: &pdfium_render::prelude::PdfBookmark<'_>) -> Vec<OutlineItem> {
         let mut items = Vec::new();
         let mut child = bookmark.first_child();
         while let Some(c) = child {
@@ -102,11 +102,7 @@ pub fn get_pdf_outline(path: &str) -> Result<Vec<OutlineItem>, QuickLookError> {
                 .unwrap_or(0);
             let sub_items = collect_children(&c);
             if !title.is_empty() {
-                items.push(OutlineItem {
-                    title,
-                    page,
-                    items: sub_items,
-                });
+                items.push(OutlineItem { title, page, items: sub_items });
             }
             child = c.next_sibling();
         }
@@ -124,11 +120,7 @@ pub fn get_pdf_outline(path: &str) -> Result<Vec<OutlineItem>, QuickLookError> {
             .unwrap_or(0);
         let sub_items = collect_children(&bm);
         if !title.is_empty() {
-            items.push(OutlineItem {
-                title,
-                page,
-                items: sub_items,
-            });
+            items.push(OutlineItem { title, page, items: sub_items });
         }
         current = bm.next_sibling();
     }
@@ -136,8 +128,17 @@ pub fn get_pdf_outline(path: &str) -> Result<Vec<OutlineItem>, QuickLookError> {
     Ok(items)
 }
 
-pub fn render_pdf_page(path: &str, page_index: u32, dpi: u32) -> Result<RenderedPage, QuickLookError> {
-    log::info!("[pdf] render_pdf_page path={}, page_index={}, dpi={}", path, page_index, dpi);
+pub fn render_pdf_page(
+    path: &str,
+    page_index: u32,
+    dpi: u32,
+) -> Result<RenderedPage, QuickLookError> {
+    log::info!(
+        "[pdf] render_pdf_page path={}, page_index={}, dpi={}",
+        path,
+        page_index,
+        dpi
+    );
 
     let cache_dir = std::env::temp_dir().join("quicklook_pdf");
     std::fs::create_dir_all(&cache_dir)
@@ -173,7 +174,9 @@ pub fn render_pdf_page(path: &str, page_index: u32, dpi: u32) -> Result<Rendered
     }
 
     let guard = ensure_doc(path)?;
-    let cache = guard.as_ref().ok_or_else(|| QuickLookError::PdfRendering("文档未加载".into()))?;
+    let cache = guard
+        .as_ref()
+        .ok_or_else(|| QuickLookError::PdfRendering("文档未加载".into()))?;
     let pages = cache.doc.pages();
     let page_count = pages.len();
     if page_index >= page_count as u32 {
@@ -188,16 +191,20 @@ pub fn render_pdf_page(path: &str, page_index: u32, dpi: u32) -> Result<Rendered
         QuickLookError::PdfRendering(format!("获取第 {} 页失败: {}", page_index + 1, e))
     })?;
 
-    let render_config = PdfRenderConfig::default()
-        .scale_page_by_factor(dpi as f32 / 72.0);
+    let render_config = PdfRenderConfig::default().scale_page_by_factor(dpi as f32 / 72.0);
 
-    let bitmap = page
-        .render_with_config(&render_config)
-        .map_err(|e| QuickLookError::PdfRendering(format!("渲染第 {} 页失败: {}", page_index + 1, e)))?;
+    let bitmap = page.render_with_config(&render_config).map_err(|e| {
+        QuickLookError::PdfRendering(format!("渲染第 {} 页失败: {}", page_index + 1, e))
+    })?;
 
     let width = bitmap.width() as u32;
     let height = bitmap.height() as u32;
-    log::info!("[pdf] page {} 渲染完成: {}x{}", page_index + 1, width, height);
+    log::info!(
+        "[pdf] page {} 渲染完成: {}x{}",
+        page_index + 1,
+        width,
+        height
+    );
 
     let dynamic_image = bitmap
         .as_image()
@@ -210,7 +217,11 @@ pub fn render_pdf_page(path: &str, page_index: u32, dpi: u32) -> Result<Rendered
             image::ImageFormat::Png,
         )
         .map_err(|e| QuickLookError::PdfRendering(format!("保存 PNG 失败: {}", e)))?;
-    log::info!("[pdf] page {} 保存到: {}", page_index + 1, cache_path.display());
+    log::info!(
+        "[pdf] page {} 保存到: {}",
+        page_index + 1,
+        cache_path.display()
+    );
 
     Ok(RenderedPage {
         page_num: page_index + 1,

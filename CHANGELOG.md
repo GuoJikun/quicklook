@@ -1,5 +1,13 @@
 # 更新日志
 
+## v0.22.0 (2026-07-01)
+
+**更新内容**
+
+* feat: 新增 epub/mobi 电子书预览支持
+* refactor: book.vue 重构，从 PDF 预览切换为电子书章节 HTML 渲染
+* feat: 新增 quicklook-book crate，支持 epub/mobi 格式解析
+
 ## v0.21.0 (2026-06-12)
 
 **更新内容**
