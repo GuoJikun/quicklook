@@ -10,7 +10,7 @@ pub mod video;
 pub use archive::{archive, archive_is_password_protected};
 pub use audio::{parse_lrc, read_audio_info};
 pub use book::{
-    get_epub_chapter, get_epub_info, get_mobi_content, get_mobi_info, resolve_epub_link,
+    get_epub_chapter, get_epub_info, resolve_epub_link,
 };
 pub use document::document;
 pub use image::{clear_image_cache, convert_to_png};

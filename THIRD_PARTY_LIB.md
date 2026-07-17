@@ -46,7 +46,6 @@
 **电子书解析（crates/book）**
 
 - [epub](https://crates.io/crates/epub) — EPUB 电子书解析（章节/目录/HTML 提取）
-- [mobi](https://crates.io/crates/mobi) — MOBI 电子书解析（元数据/HTML 内容）
 
 **音频元数据**
 

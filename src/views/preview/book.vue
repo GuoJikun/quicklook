@@ -1,8 +1,7 @@
 <!--
-  book.vue - epub/mobi 电子书预览
+  book.vue - epub 电子书预览
   epub: 通过 Rust 解析章节结构，按章节展示 HTML
-  mobi: 通过 Rust 解析完整 HTML 内容，单页展示
--->
+ -->
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import LayoutPreview from '@/components/layout-preview.vue'
@@ -33,27 +32,15 @@ interface EpubInfo {
     cover_data?: string
 }
 
-interface MobiInfo {
-    title: string
-    author: string
-    description: string
-    is_html: boolean
-}
-
 // ── 状态 ──────────────────────────────────────
 
 const route = useRoute()
 const fileInfo = ref<FileInfo>()
-const bookType = ref<'epub' | 'mobi'>('epub')
 
 // epub 状态
 const epubInfo = ref<EpubInfo | null>(null)
 const currentChapterIndex = ref(0)
 const chapterHtml = ref('')
-
-// mobi 状态
-const mobiInfo = ref<MobiInfo | null>(null)
-const mobiHtml = ref('')
 
 // UI 状态
 const sidebarVisible = ref(true)
@@ -67,13 +54,6 @@ const fontSizes = [12, 14, 16, 18, 20, 22, 24]
 
 // 请求序列号，用于丢弃过期响应（防止快速点击竞态）
 let chapterLoadSeq = 0
-
-// ── 工具函数 ──────────────────────────────────
-
-function detectBookType(path: string): 'epub' | 'mobi' {
-    const ext = path.split('.').pop()?.toLowerCase()
-    return ext === 'mobi' ? 'mobi' : 'epub'
-}
 
 // ── epub 逻辑 ─────────────────────────────────
 
@@ -116,35 +96,6 @@ async function loadEpubChapter(path: string, index: number) {
     }
 }
 
-// ── mobi 逻辑 ─────────────────────────────────
-
-async function loadMobiInfo(path: string) {
-    loading.value = true
-    error.value = ''
-    try {
-        mobiInfo.value = await invoke<MobiInfo>('get_mobi_info', { path })
-        await loadMobiContent(path)
-    } catch (e) {
-        error.value = (e as Error)?.message || String(e)
-    } finally {
-        loading.value = false
-    }
-}
-
-async function loadMobiContent(path: string) {
-    loading.value = true
-    error.value = ''
-    try {
-        mobiHtml.value = await invoke<string>('get_mobi_content', { path })
-    } catch (e) {
-        error.value = (e as Error)?.message || String(e)
-    } finally {
-        loading.value = false
-        await nextTick()
-        updateIframeSrcdoc()
-    }
-}
-
 // ── epub 链接解析 ───────────────────────────────
 
 async function resolveEpubLink(
@@ -169,7 +120,7 @@ async function resolveEpubLink(
 function updateIframeSrcdoc() {
     const el = iframeRef.value
     if (!el) return
-    const html = bookType.value === 'epub' ? chapterHtml.value : mobiHtml.value
+    const html = chapterHtml.value
 
     const contentHtml = html || '<p style="color:#999;text-align:center;margin-top:40px;text-indent:0">暂无内容</p>'
 
@@ -364,21 +315,21 @@ function showCoverInContent() {
 }
 
 function handleNodeClick(data: EpubChapter) {
-    if (bookType.value === 'epub' && fileInfo.value) {
+    if (fileInfo.value) {
         loadEpubChapter(fileInfo.value.path, data.index)
     }
 }
 
 // 章节导航
 function prevChapter() {
-    if (bookType.value !== 'epub' || !fileInfo.value) return
+    if (!fileInfo.value) return
     if (currentChapterIndex.value > 0) {
         loadEpubChapter(fileInfo.value.path, currentChapterIndex.value - 1)
     }
 }
 
 function nextChapter() {
-    if (bookType.value !== 'epub' || !fileInfo.value) return
+    if (!fileInfo.value) return
     const total = epubInfo.value?.chapters.length || 0
     if (currentChapterIndex.value < total - 1) {
         loadEpubChapter(fileInfo.value.path, currentChapterIndex.value + 1)
@@ -512,13 +463,7 @@ onMounted(async () => {
         return
     }
 
-    bookType.value = detectBookType(fileInfo.value.path)
-
-    if (bookType.value === 'epub') {
-        await loadEpubInfo(fileInfo.value.path)
-    } else {
-        await loadMobiInfo(fileInfo.value.path)
-    }
+    await loadEpubInfo(fileInfo.value.path)
 
     // 添加键盘事件监听
     document.addEventListener('keydown', handleKeydown)
@@ -542,27 +487,24 @@ onUnmounted(() => {
                 <div class="book-toolbar__center">
                     <el-icon><Document /></el-icon>
                     <span class="book-toolbar__title">
-                        {{ bookType === 'epub' ? epubInfo?.title : mobiInfo?.title || '电子书' }}
+                        {{ epubInfo?.title || '电子书' }}
                     </span>
-                    <span class="book-toolbar__author" v-if="bookType === 'epub'"> — {{ epubInfo?.author }} </span>
-                    <span class="book-toolbar__author" v-else> — {{ mobiInfo?.author }} </span>
+                    <span class="book-toolbar__author"> — {{ epubInfo?.author }} </span>
                 </div>
                 <div class="book-toolbar__right">
-                    <template v-if="bookType === 'epub'">
-                        <el-link :underline="false" @click="changeFontSize(-1)" title="缩小字体 (Ctrl+-)">
-                            <el-icon size="16px"><Remove /></el-icon>
-                        </el-link>
-                        <span class="book-toolbar__font-size">{{ fontSize }}px</span>
-                        <el-link :underline="false" @click="changeFontSize(1)" title="放大字体 (Ctrl++)">
-                            <el-icon size="16px"><Plus /></el-icon>
-                        </el-link>
-                    </template>
+                    <el-link :underline="false" @click="changeFontSize(-1)" title="缩小字体 (Ctrl+-)">
+                        <el-icon size="16px"><Remove /></el-icon>
+                    </el-link>
+                    <span class="book-toolbar__font-size">{{ fontSize }}px</span>
+                    <el-link :underline="false" @click="changeFontSize(1)" title="放大字体 (Ctrl++)">
+                        <el-icon size="16px"><Plus /></el-icon>
+                    </el-link>
                 </div>
             </div>
 
             <div class="book-body">
-                <!-- 侧边栏：epub 目录 / mobi 无 -->
-                <div class="book-sidebar" v-if="sidebarVisible && bookType === 'epub'">
+                <!-- 侧边栏：epub 目录 -->
+                <div class="book-sidebar" v-if="sidebarVisible">
                     <el-scrollbar>
                         <!-- 封面 -->
                         <div

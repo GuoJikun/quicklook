@@ -2,7 +2,6 @@ use tauri::command;
 
 use crate::error::QuickLookError;
 use quicklook_book::epub as epub_helper;
-use quicklook_book::mobi as mobi_helper;
 
 // ── EPUB 命令 ──────────────────────────────────────
 
@@ -74,36 +73,5 @@ pub async fn resolve_epub_link(
     result
 }
 
-// ── MOBI 命令 ──────────────────────────────────────
 
-/// 获取 mobi 书籍信息（标题、作者、描述）。
-#[command(async)]
-pub async fn get_mobi_info(path: String) -> Result<mobi_helper::MobiInfo, QuickLookError> {
-    log::info!("[cmd] get_mobi_info path={}", path);
-    let result = tokio::task::spawn_blocking(move || mobi_helper::get_mobi_info(&path))
-        .await
-        .map_err(|e| QuickLookError::DocumentParse(format!("任务执行失败: {}", e)))?;
-    match &result {
-        Ok(info) => log::info!(
-            "[cmd] get_mobi_info 成功: title={}, author={}",
-            info.title,
-            info.author
-        ),
-        Err(e) => log::error!("[cmd] get_mobi_info 失败: {}", e),
-    }
-    result
-}
 
-/// 读取 mobi 文件的完整 HTML 内容。
-#[command(async)]
-pub async fn get_mobi_content(path: String) -> Result<String, QuickLookError> {
-    log::info!("[cmd] get_mobi_content path={}", path);
-    let result = tokio::task::spawn_blocking(move || mobi_helper::get_mobi_content(&path))
-        .await
-        .map_err(|e| QuickLookError::DocumentParse(format!("任务执行失败: {}", e)))?;
-    match &result {
-        Ok(_) => log::info!("[cmd] get_mobi_content 成功"),
-        Err(e) => log::error!("[cmd] get_mobi_content 失败: {}", e),
-    }
-    result
-}

@@ -12,7 +12,7 @@ QuickLook (Windows 文件快速预览工具, macOS Quick Look 风格)
 └── 工作空间:
     ├── src-tauri/       → app (主应用)
     ├── crates/archive/  → quicklook-archive (压缩文件解析)
-    ├── crates/book/    → quicklook-book (epub/mobi 电子书解析)
+    ├── crates/book/    → quicklook-book (epub 电子书解析)
     ├── crates/docs/    → quicklook-docs (文档解析)
     ├── crates/error/    → quicklook-error (统一错误类型)
     ├── crates/audio/    → quicklook-audio (音频元数据 + LRC)
@@ -48,7 +48,7 @@ E:/private/Rust/quicklook/
 │           ├── video.vue          # 视频播放 (xgplayer + HLS)
 │           ├── audio.vue          # 音频播放 + LRC 歌词
 │           ├── font.vue           # 字体预览
-│           ├── book.vue           # epub/mobi 电子书阅读
+    │           ├── book.vue           # epub 电子书阅读
 │           ├── archive.vue        # 压缩包目录树
 │           ├── model.vue          # 3D 模型预览 (Three.js)
 │           ├── document.vue       # Excel/DOCX 渲染
@@ -104,8 +104,7 @@ E:/private/Rust/quicklook/
 │   └── docs/                      # quicklook-docs
 │       └── src/lib.rs             # Docs enum (Excel, CSV, DOCX)
 │   └── book/                      # quicklook-book
-│       ├── src/epub.rs            # epub 解析 (章节/目录/HTML)
-│       └── src/mobi.rs            # mobi 解析 (元数据/HTML)
+    │       └── src/epub.rs            # epub 解析 (章节/目录/HTML)
 ├── .github/workflows/
 │   ├── build.yml                  # 发布构建 (NSIS 安装包)
 │   ├── check-rust.yml             # cargo check CI
@@ -168,8 +167,6 @@ error.rs (统一错误类型: QuickLookError)
 | `document` | FE → BE | document.vue | `commands/document.rs` | quicklook-docs (Excel/CSV/DOCX) |
 | `get_epub_info` | FE → BE | book.vue | `commands/book.rs` | quicklook-book::epub |
 | `get_epub_chapter` | FE → BE | book.vue | `commands/book.rs` | quicklook-book::epub |
-| `get_mobi_info` | FE → BE | book.vue | `commands/book.rs` | quicklook-book::mobi |
-| `get_mobi_content` | FE → BE | book.vue | `commands/book.rs` | quicklook-book::mobi |
 | `convert_to_png` | FE → BE | image.vue | `commands/image.rs` | helper/image (psd/heic) |
 | `clear_image_cache` | FE → BE | settings.vue | `commands/image.rs` | 删除 %TEMP%/quicklook_images/ |
 | `read_audio_info` | FE → BE | audio.vue | `commands/audio.rs` | helper/audio (lofty crate) |
@@ -237,7 +234,7 @@ window.rs: PreviewFile::preview_file()
         │              (ffmpeg 开启时: invoke('convert_video_to_hls') → HLS.m3u8)
         ├── Audio 视图: <audio> + invoke('read_audio_info') + invoke('parse_lrc')
         ├── Font 视图:  FontFace.load(convertFileSrc(path)) → 示例文本
-        ├── Book 视图:   epub/mobi → IPC 获取章节 HTML → iframe/内联渲染
+        ├── Book 视图:   epub → IPC 获取章节 HTML → iframe/内联渲染
         ├── Archive:    invoke('archive') → el-tree
         └── Document:
               ├── Excel: invoke('document') → Handsontable
@@ -255,7 +252,7 @@ Image     : jpg, jpeg, png, gif, webp, bmp, ico, svg, apng
             psd, tiff, tif, tga, pbm, pgm, ppm, qoi, exr, heic, heif
 Video     : mp4, webm, mkv, avi, mov, wmv, mpg, mpeg, m4v, 3gp, 3g2
 Audio     : mp3, ogg, m4a, flac, wav, aac, wma, opus, ape, aiff, aifc, aif
-Book      : (预留，即将支持 epub, mobi)
+Book      : epub
 Font      : ttf, otf, woff2, woff, eot
 Archive   : zip, 7z, rar, tar, gz, tgz, bz2, tbz2, xz, txz, zst, tzst
             cpio, ar, deb, a, jar, war, ear, apk, aar, whl, vsix
@@ -285,7 +282,7 @@ Model3D   : gltf, glb, stl, obj, ply, fbx, 3mf, dae, 3ds, amf, wrl, lwo, lws
 | `/preview/code` | CodeSupport | Shiki 语法高亮 |
 | `/preview/font` | FontSupport | 字体预览 |
 | `/preview/md` | MdSupport | Markdown 渲染 |
-| `/preview/book` | BookSupport | epub/mobi 电子书阅读 |
+| `/preview/book` | BookSupport | epub 电子书阅读 |
 | `/preview/archive` | ArchiveSupport | 压缩包目录树 |
 | `/preview/model` | ModelSupport | 3D 模型预览 (Three.js) |
 | `/preview/document` | DocumentSupport | Excel/CSV/DOCX |
@@ -309,7 +306,7 @@ App.vue
     │       │   ├── Code:   <div v-html="shikiHtml">
     │       │   ├── Md:     MdViewer <div v-html="markdownHtml">
     │       │   ├── Font:   <div style="font-family: MyFont"> 示例
-    │       │   ├── Book:   epub/mobi 阅读 (章节 HTML 渲染) + 侧栏目录
+    │       │   ├── Book:   epub 阅读 (章节 HTML 渲染) + 侧栏目录
     │       │   ├── Archive: <el-tree> (Element Plus)
         │       │   ├── Model:   Three.js WebGL (直接加载，无后端依赖)
     │       │   └── Document:
@@ -402,8 +399,7 @@ Cargo workspace (resolver = "2")
     └── csv (CSV 解析)
 
 └── quicklook-book (crates/book/)
-    ├── epub (EPUB 解析: 章节/目录/HTML)
-    └── mobi (MOBI 解析: 元数据/HTML)
+    └── epub (EPUB 解析: 章节/目录/HTML)
 ```
 
 ## 前端 NPM 依赖

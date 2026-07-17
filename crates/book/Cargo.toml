@@ -1,7 +1,7 @@
 [package]
 name = "quicklook-book"
 version = "0.1.0"
-description = "Book format parsing (epub/mobi) for QuickLook"
+description = "Book format parsing (epub) for QuickLook"
 authors = ["GuoJikun <guojikun486546@163.com>"]
 license = ""
 repository = "https://github.com/GuoJikun/quicklook.git"

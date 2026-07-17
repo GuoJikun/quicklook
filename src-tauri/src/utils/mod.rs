@@ -282,7 +282,6 @@ static FILE_TYPE_MAPPING: LazyLock<HashMap<&'static str, &'static str>> = LazyLo
         // 书籍文件
         ("pdf", "Doc"),
         ("epub", "Book"),
-        ("mobi", "Book"),
         // 3D 模型文件
         ("gltf", "Model3D"),
         ("glb", "Model3D"),
