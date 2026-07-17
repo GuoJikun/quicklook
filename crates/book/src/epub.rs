@@ -370,7 +370,9 @@ fn inline_css_urls(css: &str, chapter_dir: &str, resources: &ResourceMap) -> Str
             }
         }
 
-        pos = abs_url_start + 4 + path_end + 1; // 跳过 url("...")
+        // 资源未命中时，跳过整个 url("...") 表达式，避免重复扫描导致死循环。
+        // 表达式布局：url( + " + path(path_end) + " + )，共 4 + path_start + path_end + 2 个字符
+        pos = abs_url_start + 4 + path_start + path_end + 2;
     }
     result
 }
@@ -546,7 +548,7 @@ fn get_cached_chapter(path: &str, chapter_index: usize) -> Option<String> {
 /// 1. meta 中的 cover-id 属性指向的资源
 /// 2. assets 中名为 cover.* 的文件
 /// 3. 第一个图片资源
-fn extract_cover(book: &mut EpubBook, _resources: &ResourceMap) -> Option<String> {
+fn extract_cover(book: &mut EpubBook) -> Option<String> {
     // 策略 1: 从 meta 中查找 cover-id
     let mut cover_id = None;
     for meta in book.meta() {
@@ -629,10 +631,7 @@ pub fn get_epub_info(path: &str) -> Result<EpubInfo, QuickLookError> {
         .unwrap_or_else(|| "zh".to_string());
 
     // 提取封面图片（需要 &mut book 触发惰性加载）
-    let cover_data = extract_cover(&mut book, &ResourceMap::new());
-
-    // 构建资源映射表（用于图片内联）
-    let resources = build_resource_map(&mut book);
+    let cover_data = extract_cover(&mut book);
 
     // 从目录提取章节，将目录项映射到实际的 chapter 索引
     let chapters = extract_chapters(&book);
@@ -866,7 +865,7 @@ pub fn resolve_epub_link(
         return Err(QuickLookError::FileNotFound(path.to_string()));
     }
 
-    let mut book = read_from_file(path).map_err(|e| map_iepub_error(path, "打开 epub", e))?;
+    let book = read_from_file(path).map_err(|e| map_iepub_error(path, "打开 epub", e))?;
 
     // 分离路径和锚点
     let (link_path, fragment) = match href.find('#') {
@@ -919,8 +918,9 @@ pub fn resolve_epub_link(
         let matched = ch_file == link_path
             || ch_file == full_path
             || ch_file_name == link_file_name
-            || ch_file.ends_with(link_path)
-            || ch_file.ends_with(&format!("/{}", link_path));
+            // 后缀匹配要求路径边界为 '/' 或文件结尾，避免 chapter11.xhtml 误匹配 chapter1.xhtml
+            || has_suffix_boundary(ch_file, link_path)
+            || has_suffix_boundary(ch_file, &format!("/{}", link_path));
 
         if matched {
             log::info!(
