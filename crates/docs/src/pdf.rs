@@ -2,8 +2,17 @@ use pdfium_render::prelude::{PdfPageRenderRotation, *};
 use quicklook_error::QuickLookError;
 use std::sync::{Mutex, OnceLock};
 
-fn rotation_to_pdfium(rotation: u32) -> PdfPageRenderRotation {
+fn normalize_rotation(rotation: u32) -> u32 {
     match rotation % 360 {
+        90 => 90,
+        180 => 180,
+        270 => 270,
+        _ => 0,
+    }
+}
+
+fn rotation_to_pdfium(rotation: u32) -> PdfPageRenderRotation {
+    match normalize_rotation(rotation) {
         90 => PdfPageRenderRotation::Degrees90,
         180 => PdfPageRenderRotation::Degrees180,
         270 => PdfPageRenderRotation::Degrees270,
@@ -168,9 +177,10 @@ pub fn render_pdf_page(
         hasher.finish()
     };
 
+    let normalized_rotation = normalize_rotation(rotation);
     let cache_path = cache_dir.join(format!(
         "pdf_{:x}_{}_{}_{}.png",
-        file_hash, page_index, dpi, rotation
+        file_hash, page_index, dpi, normalized_rotation
     ));
 
     if cache_path.exists() {
