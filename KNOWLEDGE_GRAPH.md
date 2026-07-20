@@ -358,6 +358,15 @@ resources/config.json (编译时内嵌)
 
 ## Rust 工作空间依赖
 
+共有依赖统一在根 `Cargo.toml` 的 `[workspace.dependencies]` 中定义，
+子 crate 通过 `{ workspace = true }` 引用（可按需追加 features）。
+
+```
+[workspace.dependencies] (根 Cargo.toml)
+├── 内部 crate: quicklook-{archive,docs,error,audio,image,video}
+└── 共有第三方: serde (derive), serde_json, log, chrono (serde), image 0.25
+```
+
 ```
 Cargo workspace (resolver = "2")
 │
@@ -365,41 +374,48 @@ Cargo workspace (resolver = "2")
 │   ├── tauri 2.x (protocol-asset, tray-icon)
 │   ├── tauri-plugins x 9
 │   ├── windows 0.61 (Win32/COM/UI Automation)
-│   ├── serde + serde_json
+│   ├── serde + serde_json (workspace)
+│   ├── chrono (workspace)
+│   ├── log (workspace)
 │   ├── urlencoding
-│   └── workspace crates (以下全部)
+│   └── workspace crates (以下全部, 均 workspace = true)
 │
 ├── quicklook-error (crates/error/)
 │   ├── thiserror
-│   └── serde
+│   └── serde (workspace)
 │
 ├── quicklook-audio (crates/audio/)
 │   ├── lofty (音频元数据)
-│   └── quicklook-error
+│   ├── serde + log (workspace)
+│   └── quicklook-error (workspace)
 │
 ├── quicklook-image (crates/image/)
-│   ├── image crate (多种图像格式)
+│   ├── image (workspace, 多图像格式 features)
 │   ├── psd (Photoshop 解析)
 │   ├── libheif-rs (HEIC/HEIF 解码，需 vcpkg)
 │   ├── jxl-oxide (JPEG XL 解码)
-│   └── quicklook-error
+│   ├── log (workspace)
+│   └── quicklook-error (workspace)
 │
 ├── quicklook-video (crates/video/)
-│   ├── log (ffmpeg 进程管理)
-│   └── quicklook-error
+│   ├── log (workspace, ffmpeg 进程管理)
+│   └── quicklook-error (workspace)
 │
 ├── quicklook-archive (crates/archive/)
+│   ├── serde + serde_json + chrono + log (workspace)
 │   ├── zip, tar, flate2, bzip2, xz2
 │   ├── sevenz-rust, ruzstd, hadris-cpio, ar
 │   ├── unrar-ng (RAR 支持)
 │   └── 条件 feature gate (每个格式独立)
 │
-└── quicklook-docs (crates/docs/)
-    ├── calamine (Excel: .xls/.xlsx/.xlsb/.ods)
-    └── csv (CSV 解析)
-
+│── quicklook-docs (crates/docs/)
+│   ├── serde + log + image (workspace)
+│   ├── calamine (Excel: .xls/.xlsx/.xlsb/.ods)
+│   └── csv (CSV 解析)
+│
 └── quicklook-book (crates/book/)
     └── epub (EPUB 解析: 章节/目录/HTML)
+    └── quicklook-error (workspace)
 ```
 
 ## 前端 NPM 依赖

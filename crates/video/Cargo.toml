@@ -14,5 +14,5 @@ name = "quicklook_video"
 crate-type = ["rlib"]
 
 [dependencies]
-log = "0.4"
-quicklook-error = { path = "../error" }
+log = { workspace = true }
+quicklook-error = { workspace = true }
