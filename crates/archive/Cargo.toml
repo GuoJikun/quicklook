@@ -18,19 +18,19 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 chrono = { workspace = true }
 zip = { version = "2.2.1", features = [] }
-tar = "0.4.43"
+tar = "0.4.46"
 flate2 = { version = "1.0", default-features = false, features = [
     "rust_backend",
 ] }
-bzip2 = { version = "0.5.0", default-features = false }
+bzip2 = { version = "0.6.1", default-features = false }
 xz2 = { version = "0.1.0", default-features = false }
 sevenz-rust = { version = "0.6.0", features = ["aes256"] }
 ruzstd = { version = "0.8.0", default-features = false, features = ["std"] }
-hadris-cpio = "1.1"
-ar = "0.9"
-unrar = { package = "unrar-ng", version = "0.7" }
+hadris-cpio = "1.2.1"
+ar = "0.9.0"
+unrar = { package = "unrar-ng", version = "0.7.7" }
 # libarchive = "0.1.1"  # 这个库需要系统依赖，暂时注释掉
-encoding_rs = "0.8"
+encoding_rs = "0.8.35"
 log = { workspace = true }
 
 [features]
