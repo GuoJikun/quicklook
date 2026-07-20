@@ -18,4 +18,4 @@ log = { workspace = true }
 quicklook-error = { workspace = true }
 iepub = "1.3.6"
 serde = { workspace = true }
-base64 = "0.22"
+base64 = "0.22.1"
