@@ -21,6 +21,7 @@ interface EpubChapter {
     title: string
     file_name: string
     level: number
+    fragment?: string | null
 }
 
 interface EpubInfo {
@@ -40,6 +41,7 @@ const fileInfo = ref<FileInfo>()
 // epub 状态
 const epubInfo = ref<EpubInfo | null>(null)
 const currentChapterIndex = ref(0)
+const currentFragment = ref<string | null>(null)
 const chapterHtml = ref('')
 
 // UI 状态
@@ -47,6 +49,9 @@ const sidebarVisible = ref(true)
 const loading = ref(false)
 const error = ref('')
 const iframeRef = ref<HTMLIFrameElement>()
+
+type PendingScrollTarget = { kind: 'top' } | { kind: 'fragment'; fragment: string }
+const pendingScrollTarget = ref<PendingScrollTarget | null>(null)
 
 // 字体大小调节
 const fontSize = ref(16)
@@ -73,7 +78,7 @@ async function loadEpubInfo(path: string) {
     }
 }
 
-async function loadEpubChapter(path: string, index: number) {
+async function loadEpubChapter(path: string, index: number, fragment: string | null = null) {
     const seq = ++chapterLoadSeq
     loading.value = true
     error.value = ''
@@ -85,6 +90,7 @@ async function loadEpubChapter(path: string, index: number) {
         if (seq !== chapterLoadSeq) return // 丢弃过期响应
         chapterHtml.value = html
         currentChapterIndex.value = index
+        currentFragment.value = fragment
     } catch (e) {
         if (seq !== chapterLoadSeq) return
         error.value = (e as Error)?.message || String(e)
@@ -117,12 +123,78 @@ async function resolveEpubLink(
 
 // ── iframe 渲染 ───────────────────────────────
 
+function scrollIframeToTarget(target: PendingScrollTarget | null, attempts = 8) {
+    const doc = iframeRef.value?.contentDocument
+    if (!doc) {
+        if (attempts > 0) {
+            requestAnimationFrame(() => scrollIframeToTarget(target, attempts - 1))
+        }
+        return
+    }
+
+    if (!target) return
+
+    if (target.kind === 'top') {
+        const container = doc.documentElement || doc.body
+        if (container) {
+            const start = container.scrollTop || 0
+            const distance = -start
+            const duration = 320
+            const startTime = performance.now()
+            const step = (now: number) => {
+                const elapsed = now - startTime
+                const progress = Math.min(elapsed / duration, 1)
+                const eased = 1 - Math.pow(1 - progress, 3)
+                const current = start + distance * eased
+                if (doc.documentElement) doc.documentElement.scrollTop = current
+                if (doc.body) doc.body.scrollTop = current
+                if (progress < 1) {
+                    requestAnimationFrame(step)
+                }
+            }
+            requestAnimationFrame(step)
+        }
+        return
+    }
+
+    const targetEl = doc.getElementById(target.fragment)
+    if (targetEl) {
+        targetEl.scrollIntoView({ block: 'start', behavior: 'smooth' })
+    } else if (attempts > 0) {
+        requestAnimationFrame(() => scrollIframeToTarget(target, attempts - 1))
+    }
+}
+
 function updateIframeSrcdoc() {
     const el = iframeRef.value
     if (!el) return
     const html = chapterHtml.value
 
     const contentHtml = html || '<p style="color:#999;text-align:center;margin-top:40px;text-indent:0">暂无内容</p>'
+
+    el.onload = () => {
+        try {
+            const doc = el.contentDocument
+            if (!doc) return
+            doc.addEventListener('click', (e) => {
+                const link = (e.target as HTMLElement).closest('a')
+                if (!link) return
+                const href = link.getAttribute('href')
+                if (!href || href.startsWith('data:') || href.startsWith('javascript:')) return
+                e.preventDefault()
+                e.stopPropagation()
+                console.log('[book] iframe link intercepted:', href)
+                handleIframeLink(href)
+            }, true)
+        } catch (err) {
+            console.warn('[book] failed to attach iframe click handler:', err)
+        }
+
+        requestAnimationFrame(() => {
+            scrollIframeToTarget(pendingScrollTarget.value)
+            pendingScrollTarget.value = null
+        })
+    }
 
     el.srcdoc = `
         <!DOCTYPE html>
@@ -282,25 +354,6 @@ function updateIframeSrcdoc() {
         </html>
     `
 
-    // iframe 加载完成后，从外部附加链接点击拦截
-    el.onload = () => {
-        try {
-            const doc = el.contentDocument
-            if (!doc) return
-            doc.addEventListener('click', (e) => {
-                const link = (e.target as HTMLElement).closest('a')
-                if (!link) return
-                const href = link.getAttribute('href')
-                if (!href || href.startsWith('data:') || href.startsWith('javascript:')) return
-                e.preventDefault()
-                e.stopPropagation()
-                console.log('[book] iframe link intercepted:', href)
-                handleIframeLink(href)
-            }, true)
-        } catch (err) {
-            console.warn('[book] failed to attach iframe click handler:', err)
-        }
-    }
 }
 
 // ── 事件处理 ──────────────────────────────────
@@ -314,10 +367,29 @@ function showCoverInContent() {
     updateIframeSrcdoc()
 }
 
-function handleNodeClick(data: EpubChapter) {
-    if (fileInfo.value) {
-        loadEpubChapter(fileInfo.value.path, data.index)
+async function handleNodeClick(data: EpubChapter) {
+    if (!fileInfo.value) return
+
+    const targetIndex = data.index
+    const targetFragment = data.fragment
+
+    if (targetFragment) {
+        currentFragment.value = targetFragment
+        pendingScrollTarget.value = { kind: 'fragment', fragment: targetFragment }
+    } else {
+        currentFragment.value = null
+        pendingScrollTarget.value = { kind: 'top' }
     }
+
+    if (currentChapterIndex.value === targetIndex) {
+        if (iframeRef.value?.contentDocument) {
+            scrollIframeToTarget(pendingScrollTarget.value)
+            pendingScrollTarget.value = null
+        }
+        return
+    }
+
+    await loadEpubChapter(fileInfo.value.path, targetIndex, targetFragment)
 }
 
 // 章节导航
@@ -513,16 +585,17 @@ onUnmounted(() => {
                             :class="{ 'is-active': currentChapterIndex === -1 }"
                             @click="showCoverInContent"
                         >封面</div>
-                        <div
-                            v-for="ch in epubInfo?.chapters"
-                            :key="ch.index"
-                            class="book-sidebar__item"
-                            :class="{ 'is-active': ch.index === currentChapterIndex }"
-                            :style="{ paddingLeft: `${12 + ch.level * 16}px` }"
-                            @click="handleNodeClick(ch)"
-                        >
-                            {{ ch.title }}
-                        </div>
+<div
+    v-for="ch in epubInfo?.chapters"
+    :key="`${ch.index}-${ch.fragment || 'root'}`"
+    class="book-sidebar__item"
+    :class="{ 'is-active': ch.index === currentChapterIndex && (!ch.fragment || ch.fragment === currentFragment) }"
+    :style="{ paddingLeft: `${12 + ch.level * 16}px` }"
+    @click="handleNodeClick(ch)"
+>
+    {{ ch.title }}
+</div>
+
                     </el-scrollbar>
                 </div>
 

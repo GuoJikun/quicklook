@@ -65,13 +65,14 @@ pub async fn resolve_epub_link(
     .map_err(|e| QuickLookError::DocumentParse(format!("任务执行失败: {}", e)))?;
     match &result {
         Ok(Some((idx, frag))) => {
-            log::info!("[cmd] resolve_epub_link 成功: chapter={}, fragment={:?}", idx, frag);
-        }
+            log::info!(
+                "[cmd] resolve_epub_link 成功: chapter={}, fragment={:?}",
+                idx,
+                frag
+            );
+        },
         Ok(None) => log::info!("[cmd] resolve_epub_link: 未匹配到章节"),
         Err(e) => log::error!("[cmd] resolve_epub_link 失败: {}", e),
     }
     result
 }
-
-
-

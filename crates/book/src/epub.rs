@@ -22,6 +22,9 @@ pub struct EpubChapter {
     pub file_name: String,
     /// 章节层级 (0-based, 来自 NCX)
     pub level: u32,
+    /// 锚点片段（如 "sec-1"，可选）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fragment: Option<String>,
 }
 
 /// epub 书籍元信息 + 章节列表
@@ -433,18 +436,40 @@ fn to_data_uri(mime: &str, data: &[u8]) -> String {
     format!("data:{};base64,{}", mime, b64)
 }
 
-/// 解析相对路径：将 HTML 中的 src 路径解析为 epub 内的绝对路径
+/// 解析相对路径：将 HTML 中的资源/链接路径解析为 epub 内的实际路径
+///
+/// 规则：
+/// - `data:` / `http:` / `https:` / `mailto:` / `javascript:` 这类外部 URI 保持原样
+/// - 以 `/` 开头的路径视为包内根路径，去掉前导 `/`
+/// - 其他路径（包括 `image.png`、`Images/cover.png`）都按相对当前章节目录解析
 ///
 /// 例如：`resolve_path("Text", "../Images/cover.png")` → `"Images/cover.png"`
+///       `resolve_path("Text", "Images/cover.png")` → `"Text/Images/cover.png"`
 fn resolve_path(base_dir: &str, relative: &str) -> String {
-    // 如果是绝对路径（不以 . 或 .. 开头），直接返回
-    if !relative.starts_with('.') {
-        return relative.to_string();
+    let trimmed = relative.trim();
+    if trimmed.is_empty() {
+        return base_dir.to_string();
     }
 
-    let mut components: Vec<&str> = base_dir.split('/').filter(|s| !s.is_empty()).collect();
+    if trimmed.starts_with("data:")
+        || trimmed.starts_with("http://")
+        || trimmed.starts_with("https://")
+        || trimmed.starts_with("mailto:")
+        || trimmed.starts_with("javascript:")
+    {
+        return trimmed.to_string();
+    }
 
-    for part in relative.split('/') {
+    let mut components = if trimmed.starts_with('/') {
+        Vec::new()
+    } else {
+        base_dir
+            .split('/')
+            .filter(|s| !s.is_empty())
+            .collect::<Vec<_>>()
+    };
+
+    for part in trimmed.trim_start_matches('/').split('/') {
         match part {
             "." | "" => {},
             ".." => {
@@ -457,6 +482,47 @@ fn resolve_path(base_dir: &str, relative: &str) -> String {
     }
 
     components.join("/")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::resolve_path;
+
+    #[test]
+    fn resolves_relative_paths_against_current_chapter_dir() {
+        assert_eq!(
+            resolve_path("Text", "chapter1.xhtml"),
+            "Text/chapter1.xhtml"
+        );
+        assert_eq!(
+            resolve_path("Text", "./chapter1.xhtml"),
+            "Text/chapter1.xhtml"
+        );
+        assert_eq!(
+            resolve_path("Text", "../Images/cover.png"),
+            "Images/cover.png"
+        );
+        assert_eq!(
+            resolve_path("Text/Section", "../Images/cover.png"),
+            "Text/Images/cover.png"
+        );
+    }
+
+    #[test]
+    fn preserves_external_and_root_paths() {
+        assert_eq!(
+            resolve_path("Text", "https://example.com/a.png"),
+            "https://example.com/a.png"
+        );
+        assert_eq!(
+            resolve_path("Text", "/Images/cover.png"),
+            "Images/cover.png"
+        );
+        assert_eq!(
+            resolve_path("Text", "data:image/png;base64,abc"),
+            "data:image/png;base64,abc"
+        );
+    }
 }
 
 /// 将 iepub 错误映射为 QuickLookError
@@ -679,6 +745,7 @@ fn extract_chapters(book: &EpubBook) -> Vec<EpubChapter> {
                 title: ch.title().to_string(),
                 file_name: ch.file_name().to_string(),
                 level: 0,
+                fragment: None,
             });
         }
     }
@@ -701,11 +768,19 @@ fn flatten_navpoints(np: &EpubNav, level: u32, book: &EpubBook, out: &mut Vec<Ep
         np.file_name().to_string()
     };
 
+    let fragment = np
+        .file_name()
+        .split('#')
+        .nth(1)
+        .filter(|frag| !frag.is_empty())
+        .map(|frag| frag.to_string());
+
     out.push(EpubChapter {
         index: chapter_index,
         title: np.title().to_string(),
         file_name,
         level,
+        fragment,
     });
 
     for child in np.child() {
