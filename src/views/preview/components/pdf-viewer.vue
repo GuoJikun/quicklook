@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { convertFileSrc, invoke } from '@tauri-apps/api/core'
-import { CollectionTag } from '@element-plus/icons-vue'
+import { CollectionTag, RefreshRight, ZoomIn, ZoomOut } from '@element-plus/icons-vue'
 
 const props = defineProps<{
     path: string
@@ -41,47 +41,66 @@ const pageNum = ref<number>(1)
 const scrollContainer = ref<HTMLDivElement>()
 let observer: IntersectionObserver | null = null
 let scrollHandler: (() => void) | null = null
-const renderingPages = ref<Set<number>>(new Set())
+const renderGeneration = ref(0)
+const renderingPages = ref<Map<number, number>>(new Map())
 const baseWidth = ref<number>(0)
 const baseHeight = ref<number>(0)
 let disposed = false
 
-const renderQueue: number[] = []
+interface RenderTask {
+    pageIndex: number
+    generation: number
+}
+
+const renderQueue: RenderTask[] = []
 let queueProcessing = false
+
+const beginRenderSession = () => {
+    renderGeneration.value += 1
+    pages.value.clear()
+    renderQueue.length = 0
+    renderingPages.value.clear()
+    baseWidth.value = 0
+    baseHeight.value = 0
+}
 
 const processQueue = async () => {
     if (queueProcessing || disposed) return
     queueProcessing = true
     while (renderQueue.length > 0 && !disposed) {
         const current = pager.value.current - 1
-        renderQueue.sort((a, b) => Math.abs(a - current) - Math.abs(b - current))
-        const pageIndex = renderQueue.shift()!
-        if (!pages.value.has(pageIndex) && !renderingPages.value.has(pageIndex)) {
-            await renderPage(pageIndex)
+        renderQueue.sort((a, b) => Math.abs(a.pageIndex - current) - Math.abs(b.pageIndex - current))
+        const task = renderQueue.shift()!
+        if (!pages.value.has(task.pageIndex) && !renderingPages.value.has(task.pageIndex)) {
+            await renderPage(task.pageIndex, task.generation)
         }
     }
     queueProcessing = false
 }
 
 const enqueuePages = (pageIndices: number[]) => {
+    const generation = renderGeneration.value
     for (const idx of pageIndices) {
-        if (!pages.value.has(idx) && !renderingPages.value.has(idx) && !renderQueue.includes(idx)) {
-            renderQueue.push(idx)
+        if (!pages.value.has(idx) && !renderingPages.value.has(idx) && !renderQueue.some(task => task.pageIndex === idx)) {
+            renderQueue.push({ pageIndex: idx, generation })
         }
     }
     processQueue()
 }
 
-const renderPage = async (pageIndex: number) => {
-    if (disposed || pages.value.has(pageIndex) || renderingPages.value.has(pageIndex)) return
-    renderingPages.value.add(pageIndex)
+const renderPage = async (pageIndex: number, generation: number) => {
+    if (disposed || generation !== renderGeneration.value) return
+    if (pages.value.has(pageIndex) || renderingPages.value.has(pageIndex)) return
+
+    renderingPages.value.set(pageIndex, generation)
     try {
         const result = await invoke<RenderedPage>('render_pdf_page', {
             path: props.path,
             pageIndex,
             dpi: pager.value.dpi,
+            rotation: pager.value.rotation,
         })
-        if (disposed) return
+        if (disposed || generation !== renderGeneration.value) return
         pages.value.set(pageIndex, result)
         if (pageIndex === 0 && baseWidth.value === 0) {
             baseWidth.value = result.width
@@ -90,9 +109,13 @@ const renderPage = async (pageIndex: number) => {
         }
         console.log(`[pdf] page ${pageIndex + 1} rendered`, result)
     } catch (e) {
-        if (!disposed) console.error(`[pdf] page ${pageIndex + 1} render failed`, e)
+        if (!disposed && generation === renderGeneration.value) {
+            console.error(`[pdf] page ${pageIndex + 1} render failed`, e)
+        }
     } finally {
-        if (!disposed) renderingPages.value.delete(pageIndex)
+        if (!disposed && renderingPages.value.get(pageIndex) === generation) {
+            renderingPages.value.delete(pageIndex)
+        }
     }
 }
 
@@ -192,6 +215,24 @@ const handleZoomOut = () => {
     pager.value.scale = Math.max(0.25, pager.value.scale - 0.25)
 }
 
+const handleRotate = async () => {
+    pager.value.rotation = (pager.value.rotation + 90) % 360
+    const savedPage = pager.value.current
+
+    beginRenderSession()
+    await nextTick()
+
+    const el = document.getElementById(`page-placeholder-${savedPage}`)
+    if (el) el.scrollIntoView({ block: 'start' })
+    pager.value.current = savedPage
+    pageNum.value = savedPage
+
+    initObserver()
+    for (let i = 0; i < Math.min(3, pager.value.total); i++) {
+        renderPage(i, renderGeneration.value)
+    }
+}
+
 const handleFitWidth = () => {
     if (!scrollContainer.value || !pages.value.size) return
     const containerWidth = scrollContainer.value.clientWidth - 40
@@ -214,8 +255,7 @@ watch(
             if (clampedDpi !== pager.value.dpi) {
                 const savedPage = pager.value.current
 
-                pages.value.clear()
-                renderQueue.length = 0
+                beginRenderSession()
                 pager.value.dpi = clampedDpi
 
                 await nextTick()
@@ -227,6 +267,9 @@ watch(
                 pageNum.value = savedPage
 
                 initObserver()
+                for (let i = 0; i < Math.min(3, pager.value.total); i++) {
+                    renderPage(i, renderGeneration.value)
+                }
             }
         }, 300)
     },
@@ -253,9 +296,10 @@ onMounted(async () => {
     console.log('[pdf] onMounted', props.path)
     await loadOutline(props.path)
     console.log('[pdf] total pages:', pager.value.total)
+    beginRenderSession()
     initObserver()
     for (let i = 0; i < Math.min(3, pager.value.total); i++) {
-        renderPage(i)
+        renderPage(i, renderGeneration.value)
     }
 })
 
@@ -268,6 +312,7 @@ onUnmounted(() => {
     }
     if (renderTimer) clearTimeout(renderTimer)
     renderQueue.length = 0
+    renderingPages.value.clear()
 })
 </script>
 
@@ -282,11 +327,25 @@ onUnmounted(() => {
                 </el-link>
             </div>
             <div class="pdf-viewer-toolbar__center">
-                <el-button text size="small" @click="handleZoomOut">-</el-button>
+                <el-button text size="small" @click="handleZoomOut">
+                    <el-icon size="18px">
+                        <ZoomOut />
+                    </el-icon>
+                </el-button>
                 <span class="pdf-viewer-toolbar__zoom">{{ Math.round(pager.scale * 100) }}%</span>
-                <el-button text size="small" @click="handleZoomIn">+</el-button>
+                <el-button text size="small" @click="handleZoomIn">
+                    <el-icon size="18px">
+                        <ZoomIn />
+                    </el-icon>
+                </el-button>
                 <el-divider direction="vertical" />
                 <el-button text size="small" @click="handleFitWidth">适合宽度</el-button>
+                <el-divider direction="vertical" />
+                <el-button text size="small" @click="handleRotate">
+                    <el-icon size="18px">
+                        <RefreshRight />
+                    </el-icon>
+                </el-button>
                 <el-divider direction="vertical" />
                 <el-input v-model.number="pageNum" size="small" style="width: 50px" @keydown.enter="handleJump" />
                 <span class="pdf-viewer-toolbar__total">/ {{ pager.total }}</span>

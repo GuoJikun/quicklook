@@ -1,6 +1,15 @@
-use pdfium_render::prelude::*;
+use pdfium_render::prelude::{PdfPageRenderRotation, *};
 use quicklook_error::QuickLookError;
 use std::sync::{Mutex, OnceLock};
+
+fn rotation_to_pdfium(rotation: u32) -> PdfPageRenderRotation {
+    match rotation % 360 {
+        90 => PdfPageRenderRotation::Degrees90,
+        180 => PdfPageRenderRotation::Degrees180,
+        270 => PdfPageRenderRotation::Degrees270,
+        _ => PdfPageRenderRotation::None,
+    }
+}
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct RenderedPage {
@@ -132,12 +141,14 @@ pub fn render_pdf_page(
     path: &str,
     page_index: u32,
     dpi: u32,
+    rotation: u32,
 ) -> Result<RenderedPage, QuickLookError> {
     log::info!(
-        "[pdf] render_pdf_page path={}, page_index={}, dpi={}",
+        "[pdf] render_pdf_page path={}, page_index={}, dpi={}, rotation={}",
         path,
         page_index,
-        dpi
+        dpi,
+        rotation
     );
 
     let cache_dir = std::env::temp_dir().join("quicklook_pdf");
@@ -157,7 +168,10 @@ pub fn render_pdf_page(
         hasher.finish()
     };
 
-    let cache_path = cache_dir.join(format!("pdf_{:x}_{}_{}.png", file_hash, page_index, dpi));
+    let cache_path = cache_dir.join(format!(
+        "pdf_{:x}_{}_{}_{}.png",
+        file_hash, page_index, dpi, rotation
+    ));
 
     if cache_path.exists() {
         if let Ok(img) = image::ImageReader::open(&cache_path) {
@@ -191,7 +205,9 @@ pub fn render_pdf_page(
         QuickLookError::PdfRendering(format!("获取第 {} 页失败: {}", page_index + 1, e))
     })?;
 
-    let render_config = PdfRenderConfig::default().scale_page_by_factor(dpi as f32 / 72.0);
+    let render_config = PdfRenderConfig::default()
+        .scale_page_by_factor(dpi as f32 / 72.0)
+        .rotate(rotation_to_pdfium(rotation), false);
 
     let bitmap = page.render_with_config(&render_config).map_err(|e| {
         QuickLookError::PdfRendering(format!("渲染第 {} 页失败: {}", page_index + 1, e))
