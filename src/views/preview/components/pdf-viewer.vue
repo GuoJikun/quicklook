@@ -220,7 +220,10 @@ const handleRotate = async () => {
     const savedPage = pager.value.current
 
     beginRenderSession()
+    const generation = renderGeneration.value
     await nextTick()
+
+    if (generation !== renderGeneration.value || disposed) return
 
     const el = document.getElementById(`page-placeholder-${savedPage}`)
     if (el) el.scrollIntoView({ block: 'start' })
@@ -229,7 +232,7 @@ const handleRotate = async () => {
 
     initObserver()
     for (let i = 0; i < Math.min(3, pager.value.total); i++) {
-        renderPage(i, renderGeneration.value)
+        renderPage(i, generation)
     }
 }
 
