@@ -14,14 +14,14 @@ name = "quicklook_docs"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-serde = { version = "1.0", features = ["derive"] }
+serde = { workspace = true }
 calamine = "0.26.1"
 csv = "1.3.1"
-log = "0.4"
-quicklook-error = { path = "../error" }
+log = { workspace = true }
+quicklook-error = { workspace = true }
 # PDF rendering
 pdfium-render = "0.9"
-image = "0.25"
+image = { workspace = true }
 
 [features]
 default = ["excel", "csv", "docx", "pdf"]
