@@ -70,6 +70,6 @@ quicklook-image = { workspace = true }
 # FFmpeg video conversion
 quicklook-video = { workspace = true }
 # Book format parsing (epub)
-quicklook-book = { path = "../crates/book" }
+quicklook-book = { workspace = true }
 # PDF rendering (now in quicklook-docs)
 tokio = { version = "1", features = ["rt"] }

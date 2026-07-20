@@ -19,6 +19,7 @@ quicklook-error = { path = "crates/error" }
 quicklook-audio = { path = "crates/audio" }
 quicklook-image = { path = "crates/image" }
 quicklook-video = { path = "crates/video" }
+quicklook-book = { path = "crates/book" }
 
 # 共有第三方依赖
 serde = { version = "1.0", features = ["derive"] }
