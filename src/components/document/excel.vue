@@ -50,6 +50,34 @@ interface Props {
 }
 const props = defineProps<Props>()
 const name = ref<string | null>(null)
+const applySelectionStateClass = function (
+    this: { rootElement?: HTMLElement; container?: HTMLElement },
+    row: number,
+    col: number,
+    row2: number,
+    col2: number,
+) {
+    const root = this?.rootElement ?? this?.container
+
+    if (!root) {
+        return
+    }
+
+    const isRangeSelection = row !== row2 || col !== col2
+    root.classList.toggle('ht-range-selection', isRangeSelection)
+    root.classList.toggle('ht-single-selection', !isRangeSelection)
+}
+
+const resetSelectionStateClass = function (this: { rootElement?: HTMLElement; container?: HTMLElement }) {
+    const root = this?.rootElement ?? this?.container
+
+    if (!root) {
+        return
+    }
+
+    root.classList.remove('ht-range-selection')
+    root.classList.add('ht-single-selection')
+}
 const activeSheet = computed({
     get: () => {
         if (name.value === null && props.data) {
@@ -84,6 +112,9 @@ const activeSheet = computed({
                         manualColumnResize: true,
                         licenseKey: 'non-commercial-and-evaluation',
                     }"
+                    @after-selection="applySelectionStateClass"
+                    @after-selection-end="applySelectionStateClass"
+                    @after-deselect="resetSelectionStateClass"
                 />
             </template>
         </div>
@@ -137,9 +168,54 @@ const activeSheet = computed({
     }
 
     /* 选区 */
-    :deep(.handsontable .area) {
+    :deep(.handsontable .wtBorder.current) {
+        border-color: var(--ht-selection-border-color) !important;
+        border-style: solid !important;
+        border-width: 1px !important;
+        background: transparent !important;
+        box-sizing: border-box;
+    }
+
+    :deep(.handsontable .wtBorder.area),
+    :deep(.handsontable .wtBorder.fill),
+    :deep(.handsontable .wtBorder.corner) {
+        border-color: var(--ht-selection-border-color) !important;
+        border-style: solid !important;
+        border-width: 1px !important;
+        background: transparent !important;
+        box-sizing: border-box;
+    }
+
+    :deep(.handsontable td.current) {
+        box-shadow: inset 0 0 0 1px var(--ht-selection-border-color) !important;
+    }
+
+    :deep(.handsontable td.area),
+    :deep(.handsontable td.area-1),
+    :deep(.handsontable td.area-2),
+    :deep(.handsontable td.area-3),
+    :deep(.handsontable td.area-4),
+    :deep(.handsontable td.area-5),
+    :deep(.handsontable td.area-6),
+    :deep(.handsontable td.area-7) {
+        background-color: transparent !important;
+    }
+
+    :deep(.handsontable td.area::before),
+    :deep(.handsontable td.area-1::before),
+    :deep(.handsontable td.area-2::before),
+    :deep(.handsontable td.area-3::before),
+    :deep(.handsontable td.area-4::before),
+    :deep(.handsontable td.area-5::before),
+    :deep(.handsontable td.area-6::before),
+    :deep(.handsontable td.area-7::before) {
         background-color: var(--ht-selection-background-color) !important;
-        border: 2px solid var(--ht-selection-border-color) !important;
+        opacity: 0.3 !important;
+    }
+
+    :deep(.handsontable tbody th.current),
+    :deep(.handsontable thead th.current) {
+        box-shadow: inset 0 0 0 1px var(--ht-selection-border-color) !important;
     }
 
     /* 滚动条 */
