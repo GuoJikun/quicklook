@@ -50,8 +50,8 @@ pub fn read_config(app: &AppHandle) -> Result<Config, QuickLookError> {
 
     let file = File::open(config_path).map_err(|e| QuickLookError::Io(e.to_string()))?;
     let reader = BufReader::new(file);
-    let config: Value = serde_json::from_reader(reader)
-        .map_err(|e| QuickLookError::ConfigRead(e.to_string()))?;
+    let config: Value =
+        serde_json::from_reader(reader).map_err(|e| QuickLookError::ConfigRead(e.to_string()))?;
     let config = config
         .as_object()
         .ok_or_else(|| QuickLookError::ConfigRead("config.json is not an object".to_string()))?;

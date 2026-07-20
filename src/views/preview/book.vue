@@ -1,349 +1,620 @@
-<!-- eslint-disable @typescript-eslint/no-explicit-any -->
+<!--
+  book.vue - epub 电子书预览
+  epub: 通过 Rust 解析章节结构，按章节展示 HTML
+ -->
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import LayoutPreview from '@/components/layout-preview.vue'
 import { useRoute } from 'vue-router'
 import type { FileInfo } from '@/utils/typescript'
-import { convertFileSrc, invoke } from '@tauri-apps/api/core'
-import { CollectionTag } from '@element-plus/icons-vue'
-
-const route = useRoute()
+import { invoke } from '@tauri-apps/api/core'
+import { Document, Menu, Remove, Plus } from '@element-plus/icons-vue'
 
 defineOptions({
     name: 'BookSupport',
 })
 
-interface RenderedPage {
-    page_num: number
-    path: string
-    width: number
-    height: number
-}
+// ── 类型 ──────────────────────────────────────
 
-interface OutlineItem {
+interface EpubChapter {
+    index: number
     title: string
-    page: number
-    items: OutlineItem[]
+    file_name: string
+    level: number
+    fragment?: string | null
 }
 
+interface EpubInfo {
+    title: string
+    author: string
+    language: string
+    total_chapters: number
+    chapters: EpubChapter[]
+    cover_data?: string
+}
+
+// ── 状态 ──────────────────────────────────────
+
+const route = useRoute()
 const fileInfo = ref<FileInfo>()
-const pages = ref<Map<number, RenderedPage>>(new Map())
-const outline = ref<OutlineItem[]>([])
-const pager = ref<{
-    current: number
-    total: number
-    scale: number
-    dpi: number
-    rotation: number
-}>({
-    current: 1,
-    total: 0,
-    scale: 1,
-    dpi: 150,
-    rotation: 0,
-})
-const visible = ref(true)
-const pageNum = ref<number>(1)
-const scrollContainer = ref<HTMLDivElement>()
-let observer: IntersectionObserver | null = null
-let scrollHandler: (() => void) | null = null
-const renderingPages = ref<Set<number>>(new Set())
-const baseWidth = ref<number>(0)
-const baseHeight = ref<number>(0)
-let disposed = false
-let skipObserver = true
 
-const renderQueue: number[] = []
-let queueProcessing = false
+// epub 状态
+const epubInfo = ref<EpubInfo | null>(null)
+const currentChapterIndex = ref(0)
+const currentFragment = ref<string | null>(null)
+const chapterHtml = ref('')
 
-const processQueue = async () => {
-    if (queueProcessing || disposed) return
-    queueProcessing = true
-    while (renderQueue.length > 0 && !disposed) {
-        const current = pager.value.current - 1
-        renderQueue.sort((a, b) => Math.abs(a - current) - Math.abs(b - current))
-        const pageIndex = renderQueue.shift()!
-        if (!pages.value.has(pageIndex) && !renderingPages.value.has(pageIndex)) {
-            await renderPage(pageIndex)
-        }
-    }
-    queueProcessing = false
-}
+// UI 状态
+const sidebarVisible = ref(true)
+const loading = ref(false)
+const error = ref('')
+const iframeRef = ref<HTMLIFrameElement>()
 
-const enqueuePages = (pageIndices: number[]) => {
-    for (const idx of pageIndices) {
-        if (!pages.value.has(idx) && !renderingPages.value.has(idx) && !renderQueue.includes(idx)) {
-            renderQueue.push(idx)
-        }
-    }
-    processQueue()
-}
+type PendingScrollTarget = { kind: 'top' } | { kind: 'fragment'; fragment: string }
+const pendingScrollTarget = ref<PendingScrollTarget | null>(null)
 
-const renderPage = async (pageIndex: number) => {
-    if (disposed || pages.value.has(pageIndex) || renderingPages.value.has(pageIndex)) return
-    renderingPages.value.add(pageIndex)
+// 字体大小调节
+const fontSize = ref(16)
+const fontSizes = [12, 14, 16, 18, 20, 22, 24]
+
+// 请求序列号，用于丢弃过期响应（防止快速点击竞态）
+let chapterLoadSeq = 0
+
+// ── epub 逻辑 ─────────────────────────────────
+
+async function loadEpubInfo(path: string) {
+    loading.value = true
+    error.value = ''
     try {
-        const result = await invoke<RenderedPage>('render_pdf_page', {
-            path: fileInfo.value!.path,
-            pageIndex,
-            dpi: pager.value.dpi,
-        })
-        if (disposed) return
-        pages.value.set(pageIndex, result)
-        if (pageIndex === 0 && baseWidth.value === 0) {
-            baseWidth.value = result.width
-            baseHeight.value = result.height
-            console.log(`[pdf] baseSize: ${baseWidth.value}x${baseHeight.value}`)
+        epubInfo.value = await invoke<EpubInfo>('get_epub_info', { path })
+        if (epubInfo.value.chapters.length > 0) {
+            // 默认从第 0 章开始；封面通过侧边栏“封面”入口单独展示
+            await loadEpubChapter(path, 0)
         }
-        console.log(`[pdf] page ${pageIndex + 1} rendered`, result)
     } catch (e) {
-        if (!disposed) console.error(`[pdf] page ${pageIndex + 1} render failed`, e)
+        error.value = (e as Error)?.message || String(e)
     } finally {
-        if (!disposed) renderingPages.value.delete(pageIndex)
+        loading.value = false
     }
 }
 
-let lastScrollTop = 0
+async function loadEpubChapter(path: string, index: number, fragment: string | null = null) {
+    const seq = ++chapterLoadSeq
+    loading.value = true
+    error.value = ''
+    try {
+        const html = await invoke<string>('get_epub_chapter', {
+            path,
+            chapterIndex: index,
+        })
+        if (seq !== chapterLoadSeq) return // 丢弃过期响应
+        chapterHtml.value = html
+        currentChapterIndex.value = index
+        currentFragment.value = fragment
+    } catch (e) {
+        if (seq !== chapterLoadSeq) return
+        error.value = (e as Error)?.message || String(e)
+    } finally {
+        if (seq !== chapterLoadSeq) return
+        loading.value = false
+        await nextTick()
+        updateIframeSrcdoc()
+    }
+}
 
-/** Track which page is most visible in the scroll container. */
-const updateCurrentPage = () => {
-    const container = scrollContainer.value
-    if (!container) return
-    const scrollTop = container.scrollTop
-    const viewBottom = scrollTop + container.clientHeight
+// ── epub 链接解析 ───────────────────────────────
 
-    let bestPage = 1
-    let bestVisiblePx = 0
+async function resolveEpubLink(
+    path: string,
+    currentIndex: number,
+    href: string,
+): Promise<[number, string | null] | null> {
+    try {
+        return await invoke<[number, string | null] | null>('resolve_epub_link', {
+            path,
+            currentChapterIndex: currentIndex,
+            href,
+        })
+    } catch (e) {
+        console.error('[book] resolveEpubLink invoke error:', e)
+        return null
+    }
+}
 
-    for (let i = 1; i <= pager.value.total; i++) {
-        const el = document.getElementById(`page-placeholder-${i}`)
-        if (!el) continue
-        const rect = el.getBoundingClientRect()
-        // Page position relative to scroll container
-        const pageTop = rect.top + scrollTop
-        const pageBottom = pageTop + rect.height
+// ── iframe 渲染 ───────────────────────────────
 
-        // Overlap between page and viewport
-        const overlapTop = Math.max(pageTop, scrollTop)
-        const overlapBottom = Math.min(pageBottom, viewBottom)
-        const overlap = Math.max(0, overlapBottom - overlapTop)
-
-        if (overlap > bestVisiblePx) {
-            bestVisiblePx = overlap
-            bestPage = i
+function scrollIframeToTarget(target: PendingScrollTarget | null, attempts = 8) {
+    const doc = iframeRef.value?.contentDocument
+    if (!doc) {
+        if (attempts > 0) {
+            requestAnimationFrame(() => scrollIframeToTarget(target, attempts - 1))
         }
+        return
     }
 
-    if (bestPage !== pager.value.current) {
-        pager.value.current = bestPage
-        pageNum.value = bestPage
-    }
-    lastScrollTop = scrollTop
-}
+    if (!target) return
 
-const initObserver = () => {
-    observer?.disconnect()
-    if (scrollHandler) {
-        scrollContainer.value?.removeEventListener('scroll', scrollHandler)
-        scrollHandler = null
-    }
-
-    // Observer is only used for pre-rendering (enqueuePages), not for page tracking
-    observer = new IntersectionObserver(
-        entries => {
-            const visiblePages: number[] = []
-            for (const entry of entries) {
-                if (entry.isIntersecting) {
-                    const id = entry.target.id
-                    const num = parseInt(id.replace('page-placeholder-', ''), 10)
-                    if (!isNaN(num)) {
-                        visiblePages.push(num - 1)
-                    }
+    if (target.kind === 'top') {
+        const container = doc.documentElement || doc.body
+        if (container) {
+            const start = container.scrollTop || 0
+            const distance = -start
+            const duration = 320
+            const startTime = performance.now()
+            const step = (now: number) => {
+                const elapsed = now - startTime
+                const progress = Math.min(elapsed / duration, 1)
+                const eased = 1 - Math.pow(1 - progress, 3)
+                const current = start + distance * eased
+                if (doc.documentElement) doc.documentElement.scrollTop = current
+                if (doc.body) doc.body.scrollTop = current
+                if (progress < 1) {
+                    requestAnimationFrame(step)
                 }
             }
-            enqueuePages(visiblePages)
-        },
-        {
-            root: scrollContainer.value,
-            rootMargin: '400px 0px',
-            threshold: 0,
-        },
-    )
-
-    nextTick(() => {
-        for (let i = 0; i < pager.value.total; i++) {
-            const el = document.getElementById(`page-placeholder-${i + 1}`)
-            if (el) observer!.observe(el)
+            requestAnimationFrame(step)
         }
-    })
+        return
+    }
 
-    // Scroll handler for page tracking
-    scrollHandler = () => updateCurrentPage()
-    scrollContainer.value?.addEventListener('scroll', scrollHandler!)
-}
-
-const handleJump = () => {
-    const el = document.getElementById(`page-placeholder-${pageNum.value}`)
-    if (el) {
-        el.scrollIntoView({ block: 'start' })
+    const targetEl = doc.getElementById(target.fragment)
+    if (targetEl) {
+        targetEl.scrollIntoView({ block: 'start', behavior: 'smooth' })
+    } else if (attempts > 0) {
+        requestAnimationFrame(() => scrollIframeToTarget(target, attempts - 1))
     }
 }
 
-const handleNodeClick = (data: OutlineItem) => {
-    pageNum.value = data.page
-    handleJump()
+function updateIframeSrcdoc() {
+    const el = iframeRef.value
+    if (!el) return
+    const html = chapterHtml.value
+
+    const contentHtml = html || '<p style="color:#999;text-align:center;margin-top:40px;text-indent:0">暂无内容</p>'
+
+    el.onload = () => {
+        try {
+            const doc = el.contentDocument
+            if (!doc) return
+            doc.addEventListener('click', (e) => {
+                const link = (e.target as HTMLElement).closest('a')
+                if (!link) return
+                const href = link.getAttribute('href')
+                if (!href || href.startsWith('data:') || href.startsWith('javascript:')) return
+                e.preventDefault()
+                e.stopPropagation()
+                console.log('[book] iframe link intercepted:', href)
+                handleIframeLink(href)
+            }, true)
+        } catch (err) {
+            console.warn('[book] failed to attach iframe click handler:', err)
+        }
+
+        requestAnimationFrame(() => {
+            scrollIframeToTarget(pendingScrollTarget.value)
+            pendingScrollTarget.value = null
+        })
+    }
+
+    el.srcdoc = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+                /* 基础排版 */
+                body {
+                    margin: 0;
+                    padding: 24px 32px;
+                    font-family: "Source Han Serif", "Noto Serif CJK", "SimSun", "Times New Roman", serif;
+                    line-height: 1.9;
+                    color: #2c2c2c;
+                    max-width: 720px;
+                    margin: 0 auto;
+                    font-size: ${fontSize.value}px;
+                    -webkit-font-smoothing: antialiased;
+                }
+
+                /* 段落 */
+                p {
+                    text-indent: 2em;
+                    margin: 0.6em 0;
+                    text-align: justify;
+                }
+
+                /* 标题 */
+                h1 {
+                    font-size: 1.8em;
+                    text-align: center;
+                    margin: 1.5em 0 0.8em;
+                    font-weight: 600;
+                    color: #1a1a1a;
+                }
+                h2 {
+                    font-size: 1.4em;
+                    margin: 1.2em 0 0.6em;
+                    padding-bottom: 0.3em;
+                    border-bottom: 1px solid #e8e8e8;
+                    font-weight: 600;
+                    color: #1a1a1a;
+                }
+                h3 {
+                    font-size: 1.2em;
+                    margin: 1em 0 0.5em;
+                    font-weight: 600;
+                    color: #1a1a1a;
+                }
+
+                /* 图片 */
+                img {
+                    max-width: 100%;
+                    height: auto;
+                    display: block;
+                    margin: 1em auto;
+                    border-radius: 4px;
+                }
+
+                /* 引用 */
+                blockquote {
+                    margin: 1em 0;
+                    padding: 0.5em 1em;
+                    border-left: 3px solid #d0d0d0;
+                    color: #666;
+                    background: #fafafa;
+                    font-style: italic;
+                }
+
+                /* 列表 */
+                ul, ol {
+                    margin: 0.8em 0;
+                    padding-left: 2em;
+                }
+                li {
+                    margin: 0.3em 0;
+                }
+
+                /* 代码 */
+                code {
+                    font-family: "Consolas", "Source Code Pro", monospace;
+                    background: #f5f5f5;
+                    padding: 0.15em 0.4em;
+                    border-radius: 3px;
+                    font-size: 0.9em;
+                }
+                pre {
+                    background: #f5f5f5;
+                    padding: 1em;
+                    border-radius: 4px;
+                    overflow-x: auto;
+                    line-height: 1.5;
+                }
+                pre code {
+                    background: none;
+                    padding: 0;
+                }
+
+                /* 表格 */
+                table {
+                    border-collapse: collapse;
+                    width: 100%;
+                    margin: 1em 0;
+                }
+                th, td {
+                    border: 1px solid #ddd;
+                    padding: 0.5em 0.8em;
+                    text-align: left;
+                }
+                th {
+                    background: #f5f5f5;
+                    font-weight: 600;
+                }
+
+                /* 链接 */
+                a {
+                    color: #1a73e8;
+                    text-decoration: none;
+                }
+                a:hover {
+                    text-decoration: underline;
+                }
+
+                /* 分隔线 */
+                hr {
+                    border: none;
+                    border-top: 1px solid #e0e0e0;
+                    margin: 2em 0;
+                }
+
+                /* 强调 */
+                strong {
+                    font-weight: 600;
+                    color: #1a1a1a;
+                }
+                em {
+                    font-style: italic;
+                }
+
+                /* 脚注 */
+                sup {
+                    font-size: 0.75em;
+                    vertical-align: super;
+                    color: #666;
+                }
+
+                /* 清除浮动 */
+                .clearfix::after {
+                    content: "";
+                    display: table;
+                    clear: both;
+                }
+            </style>
+        </head>
+        <body>${contentHtml}</body>
+        </html>
+    `
+
 }
 
-const handleZoomIn = () => {
-    pager.value.scale = Math.min(5, pager.value.scale + 0.25)
+// ── 事件处理 ──────────────────────────────────
+
+function showCoverInContent() {
+    if (!epubInfo.value?.cover_data) return
+    currentChapterIndex.value = -1
+    chapterHtml.value = `<div style="text-align:center; padding: 20px;">
+        <img src="${epubInfo.value.cover_data}" alt="封面" style="max-width: 100%; max-height: 80vh; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+    </div>`
+    updateIframeSrcdoc()
 }
 
-const handleZoomOut = () => {
-    pager.value.scale = Math.max(0.25, pager.value.scale - 0.25)
+async function handleNodeClick(data: EpubChapter) {
+    if (!fileInfo.value) return
+
+    const targetIndex = data.index
+    const targetFragment = data.fragment
+
+    if (targetFragment) {
+        currentFragment.value = targetFragment
+        pendingScrollTarget.value = { kind: 'fragment', fragment: targetFragment }
+    } else {
+        currentFragment.value = null
+        pendingScrollTarget.value = { kind: 'top' }
+    }
+
+    if (currentChapterIndex.value === targetIndex) {
+        if (iframeRef.value?.contentDocument) {
+            scrollIframeToTarget(pendingScrollTarget.value)
+            pendingScrollTarget.value = null
+        }
+        return
+    }
+
+    await loadEpubChapter(fileInfo.value.path, targetIndex, targetFragment)
 }
 
-const handleFitWidth = () => {
-    if (!scrollContainer.value || !pages.value.size) return
-    const containerWidth = scrollContainer.value.clientWidth - 40
-    const firstPage = pages.value.get(0)
-    if (firstPage) {
-        pager.value.scale = containerWidth / firstPage.width
+// 章节导航
+function prevChapter() {
+    if (!fileInfo.value) return
+    if (currentChapterIndex.value > 0) {
+        loadEpubChapter(fileInfo.value.path, currentChapterIndex.value - 1)
     }
 }
 
-let renderTimer: ReturnType<typeof setTimeout> | null = null
-watch(
-    () => pager.value.scale,
-    () => {
-        if (renderTimer) clearTimeout(renderTimer)
-        renderTimer = setTimeout(async () => {
-            if (!fileInfo.value) return
-            const baseDpi = 150
-            const newDpi = Math.round(baseDpi * pager.value.scale)
-            const clampedDpi = Math.max(72, Math.min(600, newDpi))
-            if (clampedDpi !== pager.value.dpi) {
-                const savedPage = pager.value.current
+function nextChapter() {
+    if (!fileInfo.value) return
+    const total = epubInfo.value?.chapters.length || 0
+    if (currentChapterIndex.value < total - 1) {
+        loadEpubChapter(fileInfo.value.path, currentChapterIndex.value + 1)
+    }
+}
 
-                skipObserver = true
-                pages.value.clear()
-                renderQueue.length = 0
-                pager.value.dpi = clampedDpi
+// 字体大小调节
+function changeFontSize(delta: number) {
+    const idx = fontSizes.indexOf(fontSize.value)
+    const newIdx = Math.max(0, Math.min(fontSizes.length - 1, idx + delta))
+    fontSize.value = fontSizes[newIdx]
+    updateIframeFontSize()
+}
 
-                await nextTick()
+function updateIframeFontSize() {
+    const doc = iframeRef.value?.contentDocument
+    if (doc?.body) {
+        doc.body.style.fontSize = `${fontSize.value}px`
+    }
+}
 
-                // Restore scroll position to keep the same page in view
-                const el = document.getElementById(`page-placeholder-${savedPage}`)
-                if (el) el.scrollIntoView({ block: 'start' })
-                pager.value.current = savedPage
-                pageNum.value = savedPage
+// 键盘导航
+function handleKeydown(e: KeyboardEvent) {
+    // 忽略在输入框中的按键
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
 
-                initObserver()
+    switch (e.key) {
+        case 'ArrowLeft':
+            e.preventDefault()
+            prevChapter()
+            break
+        case 'ArrowRight':
+            e.preventDefault()
+            nextChapter()
+            break
+        case '+':
+        case '=':
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault()
+                changeFontSize(1)
             }
-        }, 300)
-    },
-)
-
-const handleWheel = (e: WheelEvent) => {
-    if (e.ctrlKey) {
-        e.preventDefault()
-        if (e.deltaY < 0) handleZoomIn()
-        else handleZoomOut()
+            break
+        case '-':
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault()
+                changeFontSize(-1)
+            }
+            break
     }
 }
 
-const loadOutline = async (path: string) => {
-    const [count, outlineData] = await Promise.all([
-        invoke<number>('get_pdf_page_count', { path }),
-        invoke<OutlineItem[]>('get_pdf_outline', { path }),
-    ])
-    pager.value.total = count
-    outline.value = outlineData
+// ── 生命周期 ──────────────────────────────────
+
+// ── iframe 链接拦截 ──────────────────────────────
+
+function handleIframeLink(href: string) {
+    console.log('[book] iframe link intercepted:', href)
+    if (!href || !fileInfo.value) return
+
+    // 解析 href: 可能是 "chapter.xhtml" 或 "chapter.xhtml#fragment"
+    const [chapterPath] = href.split('#')
+
+    // 如果是当前章节内的锚点（无路径变更），直接滚动
+    if (!chapterPath || chapterPath === '') {
+        const fragment = href.split('#')[1]
+        if (fragment) {
+            const doc = iframeRef.value?.contentDocument
+            if (doc) {
+                const target = doc.getElementById(fragment)
+                if (target) {
+                    target.scrollIntoView()
+                    return
+                }
+            }
+        }
+        return
+    }
+
+    // 使用 Rust 端精确解析链接
+    const currentIndex = currentChapterIndex.value
+    resolveEpubLink(fileInfo.value.path, currentIndex, href).then(result => {
+        console.log('[book] resolveEpubLink result:', result)
+        if (!result) return
+
+        const [targetIndex, fragment] = result
+        console.log('[book] targetIndex:', targetIndex, 'fragment:', fragment)
+
+        // 如果是当前章节内的锚点，直接滚动
+        if (targetIndex === currentIndex && fragment) {
+            const doc = iframeRef.value?.contentDocument
+            if (doc) {
+                const target = doc.getElementById(fragment)
+                if (target) {
+                    target.scrollIntoView()
+                    return
+                }
+            }
+        }
+
+        // 加载目标章节
+        const path = fileInfo.value?.path
+        if (!path) return
+        loadEpubChapter(path, targetIndex).then(() => {
+            if (fragment) {
+                // 多次尝试定位，等待 iframe 内容完全渲染
+                const tryScroll = (attempts: number) => {
+                    const doc = iframeRef.value?.contentDocument
+                    if (doc) {
+                        const target = doc.getElementById(fragment)
+                        if (target) {
+                            target.scrollIntoView()
+                            return
+                        }
+                    }
+                    if (attempts > 0) {
+                        requestAnimationFrame(() => tryScroll(attempts - 1))
+                    }
+                }
+                requestAnimationFrame(() => tryScroll(5))
+            }
+        })
+    }).catch(err => {
+        console.error('[book] resolveEpubLink error:', err)
+    })
 }
 
 onMounted(async () => {
     fileInfo.value = route?.query as unknown as FileInfo
-    console.log('[pdf] onMounted', fileInfo.value)
-    await loadOutline(fileInfo.value.path)
-    console.log('[pdf] total pages:', pager.value.total)
-    initObserver()
-    for (let i = 0; i < Math.min(3, pager.value.total); i++) {
-        renderPage(i)
+    if (!fileInfo.value?.path) {
+        error.value = '未指定文件路径'
+        return
     }
+
+    await loadEpubInfo(fileInfo.value.path)
+
+    // 添加键盘事件监听
+    document.addEventListener('keydown', handleKeydown)
 })
 
 onUnmounted(() => {
-    disposed = true
-    observer?.disconnect()
-    if (scrollHandler) {
-        scrollContainer.value?.removeEventListener('scroll', scrollHandler)
-        scrollHandler = null
-    }
-    if (renderTimer) clearTimeout(renderTimer)
-    renderQueue.length = 0
+    document.removeEventListener('keydown', handleKeydown)
 })
 </script>
 
 <template>
     <LayoutPreview :file="fileInfo">
         <div class="book">
+            <!-- 工具栏 -->
             <div class="book-toolbar">
                 <div class="book-toolbar__left">
-                    <el-link :underline="false" @click="visible = !visible">
-                        <el-icon size="18px">
-                            <CollectionTag />
-                        </el-icon>
+                    <el-link :underline="false" @click="sidebarVisible = !sidebarVisible">
+                        <el-icon size="18px"><Menu /></el-icon>
                     </el-link>
                 </div>
                 <div class="book-toolbar__center">
-                    <el-button text size="small" @click="handleZoomOut">-</el-button>
-                    <span class="book-toolbar__zoom">{{ Math.round(pager.scale * 100) }}%</span>
-                    <el-button text size="small" @click="handleZoomIn">+</el-button>
-                    <el-divider direction="vertical" />
-                    <el-button text size="small" @click="handleFitWidth">适合宽度</el-button>
-                    <el-divider direction="vertical" />
-                    <el-input v-model.number="pageNum" size="small" style="width: 50px" @keydown.enter="handleJump" />
-                    <span class="book-toolbar__total">/ {{ pager.total }}</span>
+                    <el-icon><Document /></el-icon>
+                    <span class="book-toolbar__title">
+                        {{ epubInfo?.title || '电子书' }}
+                    </span>
+                    <span class="book-toolbar__author"> — {{ epubInfo?.author }} </span>
                 </div>
-                <div class="book-toolbar__right"></div>
+                <div class="book-toolbar__right">
+                    <el-link :underline="false" @click="changeFontSize(-1)" title="缩小字体 (Ctrl+-)">
+                        <el-icon size="16px"><Remove /></el-icon>
+                    </el-link>
+                    <span class="book-toolbar__font-size">{{ fontSize }}px</span>
+                    <el-link :underline="false" @click="changeFontSize(1)" title="放大字体 (Ctrl++)">
+                        <el-icon size="16px"><Plus /></el-icon>
+                    </el-link>
+                </div>
             </div>
 
             <div class="book-body">
-                <div class="book-outline" v-if="visible">
+                <!-- 侧边栏：epub 目录 -->
+                <div class="book-sidebar" v-if="sidebarVisible">
                     <el-scrollbar>
-                        <el-tree
-                            :data="outline"
-                            :props="{ children: 'items', label: 'title' }"
-                            :highlight-current="true"
-                            @node-click="handleNodeClick"
-                        />
+                        <!-- 封面 -->
+                        <div
+                            v-if="epubInfo?.cover_data"
+                            class="book-sidebar__item"
+                            :class="{ 'is-active': currentChapterIndex === -1 }"
+                            @click="showCoverInContent"
+                        >封面</div>
+<div
+    v-for="ch in epubInfo?.chapters"
+    :key="`${ch.index}-${ch.fragment || 'root'}`"
+    class="book-sidebar__item"
+    :class="{ 'is-active': ch.index === currentChapterIndex && (!ch.fragment || ch.fragment === currentFragment) }"
+    :style="{ paddingLeft: `${12 + ch.level * 16}px` }"
+    @click="handleNodeClick(ch)"
+>
+    {{ ch.title }}
+</div>
+
                     </el-scrollbar>
                 </div>
 
-                <div
-                    ref="scrollContainer"
-                    class="book-canvas"
-                    :class="{ 'book-canvas--full': !visible }"
-                    @wheel.passive="handleWheel"
-                >
-                    <template v-for="i in pager.total" :key="i">
-                        <div
-                            :id="`page-placeholder-${i}`"
-                            class="book-page-placeholder"
-                            :style="{
-                                flex: `0 0 ${baseHeight * pager.scale}px`,
-                                width: `${baseWidth * pager.scale}px`,
-                            }"
-                        >
-                            <img
-                                v-if="pages.get(i - 1)"
-                                :src="convertFileSrc(pages.get(i - 1)!.path)"
-                                class="book-page"
-                                @load="console.log('[pdf] img loaded', i)"
-                                @error="console.error('[pdf] img error', i)"
-                            />
-                            <div v-else-if="renderingPages.has(i - 1)" class="book-page-loading">渲染中...</div>
-                        </div>
-                    </template>
+                <!-- 内容区 -->
+                <div class="book-content">
+                    <!-- 骨架屏 -->
+                    <div v-if="loading" class="book-content__skeleton">
+                        <div class="skeleton-header"></div>
+                        <div class="skeleton-line" style="width: 90%"></div>
+                        <div class="skeleton-line" style="width: 100%"></div>
+                        <div class="skeleton-line" style="width: 85%"></div>
+                        <div class="skeleton-line" style="width: 95%"></div>
+                        <div class="skeleton-line" style="width: 70%"></div>
+                        <div class="skeleton-line" style="width: 88%"></div>
+                    </div>
+                    <div v-else-if="error" class="book-content__error">
+                        {{ error }}
+                    </div>
+                    <iframe v-else ref="iframeRef" class="book-content__iframe"></iframe>
                 </div>
             </div>
         </div>
@@ -371,22 +642,31 @@ onUnmounted(() => {
         &__left,
         &__right {
             width: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 4px;
+        }
+
+        &__font-size {
+            font-size: 12px;
+            color: var(--color-text-secondary);
+            min-width: 36px;
+            text-align: center;
         }
 
         &__center {
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
             font-size: 13px;
         }
 
-        &__zoom {
-            min-width: 40px;
-            text-align: center;
+        &__title {
+            font-weight: 500;
         }
 
-        &__total {
-            margin-left: 4px;
+        &__author {
             color: var(--color-text-secondary);
         }
     }
@@ -397,51 +677,107 @@ onUnmounted(() => {
         overflow: hidden;
     }
 
-    &-outline {
-        width: 300px;
+    &-sidebar {
+        width: 260px;
         height: 100%;
         overflow: auto;
         box-shadow: 1px 0 2px rgba(0, 0, 0, 0.1);
         background-color: var(--color-bg);
         color: var(--color-text-primary);
-        font-size: 14px;
+        font-size: 13px;
         flex-shrink: 0;
-    }
 
-    &-canvas {
-        flex: 1;
-        overflow-y: auto;
-        padding: 20px;
-        background-color: #efefef;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 16px;
+        &__item {
+            padding: 8px 12px;
+            cursor: pointer;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            border-left: 3px solid transparent;
 
-        &--full {
-            width: 100%;
+            &:hover {
+                background-color: var(--color-fill-light);
+            }
+
+            &.is-active {
+                background-color: var(--color-primary-light-9);
+                border-left-color: var(--color-primary);
+                color: var(--color-primary);
+            }
+        }
+
+        &__cover {
+            padding: 16px 12px;
+            border-bottom: 1px solid var(--color-border-light);
+            text-align: center;
+
+            img {
+                width: 100%;
+                max-height: 200px;
+                object-fit: contain;
+                border-radius: 4px;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            }
+
+            &-label {
+                display: block;
+                margin-top: 8px;
+                font-size: 12px;
+                color: #666;
+            }
         }
     }
 
-    &-page-placeholder {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: white;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    &-content {
+        flex: 1;
         overflow: hidden;
-    }
+        display: flex;
+        background-color: #f5f5f5;
 
-    &-page {
-        display: block;
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
-    }
+        &__loading,
+        &__skeleton {
+            padding: 32px;
+            width: 100%;
 
-    &-page-loading {
-        color: #999;
-        font-size: 14px;
+            .skeleton-header {
+                width: 60%;
+                height: 24px;
+                background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+                background-size: 200% 100%;
+                animation: skeleton-pulse 1.5s ease-in-out infinite;
+                border-radius: 4px;
+                margin-bottom: 24px;
+            }
+
+            .skeleton-line {
+                height: 14px;
+                background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+                background-size: 200% 100%;
+                animation: skeleton-pulse 1.5s ease-in-out infinite;
+                border-radius: 3px;
+                margin-bottom: 12px;
+            }
+        }
+
+        &__error {
+            color: var(--color-danger);
+        }
+
+        &__iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: white;
+        }
+    }
+}
+
+@keyframes skeleton-pulse {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
     }
 }
 </style>

@@ -53,11 +53,15 @@ static COM_THREAD: LazyLock<ComThread> = LazyLock::new(|| {
     thread::Builder::new()
         .name("com-worker".into())
         .spawn(move || {
-            unsafe { let _ = CoInitializeEx(None, COINIT_APARTMENTTHREADED); }
+            unsafe {
+                let _ = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
+            }
             while let Ok((task, result_tx)) = rx.recv() {
                 result_tx.send(task()).ok();
             }
-            unsafe { CoUninitialize(); }
+            unsafe {
+                CoUninitialize();
+            }
         })
         .expect("failed to spawn COM thread");
     ComThread { tx }

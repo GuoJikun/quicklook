@@ -38,10 +38,7 @@ pub fn list_zip_entries<P: AsRef<Path>>(
 }
 
 /// 处理 zip 格式的压缩文件（兼容旧接口）
-pub fn zip_extract(
-    zip_path: &str,
-    password: Option<&str>,
-) -> Result<Vec<Extract>, ArchiveError> {
+pub fn zip_extract(zip_path: &str, password: Option<&str>) -> Result<Vec<Extract>, ArchiveError> {
     list_zip_entries(zip_path, password)
 }
 

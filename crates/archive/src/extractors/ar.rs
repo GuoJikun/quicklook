@@ -12,9 +12,7 @@ pub fn list_ar_entries<P: AsRef<Path>>(path: P) -> Result<Vec<Extract>, ArchiveE
         let identifier = entry.header().identifier();
         let name = std::str::from_utf8(identifier)
             .map(str::to_string)
-            .unwrap_or_else(|_| {
-                String::from_utf8_lossy(identifier).into_owned()
-            });
+            .unwrap_or_else(|_| String::from_utf8_lossy(identifier).into_owned());
         let size = entry.header().size();
         let is_dir = name.ends_with('/');
 

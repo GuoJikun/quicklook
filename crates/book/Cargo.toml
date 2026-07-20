@@ -1,0 +1,21 @@
+[package]
+name = "quicklook-book"
+version = "0.1.0"
+description = "Book format parsing (epub) for QuickLook"
+authors = ["GuoJikun <guojikun486546@163.com>"]
+license = ""
+repository = "https://github.com/GuoJikun/quicklook.git"
+homepage = "https://github.com/GuoJikun/quicklook"
+edition = "2021"
+rust-version = "1.88.0"
+
+[lib]
+name = "quicklook_book"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+log = { workspace = true }
+quicklook-error = { workspace = true }
+iepub = "1.3.6"
+serde = { workspace = true }
+base64 = "0.22"
