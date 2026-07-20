@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { convertFileSrc, invoke } from '@tauri-apps/api/core'
-import { CollectionTag } from '@element-plus/icons-vue'
+import { CollectionTag, RefreshRight, ZoomIn, ZoomOut } from '@element-plus/icons-vue'
 
 const props = defineProps<{
     path: string
@@ -60,6 +60,8 @@ const beginRenderSession = () => {
     pages.value.clear()
     renderQueue.length = 0
     renderingPages.value.clear()
+    baseWidth.value = 0
+    baseHeight.value = 0
 }
 
 const processQueue = async () => {
@@ -96,6 +98,7 @@ const renderPage = async (pageIndex: number, generation: number) => {
             path: props.path,
             pageIndex,
             dpi: pager.value.dpi,
+            rotation: pager.value.rotation,
         })
         if (disposed || generation !== renderGeneration.value) return
         pages.value.set(pageIndex, result)
@@ -212,6 +215,24 @@ const handleZoomOut = () => {
     pager.value.scale = Math.max(0.25, pager.value.scale - 0.25)
 }
 
+const handleRotate = async () => {
+    pager.value.rotation = (pager.value.rotation + 90) % 360
+    const savedPage = pager.value.current
+
+    beginRenderSession()
+    await nextTick()
+
+    const el = document.getElementById(`page-placeholder-${savedPage}`)
+    if (el) el.scrollIntoView({ block: 'start' })
+    pager.value.current = savedPage
+    pageNum.value = savedPage
+
+    initObserver()
+    for (let i = 0; i < Math.min(3, pager.value.total); i++) {
+        renderPage(i, renderGeneration.value)
+    }
+}
+
 const handleFitWidth = () => {
     if (!scrollContainer.value || !pages.value.size) return
     const containerWidth = scrollContainer.value.clientWidth - 40
@@ -306,11 +327,25 @@ onUnmounted(() => {
                 </el-link>
             </div>
             <div class="pdf-viewer-toolbar__center">
-                <el-button text size="small" @click="handleZoomOut">-</el-button>
+                <el-button text size="small" @click="handleZoomOut">
+                    <el-icon size="18px">
+                        <ZoomOut />
+                    </el-icon>
+                </el-button>
                 <span class="pdf-viewer-toolbar__zoom">{{ Math.round(pager.scale * 100) }}%</span>
-                <el-button text size="small" @click="handleZoomIn">+</el-button>
+                <el-button text size="small" @click="handleZoomIn">
+                    <el-icon size="18px">
+                        <ZoomIn />
+                    </el-icon>
+                </el-button>
                 <el-divider direction="vertical" />
                 <el-button text size="small" @click="handleFitWidth">适合宽度</el-button>
+                <el-divider direction="vertical" />
+                <el-button text size="small" @click="handleRotate">
+                    <el-icon size="18px">
+                        <RefreshRight />
+                    </el-icon>
+                </el-button>
                 <el-divider direction="vertical" />
                 <el-input v-model.number="pageNum" size="small" style="width: 50px" @keydown.enter="handleJump" />
                 <span class="pdf-viewer-toolbar__total">/ {{ pager.total }}</span>

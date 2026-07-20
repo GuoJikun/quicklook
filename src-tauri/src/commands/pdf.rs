@@ -9,17 +9,20 @@ pub async fn render_pdf_page(
     path: String,
     page_index: u32,
     dpi: u32,
+    rotation: u32,
 ) -> Result<pdf_helper::RenderedPage, QuickLookError> {
     log::info!(
-        "[cmd] render_pdf_page path={}, page_index={}, dpi={}",
+        "[cmd] render_pdf_page path={}, page_index={}, dpi={}, rotation={}",
         path,
         page_index,
-        dpi
+        dpi,
+        rotation
     );
-    let result =
-        tokio::task::spawn_blocking(move || pdf_helper::render_pdf_page(&path, page_index, dpi))
-            .await
-            .map_err(|e| QuickLookError::PdfRendering(format!("任务执行失败: {}", e)))?;
+    let result = tokio::task::spawn_blocking(move || {
+        pdf_helper::render_pdf_page(&path, page_index, dpi, rotation)
+    })
+    .await
+    .map_err(|e| QuickLookError::PdfRendering(format!("任务执行失败: {}", e)))?;
     match &result {
         Ok(page) => log::info!("[cmd] render_pdf_page 成功: page {}", page.page_num),
         Err(e) => log::error!("[cmd] render_pdf_page 失败: {}", e),
