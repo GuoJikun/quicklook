@@ -263,7 +263,7 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, QuickLookError> {
 }
 
 fn probe_video_codec(path: &Path) -> Result<String, QuickLookError> {
-    let output = std::process::Command::new("ffprobe")
+    let output = match std::process::Command::new("ffprobe")
         .args([
             "-v",
             "error",
@@ -275,13 +275,31 @@ fn probe_video_codec(path: &Path) -> Result<String, QuickLookError> {
             "csv=p=0",
             path.to_string_lossy().as_ref(),
         ])
-        .output()?;
+        .output()
+    {
+        Ok(output) => output,
+        Err(e) => {
+            log::warn!("ffprobe 执行失败: {}，将使用转码模式", e);
+            return Ok(String::new());
+        },
+    };
 
-    let stdout = String::from_utf8(output.stdout)?;
-    let stderr = String::from_utf8_lossy(&output.stderr);
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        log::warn!("ffprobe 退出异常: {}，将使用转码模式", stderr.trim());
+        return Ok(String::new());
+    }
+
+    let stdout = match String::from_utf8(output.stdout) {
+        Ok(stdout) => stdout,
+        Err(e) => {
+            log::warn!("ffprobe 输出解析失败: {}，将使用转码模式", e);
+            return Ok(String::new());
+        },
+    };
+
     let codec = stdout.trim().to_lowercase();
-
-    log::info!("ffprobe stdout='{}' stderr='{}'", codec, stderr);
+    log::info!("ffprobe stdout='{}'", codec);
     Ok(codec)
 }
 
