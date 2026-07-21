@@ -1,8 +1,16 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{LazyLock, Mutex};
 
 use quicklook_error::QuickLookError;
+use serde::Serialize;
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VideoPreviewDecision {
+    pub is_direct_playback: bool,
+    pub preview_path: String,
+}
 
 /// 全局记录正在运行的 ffmpeg 进程 PID 及其对应的临时目录，用于取消时终止进程并清理。
 static FFMPEG_PROCESS: LazyLock<Mutex<Option<(u32, PathBuf)>>> = LazyLock::new(|| Mutex::new(None));
@@ -15,6 +23,37 @@ pub fn check_ffmpeg() -> bool {
         .output()
         .map(|o| o.status.success())
         .unwrap_or(false)
+}
+
+/// 预检查视频是否可直接原生播放。
+/// 仅当文件格式/编码都满足兼容性要求时，返回原视频路径；否则返回需要转码的信号。
+pub fn prepare_video_for_preview(path: &str) -> Result<VideoPreviewDecision, QuickLookError> {
+    if !check_ffmpeg() {
+        return Err(QuickLookError::FfmpegNotFound);
+    }
+
+    let path = Path::new(path);
+    let extension = path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .unwrap_or_default()
+        .to_lowercase();
+
+    let codec = probe_video_codec(path)?;
+    log::info!("prepare_video_for_preview: path={:?}, ext={}, codec={}", path, extension, codec);
+    let is_compatible = is_compatible_video(path, &extension, &codec);
+
+    if is_compatible {
+        return Ok(VideoPreviewDecision {
+            is_direct_playback: true,
+            preview_path: path.to_string_lossy().to_string(),
+        });
+    }
+
+    Ok(VideoPreviewDecision {
+        is_direct_playback: false,
+        preview_path: String::new(),
+    })
 }
 
 /// 将视频转换为 HLS (m3u8) 格式以供播放。
@@ -105,32 +144,7 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, QuickLookError> {
     std::fs::create_dir_all(&temp_dir)?;
 
     // 用 ffprobe 检测视频流编解码器
-    let codec_result = std::process::Command::new("ffprobe")
-        .args([
-            "-v",
-            "quiet",
-            "-select_streams",
-            "v:0",
-            "-show_entries",
-            "stream=codec_name",
-            "-of",
-            "default=noprint_wrappers=1:nokeys=1",
-            path,
-        ])
-        .output();
-    let codec = match codec_result {
-        Ok(out) => match String::from_utf8(out.stdout) {
-            Ok(s) => s.trim().to_lowercase(),
-            Err(e) => {
-                log::warn!("ffprobe 输出解析失败: {}，将使用转码模式", e);
-                String::new()
-            },
-        },
-        Err(e) => {
-            log::warn!("ffprobe 执行失败: {}，将使用转码模式", e);
-            String::new()
-        },
-    };
+    let codec = probe_video_codec(Path::new(path))?;
     log::info!("检测到视频编解码器: {}", codec);
 
     // 如果已是 h264，直接复制视频流；否则转码为 libx264
@@ -246,6 +260,37 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, QuickLookError> {
     Err(QuickLookError::VideoConversion(
         "ffmpeg 已启动，但 m3u8 生成超时".to_string(),
     ))
+}
+
+fn probe_video_codec(path: &Path) -> Result<String, QuickLookError> {
+    let output = std::process::Command::new("ffprobe")
+        .args([
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=codec_name",
+            "-of",
+            "csv=p=0",
+            path.to_string_lossy().as_ref(),
+        ])
+        .output()?;
+
+    let stdout = String::from_utf8(output.stdout)?;
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let codec = stdout.trim().to_lowercase();
+
+    log::info!("ffprobe stdout='{}' stderr='{}'", codec, stderr);
+    Ok(codec)
+}
+
+fn is_compatible_video(_path: &Path, extension: &str, codec: &str) -> bool {
+    if extension.is_empty() || codec.is_empty() {
+        return false;
+    }
+
+    extension == "mp4" && codec == "h264"
 }
 
 /// 从全局取出正在运行的 ffmpeg 进程记录，终止该进程并删除临时目录。

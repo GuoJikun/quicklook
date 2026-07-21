@@ -92,10 +92,28 @@ onMounted(async () => {
     const useLocalFfmpeg = (await store.get<boolean>('useLocalFfmpeg')) ?? false
 
     if (useLocalFfmpeg) {
-        console.log('启用本机 ffmpeg 解析，正在转换视频...')
+        console.log('启用本机 ffmpeg 解析，正在检查视频兼容性...')
         converting.value = true
         convertError.value = null
         try {
+            const result = await invoke<{ isDirectPlayback: boolean; previewPath: string }>(
+                'prepare_video_for_preview',
+                { path: filePath },
+            )
+            console.log('视频预检查结果:', result)
+            if (disposed) {
+                return
+            }
+
+            const { isDirectPlayback, previewPath } = result
+            if (isDirectPlayback) {
+                const directUrl = convertFileSrc(previewPath)
+                console.log('视频格式与编码兼容，可直接播放:', directUrl)
+                initPlayer(directUrl, false)
+                return
+            }
+
+            console.log('视频需要转码，正在转换视频...')
             const m3u8Path = await invoke<string>('convert_video_to_hls', { path: filePath })
             if (disposed) {
                 return

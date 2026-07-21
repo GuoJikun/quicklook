@@ -16,3 +16,4 @@ crate-type = ["rlib"]
 [dependencies]
 log = { workspace = true }
 quicklook-error = { workspace = true }
+serde = { workspace = true }

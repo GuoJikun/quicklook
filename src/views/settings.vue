@@ -254,13 +254,13 @@ const handleClearPdfCache = async () => {
                 <SettingItem
                     id="video"
                     title="视频"
-                    description="启用本机 ffmpeg 后，可播放非 h264 编码的视频，并扩展自定义视频格式。"
+                    description="启用本机 ffmpeg 后，将优先直接播放兼容格式/编码的视频，并对不兼容内容自动转码。"
                     :icon="VideoCamera"
                 >
                     <div class="field-row">
                         <div class="field-row-label">
                             <span class="field-row-title">使用本机 ffmpeg 解析视频</span>
-                            <span class="field-row-desc">非 h264 编码视频将自动转码后播放。</span>
+                            <span class="field-row-desc">兼容格式/编码的视频将直接播放，不兼容时才自动转码。</span>
                         </div>
                         <el-switch
                             v-model="useLocalFfmpeg"

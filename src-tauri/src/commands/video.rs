@@ -9,6 +9,13 @@ pub fn check_ffmpeg() -> bool {
 }
 
 #[command]
+pub async fn prepare_video_for_preview(path: String) -> Result<ffmp::VideoPreviewDecision, QuickLookError> {
+    tauri::async_runtime::spawn_blocking(move || ffmp::prepare_video_for_preview(&path))
+        .await
+        .map_err(|e| QuickLookError::VideoConversion(format!("视频预检查执行失败: {}", e)))?
+}
+
+#[command]
 pub async fn convert_video_to_hls(path: String) -> Result<String, QuickLookError> {
     tauri::async_runtime::spawn_blocking(move || ffmp::convert_video_to_hls(&path))
         .await

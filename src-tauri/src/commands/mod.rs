@@ -16,4 +16,4 @@ pub use pdf::{clear_pdf_cache, get_pdf_outline, get_pdf_page_count, render_pdf_p
 pub use system::{
     clear_cache, get_default_program_name, get_monitor_info, set_log_level, show_open_with_dialog,
 };
-pub use video::{cancel_video_conversion, check_ffmpeg, convert_video_to_hls};
+pub use video::{cancel_video_conversion, check_ffmpeg, convert_video_to_hls, prepare_video_for_preview};
