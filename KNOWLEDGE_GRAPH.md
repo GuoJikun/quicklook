@@ -44,7 +44,7 @@ E:/private/Rust/quicklook/
 │           ├── index.vue          # 预览外壳 (Escape 关闭)
 │           ├── code.vue           # Shiki 高亮
 │           ├── md.vue             # Markdown 渲染
-│           ├── image.vue          # 图片查看 (PSD/HEIC 自动转码)
+│           ├── image.vue          # 图片查看 (PSD/JXL 自动转码)
 │           ├── video.vue          # 视频播放 (xgplayer + HLS)
 │           ├── audio.vue          # 音频播放 + LRC 歌词
 │           ├── font.vue           # 字体预览
@@ -79,7 +79,7 @@ E:/private/Rust/quicklook/
 │       │   ├── selected_file.rs   # COM 获取前台窗口选中文件路径
 │       │   ├── win.rs             # Win32 API 封装
 │       │   ├── audio.rs           # 音乐元数据 (lofty) + LRC 歌词
-│       │   ├── image.rs           # PSD/HEIC → PNG 转换
+│       │   ├── image.rs           # PSD/JXL → PNG 转换
 │       │   ├── ffmp.rs            # ffmpeg 检测 + 视频 → HLS
 │       │   └── monitor.rs         # 屏幕信息 (GDI)
 │       ├── preview/               # 预览激活
@@ -95,7 +95,7 @@ E:/private/Rust/quicklook/
 │   ├── audio/                     # quicklook-audio
 │   │   └── src/lib.rs             # MusicInfo, read_music_info(), Lrc, parse_lrc()
 │   ├── image/                     # quicklook-image
-│   │   └── src/lib.rs             # psd_to_png(), heic_to_png(), jxl_to_png(), image_to_png()
+│   │   └── src/lib.rs             # psd_to_png(), jxl_to_png(), image_to_png()
 │   ├── video/                     # quicklook-video
 │   │   └── src/lib.rs             # check_ffmpeg(), convert_video_to_hls(), cancel_video_conversion()
 │   ├── archive/                   # quicklook-archive
@@ -167,7 +167,7 @@ error.rs (统一错误类型: QuickLookError)
 | `document` | FE → BE | document.vue | `commands/document.rs` | quicklook-docs (Excel/CSV/DOCX) |
 | `get_epub_info` | FE → BE | book.vue | `commands/book.rs` | quicklook-book::epub |
 | `get_epub_chapter` | FE → BE | book.vue | `commands/book.rs` | quicklook-book::epub |
-| `convert_to_png` | FE → BE | image.vue | `commands/image.rs` | helper/image (psd/heic) |
+| `convert_to_png` | FE → BE | image.vue | `commands/image.rs` | helper/image (psd/jxl) |
 | `clear_image_cache` | FE → BE | settings.vue | `commands/image.rs` | 删除 %TEMP%/quicklook_images/ |
 | `read_audio_info` | FE → BE | audio.vue | `commands/audio.rs` | helper/audio (lofty crate) |
 | `parse_lrc` | FE → BE | audio.vue | `commands/audio.rs` | helper/audio (LRC 解析) |
@@ -249,7 +249,7 @@ FILE_TYPE_MAPPING (约 120 个扩展名)
 Markdown  : md, markdown
 Doc       : docx, xlsx, xls, xlsm, xlsb, xla, xlam, ods, csv
 Image     : jpg, jpeg, png, gif, webp, bmp, ico, svg, apng
-            psd, tiff, tif, tga, pbm, pgm, ppm, qoi, exr, heic, heif
+            psd, tiff, tif, tga, pbm, pgm, ppm, qoi, exr
 Video     : mp4, webm, mkv, avi, mov, wmv, mpg, mpeg, m4v, 3gp, 3g2
 Audio     : mp3, ogg, m4a, flac, wav, aac, wma, opus, ape, aiff, aifc, aif
 Book      : epub
@@ -392,7 +392,7 @@ Cargo workspace (resolver = "2")
 ├── quicklook-image (crates/image/)
 │   ├── image (workspace, 多图像格式 features)
 │   ├── psd (Photoshop 解析)
-│   ├── libheif-rs (HEIC/HEIF 解码，需 vcpkg)
+│   │   # libheif-rs 暂时禁用：引入的 AV1 代码导致 winget CI 崩溃
 │   ├── jxl-oxide (JPEG XL 解码)
 │   ├── log (workspace)
 │   └── quicklook-error (workspace)

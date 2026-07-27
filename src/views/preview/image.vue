@@ -18,7 +18,8 @@ const fileInfo = ref<FileInfo>()
 const loading = ref(false)
 const imgPath = ref<string>()
 
-const convertFormats = ['psd', 'tiff', 'tif', 'tga', 'pbm', 'pgm', 'ppm', 'qoi', 'exr', 'heic', 'heif', 'jxl']
+// heic/heif 暂时禁用：libheif 引入的 AV1 代码导致 winget CI 崩溃
+const convertFormats = ['psd', 'tiff', 'tif', 'tga', 'pbm', 'pgm', 'ppm', 'qoi', 'exr', 'jxl']
 
 const init = async () => {
     loading.value = true

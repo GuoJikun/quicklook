@@ -35,7 +35,7 @@
 
 - [image](https://github.com/image-rs/image) — 通用图像编解码
 - [psd](https://github.com/soenkehahn/psd) — PSD 解析
-- [libheif-rs](https://github.com/oknotokcomputer/libheif-rs) — HEIC/HEIF 解析
+<!-- - [libheif-rs](https://github.com/oknotokcomputer/libheif-rs) — HEIC/HEIF 解析（暂时禁用：libheif 引入的 AV1 代码导致 winget CI 崩溃） -->
 - [jxl-oxide](https://github.com/tirr-c/jxl-oxide) — JPEG XL 解析
 
 **文档解析（crates/docs）**
