@@ -17,11 +17,15 @@ jobs:
             rust-target: "x86_64-pc-windows-msvc"
             triplet: "x64-windows-static-md"
             target: "windows"
+            arch: "x64"
+            pdfium-dll: "pdfium-x64.dll"
           - platform: windows-latest
             args: "--target aarch64-pc-windows-msvc"
             rust-target: "aarch64-pc-windows-msvc"
             triplet: "arm64-windows-static-md"
             target: "windows-aarch64"
+            arch: "aarch64"
+            pdfium-dll: "pdfium-arm64.dll"
 
     runs-on: ${{ matrix.settings.platform }}
 
@@ -91,3 +95,31 @@ jobs:
           releaseBody: "${{ steps.get_release.outputs.result }}"
           releaseDraft: false
           prerelease: true
+
+      - name: Create portable ZIP
+        shell: pwsh
+        run: |
+          $version = (Get-Content src-tauri/tauri.conf.json | ConvertFrom-Json).version
+          $arch = "${{ matrix.settings.arch }}"
+          $stagingDir = "portable-staging"
+          New-Item -ItemType Directory -Path $stagingDir -Force
+
+          Copy-Item "src-tauri/target/${{ matrix.settings.rust-target }}/release/quicklook.exe" "$stagingDir/"
+          Copy-Item "src-tauri/resources/config.json" "$stagingDir/"
+          Copy-Item "${{ matrix.settings.pdfium-dll }}" "$stagingDir/pdfium.dll"
+
+          $zipName = "quicklook_${version}_${arch}-portable.zip"
+          Compress-Archive -Path "$stagingDir/*" -DestinationPath $zipName
+          Add-Content -Path $env:GITHUB_ENV -Value "PORTABLE_ZIP=$zipName"
+
+      - name: Upload portable ZIP as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: quicklook-${{ matrix.settings.arch }}-portable
+          path: ${{ env.PORTABLE_ZIP }}
+
+      - name: Upload portable ZIP to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: gh release upload $env:GITHUB_REF_NAME $env:PORTABLE_ZIP

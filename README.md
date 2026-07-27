@@ -51,6 +51,18 @@ pnpm tauri dev 运行项目
 pnpm tauri build
 ```
 
+## 下载
+
+### 安装版（推荐）
+
+前往 [Releases](https://github.com/GuoJikun/quicklook/releases) 页面，下载最新版本的 `quicklook_*_x64-setup.exe`（x64）或 `quicklook_*_aarch64-setup.exe`（ARM64）安装包，双击安装即可。
+
+### Portable 版（绿色免安装）
+
+前往 [Releases](https://github.com/GuoJikun/quicklook/releases) 页面，下载 `quicklook_*_x64-portable.zip`（x64）或 `quicklook_*_aarch64-portable.zip`（ARM64），解压后直接运行 `quicklook.exe` 即可。
+
+> **注意**：Portable 版需要系统已安装 [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/zh-cn/microsoft-edge/webview2/)。Windows 10/11 通常已预装，若无法启动请先手动安装 WebView2。
+
 ## 使用到的开源软件
 
 详见 [THIRD_PARTY_LIB.md](./THIRD_PARTY_LIB.md)
