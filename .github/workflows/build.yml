@@ -102,8 +102,8 @@ jobs:
           $stagingDir = "portable-staging"
           New-Item -ItemType Directory -Path $stagingDir -Force
 
-          Copy-Item "src-tauri/target/release/app.exe" "$stagingDir/"
-          Copy-Item "src-tauri/resources/config.json" "$stagingDir/"
+          Get-ChildItem -Path "src-tauri/target/release" -File |
+            Copy-Item -Destination $stagingDir
 
           $zipName = "quicklook_${version}_${arch}-portable.zip"
           Compress-Archive -Path "$stagingDir/*" -DestinationPath $zipName
