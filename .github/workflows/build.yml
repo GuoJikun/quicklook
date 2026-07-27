@@ -102,7 +102,7 @@ jobs:
           $stagingDir = "portable-staging"
           New-Item -ItemType Directory -Path $stagingDir -Force
 
-          Copy-Item "src-tauri/target/${{ matrix.settings.rust-target }}/release/app.exe" "$stagingDir/"
+          Copy-Item "src-tauri/target/release/app.exe" "$stagingDir/"
           Copy-Item "src-tauri/resources/config.json" "$stagingDir/"
 
           $zipName = "quicklook_${version}_${arch}-portable.zip"
