@@ -28,14 +28,15 @@ jobs:
           workspaces: |
             . -> target
 
-      - name: Install cargo-vcpkg
-        run: cargo install cargo-vcpkg
-
-      - name: Build vcpkg dependencies
-        run: |
-          if (-not (Test-Path "$env:GITHUB_WORKSPACE/target/vcpkg")) {
-            cargo vcpkg build  --manifest-path crates/image/Cargo.toml
-          }
+      # 暂时禁用：HEIC/HEIF 支持已禁用，不再需要 vcpkg 构建 libheif
+      # - name: Install cargo-vcpkg
+      #   run: cargo install cargo-vcpkg
+      #
+      # - name: Build vcpkg dependencies
+      #   run: |
+      #     if (-not (Test-Path "$env:GITHUB_WORKSPACE/target/vcpkg")) {
+      #       cargo vcpkg build  --manifest-path crates/image/Cargo.toml
+      #     }
 
       - name: Cargo check
         run: |

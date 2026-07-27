@@ -51,15 +51,16 @@ jobs:
         with:
           workspaces: ". -> target"
 
-      - name: Install cargo-vcpkg
-        run: cargo install cargo-vcpkg
-
-      - name: Build vcpkg dependencies
-        run: |
-          if (-not (Test-Path "$env:GITHUB_WORKSPACE/target/vcpkg/installed/${{ matrix.settings.triplet }}")) {
-            cargo vcpkg build --manifest-path crates/image/Cargo.toml --target ${{ matrix.settings.rust-target }}
-          }
-        shell: pwsh
+      # 暂时禁用：HEIC/HEIF 支持已禁用，不再需要 vcpkg 构建 libheif
+      # - name: Install cargo-vcpkg
+      #   run: cargo install cargo-vcpkg
+      #
+      # - name: Build vcpkg dependencies
+      #   run: |
+      #     if (-not (Test-Path "$env:GITHUB_WORKSPACE/target/vcpkg/installed/${{ matrix.settings.triplet }}")) {
+      #       cargo vcpkg build --manifest-path crates/image/Cargo.toml --target ${{ matrix.settings.rust-target }}
+      #     }
+      #   shell: pwsh
 
       - name: setup pnpm
         uses: pnpm/action-setup@v2
@@ -82,7 +83,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          VCPKG_ROOT: ${{ github.workspace }}\target\vcpkg
+          # VCPKG_ROOT: ${{ github.workspace }}\target\vcpkg  # 暂时禁用：HEIC/HEIF 支持已禁用
         with:
           args: ${{ matrix.settings.args }}
           tagName: v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version
