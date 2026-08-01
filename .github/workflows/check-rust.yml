@@ -46,6 +46,20 @@ jobs:
         env:
           VCPKG_BINARY_SOURCES: 'files,C:\vcpkg-cache,readwrite'
 
+      - name: Copy pdfium dll
+        run: |
+          $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'x64' }
+          $srcFile = "pdfium-$arch.dll"
+          if (-not (Test-Path -LiteralPath $srcFile)) {
+            Write-Host "[copy-pdfium-dll] $srcFile not found, skipping"
+            exit 0
+          }
+          $targetDir = "src-tauri/dlls"
+          New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
+          Copy-Item -LiteralPath $srcFile -Destination (Join-Path $targetDir 'pdfium.dll') -Force
+          Write-Host "[copy-pdfium-dll] $srcFile -> $targetDir/pdfium.dll"
+        shell: pwsh
+
       - name: Cargo check
         run: |
           cargo --version
