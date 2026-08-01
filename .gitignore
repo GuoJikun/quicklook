@@ -29,6 +29,5 @@ coverage
 
 *.tsbuildinfo
 
-#vcpkg
-vcpkg_installed
-target
+target/
+test_files/

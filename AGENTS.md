@@ -8,7 +8,14 @@ Windows 文件快速预览工具（Tauri v2：Rust 后端 + Vue 3 前端）。
 
 ## 编码前必须执行的检查
 
-- **Rust 检查**：`cargo check --locked --all-targets`
+- **Rust 检查**依赖系统 vcpkg（无需 cargo-vcpkg）：先确保已安装 `libheif`：
+  ```
+  vcpkg install "libheif[core]:x64-windows-static-md"  # 并按目标架构安装对应 triplet
+  ```
+  然后：
+  ```
+  cargo check --locked --all-targets
+  ```
 - **类型检查**：`pnpm type-check`（vue-tsc --build --force）
 - **代码规范**：`pnpm lint`（eslint --fix）
 - **单元测试**：`pnpm test:unit`（vitest）

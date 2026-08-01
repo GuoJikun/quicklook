@@ -17,15 +17,6 @@ crate-type = ["rlib"]
 psd = "0.3.5"
 image = { workspace = true, features = ["png", "webp", "jpeg", "gif", "bmp", "ico", "tiff", "tga", "pnm", "qoi", "exr"] }
 jxl-oxide = { version = "0.12", features = ["image"] }
-# libheif-rs = { version = "2.7", features = ["image"] }  # 暂时禁用：libheif-rs/sys 的 vcpkg metadata 会拉取 libheif[aom]，引入 AV1 代码导致 winget CI 崩溃
+libheif-rs = { version = "2.7", features = ["image"] }
 log = { workspace = true }
 quicklook-error = { workspace = true }
-
-# [package.metadata.vcpkg]
-# git = "https://github.com/microsoft/vcpkg"
-# tag = "2026.05.25"
-# dependencies = ["libheif"]
-
-# [package.metadata.vcpkg.target]
-# x86_64-pc-windows-msvc = { triplet = "x64-windows-static-md" }
-# aarch64-pc-windows-msvc = { triplet = "arm64-windows-static-md" }

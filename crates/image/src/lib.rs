@@ -16,15 +16,14 @@ pub fn psd_to_png(path: &str, temp_path: &PathBuf) -> Result<(), QuickLookError>
         .map_err(|e| QuickLookError::ImageProcessing(e.to_string()))
 }
 
-// 暂时禁用 HEIC/HEIF 支持：libheif 引入的 aom (AV1) 导致 winget CI 崩溃
-// pub fn heic_to_png(path: &str, temp_path: &PathBuf) -> Result<(), QuickLookError> {
-//     libheif_rs::integration::image::register_all_decoding_hooks();
-//     let img = image::open(path)
-//         .map_err(|e| QuickLookError::ImageProcessing(format!("heic: 读取图片失败: {}", e)))?;
-//     img.to_rgba8()
-//         .save_with_format(temp_path, image::ImageFormat::Png)
-//         .map_err(|e| QuickLookError::ImageProcessing(e.to_string()))
-// }
+pub fn heic_to_png(path: &str, temp_path: &PathBuf) -> Result<(), QuickLookError> {
+    libheif_rs::integration::image::register_all_decoding_hooks();
+    let img = image::open(path)
+        .map_err(|e| QuickLookError::ImageProcessing(format!("heic: 读取图片失败: {}", e)))?;
+    img.to_rgba8()
+        .save_with_format(temp_path, image::ImageFormat::Png)
+        .map_err(|e| QuickLookError::ImageProcessing(e.to_string()))
+}
 
 pub fn jxl_to_png(path: &str, temp_path: &PathBuf) -> Result<(), QuickLookError> {
     use jxl_oxide::integration::JxlDecoder;
