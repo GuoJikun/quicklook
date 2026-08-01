@@ -67,7 +67,7 @@ jobs:
         run: C:\vcpkg\vcpkg.exe install "libheif[core]:${{ matrix.settings.triplet }}"
         shell: cmd
         env:
-          VCPKG_BINARY_SOURCES: "files,C:\vcpkg-cache,readwrite"
+          VCPKG_BINARY_SOURCES: 'files,C:\vcpkg-cache,readwrite'
 
       - name: setup pnpm
         uses: pnpm/action-setup@v2

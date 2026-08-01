@@ -44,7 +44,7 @@ jobs:
         run: C:\vcpkg\vcpkg.exe install "libheif[core]:x64-windows-static-md"
         shell: cmd
         env:
-          VCPKG_BINARY_SOURCES: "files,C:\vcpkg-cache,readwrite"
+          VCPKG_BINARY_SOURCES: 'files,C:\vcpkg-cache,readwrite'
 
       - name: Cargo check
         run: |
