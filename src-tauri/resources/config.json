@@ -26,6 +26,8 @@
         "ppm",
         "qoi",
         "exr",
+        "heic",
+        "heif",
         "jxl"
     ],
     "preview.image.checked": [
@@ -47,6 +49,8 @@
         "ppm",
         "qoi",
         "exr",
+        "heic",
+        "heif",
         "jxl"
     ],
     "preview.video": [
