@@ -1,11 +1,13 @@
 name: Publish to WinGet
 
 on:
-  release:
-    types: [released]
+  workflow_run:
+    workflows: ["Publish Release"]
+    types: [completed]
 
 jobs:
   publish:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: windows-latest
     steps:
       - uses: vedantmgoyal9/winget-releaser@main
