@@ -166,7 +166,13 @@ impl Selected {
                     continue;
                 };
 
-                let shell_view = shell_browser.QueryActiveShellView().unwrap();
+                let shell_view = match shell_browser.QueryActiveShellView() {
+                    Ok(sv) => sv,
+                    Err(e) => {
+                        log::error!("QueryActiveShellView 失败: {:?}", e);
+                        continue;
+                    },
+                };
                 target_path = Selected::get_selected_file_path_from_shellview(shell_view);
             }
 
@@ -374,14 +380,13 @@ impl Selected {
 
     unsafe fn dispath2browser(dispatch: IDispatch) -> Option<IShellBrowser> {
         let mut service_provider: Option<IServiceProvider> = None;
-        dispatch
+        if dispatch
             .query(
                 &IServiceProvider::IID,
                 &mut service_provider as *mut _ as *mut _,
             )
-            .ok()
-            .unwrap();
-        if service_provider.is_none() {
+            .is_err()
+        {
             return None;
         }
         let shell_browser = service_provider
@@ -402,7 +407,13 @@ impl Selected {
         let shell_items = shell_items.unwrap();
         let count = shell_items.GetCount().unwrap_or_default();
         for i in 0..count {
-            let shell_item = shell_items.GetItemAt(i).unwrap();
+            let shell_item = match shell_items.GetItemAt(i) {
+                Ok(item) => item,
+                Err(e) => {
+                    log::debug!("GetItemAt({}) 失败: {:?}", i, e);
+                    continue;
+                },
+            };
 
             // 如果不是文件对象则继续循环
             if let Ok(attrs) = shell_item.GetAttributes(SFGAO_FILESYSTEM) {
