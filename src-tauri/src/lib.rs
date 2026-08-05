@@ -88,6 +88,9 @@ pub fn run() {
                 // 初始化 store
                 let store = app.store("config.data")?;
 
+                // 每次启动将 ffmpeg 检测缓存重置为 -1（未检测），由 check_ffmpeg 首次调用时重新检测
+                store.set("ffmpeg", serde_json::Value::from(-1));
+
                 // 设置日志级别，默认 Warn（4）
                 let level_str = store.get("logLevel");
                 let level = level_str
