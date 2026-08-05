@@ -1,5 +1,9 @@
 use crate::{ArchiveError, Extract};
-use std::{fs::File, path::Path};
+use std::{
+    fs::File,
+    path::Path,
+    time::{Duration, UNIX_EPOCH},
+};
 
 /// 列举 AR 文件条目（`.deb` 内层格式、`.a` 静态库等）
 pub fn list_ar_entries<P: AsRef<Path>>(path: P) -> Result<Vec<Extract>, ArchiveError> {
@@ -16,8 +20,12 @@ pub fn list_ar_entries<P: AsRef<Path>>(path: P) -> Result<Vec<Extract>, ArchiveE
         let size = entry.header().size();
         let is_dir = name.ends_with('/');
 
-        // AR 格式不存储修改时间；AR 归档内的成员文件也不会保留 mtime。
-        let last_modified = "1970-01-01T00:00:00Z".to_string();
+        // AR 头部存储 mtime（UNIX 秒），转换为与其他格式一致的本地时区时间格式
+        let mtime = entry.header().mtime();
+        let dt = UNIX_EPOCH + Duration::from_secs(mtime);
+        let last_modified = chrono::DateTime::<chrono::Local>::from(dt)
+            .format("%Y-%m-%d %H:%M:%S")
+            .to_string();
 
         entries.push(Extract::new(name, size, last_modified, is_dir));
 
