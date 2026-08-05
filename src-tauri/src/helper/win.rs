@@ -110,6 +110,11 @@ pub fn get_default_program_name(path: &str) -> Result<String, QuickLookError> {
         }
 
         // 转换为字符串
+        if size == 0 {
+            return Err(QuickLookError::WindowsApi(
+                "获取程序名返回空缓冲区".to_string(),
+            ));
+        }
         let name = String::from_utf16_lossy(&buffer[..size as usize - 1]);
         Ok(name)
     }
