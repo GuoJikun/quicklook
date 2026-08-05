@@ -59,8 +59,18 @@ pub struct Lrc {
 
 #[allow(unused)]
 pub fn parse_lrc(path: &str) -> Result<Lrc, QuickLookError> {
-    let lrc_content =
-        std::fs::read_to_string(path).map_err(|e| QuickLookError::Io(e.to_string()))?;
+    let lrc_content = match std::fs::read_to_string(path) {
+        Ok(content) => content,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            // 歌词文件不存在时返回空 Lrc，避免前端预览流程中断
+            return Ok(Lrc {
+                title: None,
+                offset: None,
+                content: Vec::new(),
+            });
+        },
+        Err(e) => return Err(QuickLookError::Io(e.to_string())),
+    };
     let mut lrc = Lrc {
         title: None,
         offset: None,
