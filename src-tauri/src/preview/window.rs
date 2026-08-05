@@ -13,6 +13,25 @@ pub struct PreviewFile {
     pub app_handle: Option<AppHandle>,
 }
 
+/// 让预览窗口跳转到指定路由，使用原生 navigate 代替 eval 注入 JS。
+fn navigate_to(window: &tauri::WebviewWindow, url: &str) {
+    let resolved = window
+        .url()
+        .ok()
+        .and_then(|base| base.join(url).ok())
+        .or_else(|| tauri::Url::parse(url).ok());
+    match resolved {
+        Some(resolved) => {
+            if let Err(e) = window.navigate(resolved) {
+                log::error!("预览窗口跳转失败: {:?}", e);
+            }
+        },
+        None => {
+            log::error!("解析预览路由失败: {}", url);
+        },
+    }
+}
+
 impl PreviewFile {
     fn calc_window_size(file_type: &str) -> (f64, f64) {
         let monitor_info = monitor::get_monitor_info();
@@ -94,10 +113,7 @@ impl PreviewFile {
 
         match app.get_webview_window("preview") {
             Some(window) => {
-                let url = route.to_url();
-                let js_escaped = url.replace('\\', "\\\\").replace('\'', "\\'");
-                let js = format!("window.location.href = '{}'", &js_escaped);
-                let _ = window.eval(js.as_str());
+                navigate_to(&window, &route.to_url());
 
                 let _ = window.show();
                 let _ = window.set_focus();
@@ -118,12 +134,7 @@ impl PreviewFile {
                             if cur_path == "/preview" {
                                 match payload.event() {
                                     PageLoadEvent::Finished => {
-                                        let url = route.to_url();
-                                        let js_escaped =
-                                            url.replace('\\', "\\\\").replace('\'', "\\'");
-                                        let js =
-                                            format!("window.location.href = '{}'", &js_escaped);
-                                        let _ = window.eval(js.as_str());
+                                        navigate_to(&window, &route.to_url());
 
                                         let _ = window.show();
                                         let _ = window.set_focus();

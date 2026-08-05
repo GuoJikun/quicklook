@@ -148,7 +148,13 @@ pub fn get_file_info(
     };
     log::debug!("File extension: {}", extension);
 
-    let metadata = file_path.metadata().unwrap();
+    let metadata = match file_path.metadata() {
+        Ok(meta) => meta,
+        Err(e) => {
+            log::warn!("获取文件元数据失败: {}, 错误: {}", path, e);
+            return None;
+        },
+    };
 
     // 先从内置映射表中查找文件类型
     let file_type_opt = FILE_TYPE_MAPPING
