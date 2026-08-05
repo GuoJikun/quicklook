@@ -7,7 +7,13 @@ use crate::helper::image as image_helper;
 /// 将 PSD、HEIC/HEIF 等图片格式转换为 PNG 并缓存。
 /// 返回转换后 PNG 文件的路径。
 #[command]
-pub fn convert_to_png(path: &str) -> Result<String, QuickLookError> {
+pub async fn convert_to_png(path: String) -> Result<String, QuickLookError> {
+    tokio::task::spawn_blocking(move || convert_to_png_sync(&path))
+        .await
+        .map_err(|e| QuickLookError::ImageProcessing(format!("图片转换任务执行失败: {}", e)))?
+}
+
+fn convert_to_png_sync(path: &str) -> Result<String, QuickLookError> {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
 
@@ -51,7 +57,13 @@ pub fn convert_to_png(path: &str) -> Result<String, QuickLookError> {
 /// 清理图片转码缓存目录。
 /// 返回被删除的文件数量。
 #[command]
-pub fn clear_image_cache() -> Result<u32, QuickLookError> {
+pub async fn clear_image_cache() -> Result<u32, QuickLookError> {
+    tokio::task::spawn_blocking(clear_image_cache_sync)
+        .await
+        .map_err(|e| QuickLookError::ImageProcessing(format!("图片缓存清理任务执行失败: {}", e)))?
+}
+
+pub(crate) fn clear_image_cache_sync() -> Result<u32, QuickLookError> {
     let images_dir = std::env::temp_dir().join("quicklook_images");
     if !images_dir.exists() {
         log::info!("quicklook_images 目录不存在，无需清理");

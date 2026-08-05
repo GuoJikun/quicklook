@@ -3,9 +3,12 @@ use std::path::PathBuf;
 use quicklook_error::QuickLookError;
 
 pub fn psd_to_png(path: &str, temp_path: &PathBuf) -> Result<(), QuickLookError> {
-    let file_bytes = std::fs::read(path)
-        .map_err(|e| QuickLookError::ImageProcessing(format!("psd: 读取文件失败: {}", e)))?;
-    let psd_obj = psd::Psd::from_bytes(&file_bytes)
+    let file = std::fs::File::open(path)
+        .map_err(|e| QuickLookError::ImageProcessing(format!("psd: 打开文件失败: {}", e)))?;
+    // 使用内存映射读取，避免将大 PSD 文件整体读入堆内存（按需分页加载）
+    let mmap = unsafe { memmap2::Mmap::map(&file) }
+        .map_err(|e| QuickLookError::ImageProcessing(format!("psd: 映射文件失败: {}", e)))?;
+    let psd_obj = psd::Psd::from_bytes(&mmap)
         .map_err(|e| QuickLookError::ImageProcessing(format!("psd: 解析失败: {}", e)))?;
     let rgba = psd_obj.rgba();
     let width = psd_obj.width();

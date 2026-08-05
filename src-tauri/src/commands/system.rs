@@ -33,18 +33,24 @@ pub fn get_monitor_info() -> monitor::MonitorInfo {
 }
 
 #[command]
-pub fn get_default_program_name(path: &str) -> Result<String, QuickLookError> {
-    win::get_default_program_name(path)
+pub async fn get_default_program_name(path: String) -> Result<String, QuickLookError> {
+    tokio::task::spawn_blocking(move || win::get_default_program_name(&path))
+        .await
+        .map_err(|e| QuickLookError::WindowsApi(format!("获取默认程序任务执行失败: {}", e)))?
 }
 
 /// 汇总清理所有 quicklook 产生的缓存，包含 ffmpeg HLS 转码缓存、图片转码缓存和 PDF 渲染缓存。
 /// 返回被删除的目录/文件总数量。
 #[command]
-pub fn clear_cache() -> Result<u32, QuickLookError> {
-    let mut total = 0u32;
-    total += ffmp::clear_ffmpeg_cache()?;
-    total += crate::commands::image::clear_image_cache()?;
-    total += pdf_helper::clear_pdf_cache()?;
-    log::info!("缓存清理完成，共删除 {} 个目录/文件", total);
-    Ok(total)
+pub async fn clear_cache() -> Result<u32, QuickLookError> {
+    tokio::task::spawn_blocking(|| {
+        let mut total = 0u32;
+        total += ffmp::clear_ffmpeg_cache()?;
+        total += crate::commands::image::clear_image_cache_sync()?;
+        total += pdf_helper::clear_pdf_cache()?;
+        log::info!("缓存清理完成，共删除 {} 个目录/文件", total);
+        Ok(total)
+    })
+    .await
+    .map_err(|e| QuickLookError::Other(format!("缓存清理任务执行失败: {}", e)))?
 }

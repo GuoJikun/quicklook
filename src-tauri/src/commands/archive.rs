@@ -4,56 +4,64 @@ use tauri::command;
 use crate::error::QuickLookError;
 
 #[command]
-pub fn archive_is_password_protected(path: &str) -> Result<bool, QuickLookError> {
-    let needed = Extract::is_password_protected(path)
-        .map_err(|e| QuickLookError::ArchiveParse(e.to_string()))?;
-    log::info!("检测压缩文件路径: {}, 是否需要密码: {}", path, needed);
-    Ok(needed)
+pub async fn archive_is_password_protected(path: String) -> Result<bool, QuickLookError> {
+    tokio::task::spawn_blocking(move || {
+        let needed = Extract::is_password_protected(&path)
+            .map_err(|e| QuickLookError::ArchiveParse(e.to_string()))?;
+        log::info!("检测压缩文件路径: {}, 是否需要密码: {}", path, needed);
+        Ok(needed)
+    })
+    .await
+    .map_err(|e| QuickLookError::ArchiveParse(format!("密码检测任务执行失败: {}", e)))?
 }
 
 #[command]
-pub fn archive(
-    path: &str,
-    mode: &str,
+pub async fn archive(
+    path: String,
+    mode: String,
     password: Option<String>,
 ) -> Result<Vec<Extract>, QuickLookError> {
-    log::info!("开始处理压缩文件: {}, 扩展名: {}", path, mode);
-    let pw = password.as_deref();
-    let result = match mode {
-        "zip" => extractors::zip::zip_extract(path, pw)
-            .map_err(|e| QuickLookError::ArchiveParse(e.to_string())),
-        "tar" => extractors::tar::list_tar_entries(path)
-            .map_err(|e| QuickLookError::ArchiveParse(e.to_string())),
-        "gz" | "tgz" => extractors::tar::list_tar_gz_entries(path)
-            .map_err(|e| QuickLookError::ArchiveParse(e.to_string())),
-        "bz2" | "tbz2" => extractors::tar::list_tar_bz2_entries(path)
-            .map_err(|e| QuickLookError::ArchiveParse(e.to_string())),
-        "xz" | "txz" => extractors::tar::list_tar_xz_entries(path)
-            .map_err(|e| QuickLookError::ArchiveParse(e.to_string())),
-        "zst" | "tzst" => extractors::zst::list_tar_zst_entries(path)
-            .map_err(|e| QuickLookError::ArchiveParse(e.to_string())),
-        "7z" => extractors::sevenz::list_7z_entries(path, pw)
-            .map_err(|e| QuickLookError::ArchiveParse(e.to_string())),
-        "rar" => extractors::rar::list_rar_entries(path, pw)
-            .map_err(|e| QuickLookError::ArchiveParse(e.to_string())),
-        "cpio" => extractors::cpio::list_cpio_entries(path)
-            .map_err(|e| QuickLookError::ArchiveParse(e.to_string())),
-        "ar" | "deb" | "a" => extractors::ar::list_ar_entries(path)
-            .map_err(|e| QuickLookError::ArchiveParse(e.to_string())),
-        "jar" | "war" | "ear" | "apk" | "aar" | "whl" | "vsix" | "nupkg" | "crx" | "xpi"
-        | "egg" | "kra" | "xps" | "oxps" => extractors::zip::zip_extract(path, pw)
-            .map_err(|e| QuickLookError::ArchiveParse(e.to_string())),
-        _ => return Err(QuickLookError::UnsupportedArchiveFormat(mode.to_string())),
-    };
+    tokio::task::spawn_blocking(move || {
+        log::info!("开始处理压缩文件: {}, 扩展名: {}", path, mode);
+        let pw = password.as_deref();
+        let result = match mode.as_str() {
+            "zip" => extractors::zip::zip_extract(&path, pw)
+                .map_err(|e| QuickLookError::ArchiveParse(e.to_string())),
+            "tar" => extractors::tar::list_tar_entries(&path)
+                .map_err(|e| QuickLookError::ArchiveParse(e.to_string())),
+            "gz" | "tgz" => extractors::tar::list_tar_gz_entries(&path)
+                .map_err(|e| QuickLookError::ArchiveParse(e.to_string())),
+            "bz2" | "tbz2" => extractors::tar::list_tar_bz2_entries(&path)
+                .map_err(|e| QuickLookError::ArchiveParse(e.to_string())),
+            "xz" | "txz" => extractors::tar::list_tar_xz_entries(&path)
+                .map_err(|e| QuickLookError::ArchiveParse(e.to_string())),
+            "zst" | "tzst" => extractors::zst::list_tar_zst_entries(&path)
+                .map_err(|e| QuickLookError::ArchiveParse(e.to_string())),
+            "7z" => extractors::sevenz::list_7z_entries(&path, pw)
+                .map_err(|e| QuickLookError::ArchiveParse(e.to_string())),
+            "rar" => extractors::rar::list_rar_entries(&path, pw)
+                .map_err(|e| QuickLookError::ArchiveParse(e.to_string())),
+            "cpio" => extractors::cpio::list_cpio_entries(&path)
+                .map_err(|e| QuickLookError::ArchiveParse(e.to_string())),
+            "ar" | "deb" | "a" => extractors::ar::list_ar_entries(&path)
+                .map_err(|e| QuickLookError::ArchiveParse(e.to_string())),
+            "jar" | "war" | "ear" | "apk" | "aar" | "whl" | "vsix" | "nupkg" | "crx" | "xpi"
+            | "egg" | "kra" | "xps" | "oxps" => extractors::zip::zip_extract(&path, pw)
+                .map_err(|e| QuickLookError::ArchiveParse(e.to_string())),
+            _ => return Err(QuickLookError::UnsupportedArchiveFormat(mode)),
+        };
 
-    match &result {
-        Ok(entries) => {
-            log::info!("成功处理压缩文件，共{}个条目", entries.len());
-        },
-        Err(e) => {
-            log::error!("压缩文件处理失败: {}", e);
-        },
-    }
+        match &result {
+            Ok(entries) => {
+                log::info!("成功处理压缩文件，共{}个条目", entries.len());
+            },
+            Err(e) => {
+                log::error!("压缩文件处理失败: {}", e);
+            },
+        }
 
-    result
+        result
+    })
+    .await
+    .map_err(|e| QuickLookError::ArchiveParse(format!("压缩文件处理任务执行失败: {}", e)))?
 }
