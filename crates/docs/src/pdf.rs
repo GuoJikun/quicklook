@@ -36,8 +36,8 @@ pub struct OutlineItem {
 }
 
 fn get_pdfium() -> Result<&'static Pdfium, QuickLookError> {
-    static INSTANCE: OnceLock<Pdfium> = OnceLock::new();
-    Ok(INSTANCE.get_or_init(|| {
+    static INSTANCE: OnceLock<Result<Pdfium, String>> = OnceLock::new();
+    let cached = INSTANCE.get_or_init(|| {
         let dll_dir = std::env::current_exe()
             .ok()
             .and_then(|p| p.parent().map(|p| p.to_path_buf()))
@@ -48,12 +48,21 @@ fn get_pdfium() -> Result<&'static Pdfium, QuickLookError> {
         log::info!("[pdf] dll_dir={}", dll_dir.display());
         log::info!("[pdf] lib_name={}", lib_name.display());
 
-        let bindings = Pdfium::bind_to_library(&lib_name).expect("加载 pdfium 库失败");
-
-        log::info!("[pdf] pdfium 库加载成功");
-
-        Pdfium::new(bindings)
-    }))
+        match Pdfium::bind_to_library(&lib_name) {
+            Ok(bindings) => {
+                log::info!("[pdf] pdfium 库加载成功");
+                Ok(Pdfium::new(bindings))
+            }
+            Err(e) => {
+                log::error!("[pdf] 加载 pdfium 库失败: {}", e);
+                Err(format!("加载 pdfium 库失败: {}", e))
+            }
+        }
+    });
+    match cached {
+        Ok(p) => Ok(p),
+        Err(e) => Err(QuickLookError::PdfRendering(e.clone())),
+    }
 }
 
 struct DocCache {
