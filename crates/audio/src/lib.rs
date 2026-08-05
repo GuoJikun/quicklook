@@ -17,7 +17,13 @@ pub struct MusicInfo {
 
 #[allow(unused)]
 pub fn read_music_info<P: AsRef<Path>>(path: P) -> Option<MusicInfo> {
-    let tagged_file = read_from_path(&path).ok()?;
+    let tagged_file = match read_from_path(&path) {
+        Ok(t) => t,
+        Err(e) => {
+            log::error!("audio metadata read failed: {:?}: {}", path.as_ref(), e);
+            return None;
+        }
+    };
 
     // 标签
     let tag = TaggedFileExt::primary_tag(&tagged_file);
