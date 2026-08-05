@@ -78,11 +78,16 @@ pub fn create_tray(app: &mut App) -> tauri::Result<()> {
         &name, &version.major, &version.minor, &version.patch
     );
 
-    let _ = TrayIconBuilder::with_id("tray")
-        .icon(app.default_window_icon().unwrap().clone())
+    let mut tray = TrayIconBuilder::with_id("tray")
         .tooltip(tooltip_text)
         .menu(&menu)
-        .show_menu_on_left_click(false)
+        .show_menu_on_left_click(false);
+
+    if let Some(icon) = app.default_window_icon() {
+        tray = tray.icon(icon.clone());
+    }
+
+    let _ = tray
         .on_menu_event(move |app, event| match event.id.as_ref() {
             "quit" => {
                 app.exit(0);
