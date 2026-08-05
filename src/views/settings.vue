@@ -41,7 +41,7 @@ const getConfig = async (): Promise<FormatSupport[]> => {
 const config = ref<FormatSupport[]>([])
 const version = ref<string>('')
 
-const logLevel = ref<string | number>('info')
+const logLevel = ref<string | number>(LogLevel.Warn)
 const logLevelList = [
     { label: 'Error', value: LogLevel.Error },
     { label: 'Warn', value: LogLevel.Warn },
@@ -133,7 +133,7 @@ onMounted(async () => {
     version.value = await app.getVersion()
 
     const tmpLogLevel: string = (await localStore?.get<string>('logLevel')) || ''
-    logLevel.value = tmpLogLevel || 'info'
+    logLevel.value = tmpLogLevel || String(LogLevel.Warn)
 
     const storedFfmpeg = await localStore?.get<boolean>('useLocalFfmpeg')
     useLocalFfmpeg.value = storedFfmpeg ?? false

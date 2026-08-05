@@ -4,7 +4,7 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
-import { error } from '@tauri-apps/plugin-log'
+import { error, warn } from '@tauri-apps/plugin-log'
 
 import { NIcon, create } from 'naive-ui'
 const naive = create({
@@ -38,6 +38,7 @@ app.config.warnHandler = (msg, vm, trace) => {
     console.warn(msg)
     console.warn(vm)
     console.groupEnd()
+    warn(`[Vue Warn]: Message- ${msg}；Trace- ${trace}`)
 }
 if (!import.meta.env.DEV) {
     initSentry({ app, router })

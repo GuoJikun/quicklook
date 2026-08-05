@@ -18,7 +18,7 @@ use commands::{
     prepare_video_for_preview,
     get_default_program_name, get_epub_chapter, get_epub_info, get_monitor_info, get_pdf_outline,
     get_pdf_page_count, parse_lrc, read_audio_info, render_pdf_page, resolve_epub_link,
-    set_log_level, show_open_with_dialog,
+    restart_app, set_log_level, show_open_with_dialog,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -40,7 +40,21 @@ pub fn run() {
         ))
         .plugin(
             tauri_plugin_log::Builder::default()
-                .level(log::LevelFilter::Info) // 默认日志级别为 Info
+                .level(log::LevelFilter::Trace) // 打底放行全部级别，实际级别由运行时 set_log_level 控制
+                .filter(|metadata| {
+                    use std::sync::atomic::Ordering;
+                    let current = match crate::commands::system::CURRENT_LOG_LEVEL
+                        .load(Ordering::SeqCst)
+                    {
+                        0 => log::LevelFilter::Off,
+                        1 => log::LevelFilter::Error,
+                        2 => log::LevelFilter::Warn,
+                        3 => log::LevelFilter::Info,
+                        4 => log::LevelFilter::Debug,
+                        _ => log::LevelFilter::Trace,
+                    };
+                    metadata.level().to_level_filter() <= current
+                })
                 .max_file_size(10000)
                 .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
                 .timezone_strategy(tauri_plugin_log::TimezoneStrategy::UseLocal)
@@ -74,12 +88,12 @@ pub fn run() {
                 // 初始化 store
                 let store = app.store("config.data")?;
 
-                // 设置日志级别
+                // 设置日志级别，默认 Warn（4）
                 let level_str = store.get("logLevel");
                 let level = level_str
                     .and_then(|v| v.as_u64())
                     .map(|v| v as usize)
-                    .unwrap_or(0); // 默认日志级别为 Off
+                    .unwrap_or(4);
                 let _ = set_log_level(level);
                 log::debug!("当前日志级别: {:?}", level);
 
@@ -122,6 +136,7 @@ pub fn run() {
             get_monitor_info,
             get_default_program_name,
             set_log_level,
+            restart_app,
             convert_to_png,
             read_audio_info,
             parse_lrc,
