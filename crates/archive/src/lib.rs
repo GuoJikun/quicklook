@@ -135,7 +135,8 @@ impl Extract {
     }
 }
 
-// 导出 C ABI 兼容的函数
+// 导出 C ABI 兼容的函数（仅启用 capi feature 时编译，供独立动态库/其他语言调用）
+#[cfg(feature = "capi")]
 #[no_mangle]
 pub extern "C" fn archive_list_entries(
     path: *const std::os::raw::c_char,
@@ -181,6 +182,7 @@ pub extern "C" fn archive_list_entries(
     }
 }
 
+#[cfg(feature = "capi")]
 #[no_mangle]
 pub extern "C" fn archive_free_string(s: *mut std::os::raw::c_char) {
     if !s.is_null() {
@@ -192,6 +194,7 @@ pub extern "C" fn archive_free_string(s: *mut std::os::raw::c_char) {
 
 /// 检测归档文件是否需要密码（C ABI）
 /// 返回值: 1 = 需要密码, 0 = 不需要密码, -1 = 出错
+#[cfg(feature = "capi")]
 #[no_mangle]
 pub extern "C" fn archive_is_password_protected(path: *const std::os::raw::c_char) -> i32 {
     use std::ffi::CStr;

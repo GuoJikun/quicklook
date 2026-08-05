@@ -6,7 +6,7 @@
 
 - **多格式支持**: 支持 ZIP、TAR、TAR.GZ、TAR.BZ2、TAR.XZ、7Z 等多种压缩格式
 - **动态库**: 可以作为独立的动态库被其他项目使用
-- **C ABI**: 提供 C 兼容的 ABI，可以被其他语言调用
+- **C ABI**: 提供 C 兼容的 ABI，可以被其他语言调用（需启用 `capi` feature，默认关闭）
 - **树状结构**: 自动构建目录树状结构
 - **高性能**: 基于 Rust 实现，性能优异
 
@@ -29,8 +29,10 @@ cargo build --release
 
 ### 作为动态库
 
+需要启用 `capi` feature 才会编译 C ABI 导出函数：
+
 ```bash
-cargo build --release --lib
+cargo build --release --lib --features capi
 ```
 
 生成的动态库文件位于 `target/release/` 目录下:
@@ -136,6 +138,8 @@ pub struct Extract {
 - `Extract::build_tree(entries)` - 将扁平列表构建为目录树
 
 ### C API
+
+> 以下 C ABI 函数仅在启用 `capi` feature 时导出（`cargo build --release --lib --features capi`）。
 
 - `int archive_list_entries(const char* path, char** result)` - 列举压缩文件内容
 - `void archive_free_string(char* s)` - 释放字符串内存
