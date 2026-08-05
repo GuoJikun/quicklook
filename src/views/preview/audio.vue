@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { nextTick } from 'vue'
-import { computed, onMounted, ref, watch, useTemplateRef } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch, useTemplateRef } from 'vue'
 import { useRoute } from 'vue-router'
 import { invoke } from '@tauri-apps/api/core'
 
@@ -61,6 +61,14 @@ const getAudioInfo = async (path: string) => {
         console.log(audioInfo.value.poster, 'audioInfo.value.poster')
     }
 }
+
+onBeforeUnmount(() => {
+    const poster = audioInfo.value.poster
+    if (typeof poster === 'string') {
+        URL.revokeObjectURL(poster)
+        audioInfo.value.poster = null
+    }
+})
 interface ILrcLine {
     timestamp: number
     text: string

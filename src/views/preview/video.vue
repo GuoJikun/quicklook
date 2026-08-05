@@ -59,6 +59,7 @@ const initPlayer = (url: string, isHls = false) => {
     if (isHls) {
         // 动态加载 xgplayer-hls 插件以支持 m3u8 播放
         import('xgplayer-hls').then(mod => {
+            if (disposed) return
             console.log('xgplayer-hls 插件加载成功', mod)
             const HlsPlugin = mod.default
             player = new Player({

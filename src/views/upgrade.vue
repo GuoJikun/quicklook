@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { check, type Update } from '@tauri-apps/plugin-updater'
-import { computed, onMounted, ref, shallowRef } from 'vue'
+import { computed, onMounted, onUnmounted, ref, shallowRef } from 'vue'
 import { error as logError, info } from '@tauri-apps/plugin-log'
 import { ElMessage } from 'element-plus'
 import { Check, CircleClose, Download, Refresh, Warning } from '@element-plus/icons-vue'
@@ -208,6 +208,13 @@ const cancelDownload = async () => {
 }
 
 onMounted(doCheck)
+
+onUnmounted(() => {
+    if (speedTimer !== null) {
+        clearInterval(speedTimer)
+        speedTimer = null
+    }
+})
 </script>
 
 <template>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onBeforeUnmount, ref } from 'vue'
 import { useElementSize, useThrottleFn } from '@vueuse/core'
 
 const props = defineProps<{
@@ -70,6 +70,12 @@ function handleMouseUp() {
     window.removeEventListener('mousemove', handleMouseMove)
     window.removeEventListener('mouseup', handleMouseUp)
 }
+
+onBeforeUnmount(() => {
+    dragging.value = false
+    window.removeEventListener('mousemove', handleMouseMove)
+    window.removeEventListener('mouseup', handleMouseUp)
+})
 
 // 约束 translate 使图片不能拖出容器
 function clampTranslate(nextX?: number, nextY?: number) {

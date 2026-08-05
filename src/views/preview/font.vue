@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onBeforeUnmount, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import type { FileInfo } from '@/utils/typescript'
 import LayoutPreview from '@/components/layout-preview.vue'
@@ -16,6 +16,8 @@ let curFont: FontFace | null = null
 
 const isError = ref(false)
 
+let disposed = false
+
 onMounted(() => {
     fileInfo.value = route.query as unknown as FileInfo
     if (fileInfo.value.path) {
@@ -24,6 +26,7 @@ onMounted(() => {
         // 加载字体
         font.load()
             .then(loadedFont => {
+                if (disposed) return
                 if (curFont) {
                     document.fonts.delete(curFont)
                     curFont = null
@@ -41,6 +44,14 @@ onMounted(() => {
                 isError.value = true
                 console.error('Font could not be loaded: ' + error)
             })
+    }
+})
+
+onBeforeUnmount(() => {
+    disposed = true
+    if (curFont) {
+        document.fonts.delete(curFont)
+        curFont = null
     }
 })
 </script>

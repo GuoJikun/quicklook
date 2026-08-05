@@ -59,6 +59,8 @@ const fontSizes = [12, 14, 16, 18, 20, 22, 24]
 
 // 请求序列号，用于丢弃过期响应（防止快速点击竞态）
 let chapterLoadSeq = 0
+// 组件卸载标志，用于中断 rAF 递归链
+let disposed = false
 
 // ── epub 逻辑 ─────────────────────────────────
 
@@ -127,7 +129,10 @@ function scrollIframeToTarget(target: PendingScrollTarget | null, attempts = 8) 
     const doc = iframeRef.value?.contentDocument
     if (!doc) {
         if (attempts > 0) {
-            requestAnimationFrame(() => scrollIframeToTarget(target, attempts - 1))
+            requestAnimationFrame(() => {
+                if (disposed) return
+                scrollIframeToTarget(target, attempts - 1)
+            })
         }
         return
     }
@@ -142,6 +147,7 @@ function scrollIframeToTarget(target: PendingScrollTarget | null, attempts = 8) 
             const duration = 320
             const startTime = performance.now()
             const step = (now: number) => {
+                if (disposed) return
                 const elapsed = now - startTime
                 const progress = Math.min(elapsed / duration, 1)
                 const eased = 1 - Math.pow(1 - progress, 3)
@@ -161,7 +167,10 @@ function scrollIframeToTarget(target: PendingScrollTarget | null, attempts = 8) 
     if (targetEl) {
         targetEl.scrollIntoView({ block: 'start', behavior: 'smooth' })
     } else if (attempts > 0) {
-        requestAnimationFrame(() => scrollIframeToTarget(target, attempts - 1))
+        requestAnimationFrame(() => {
+            if (disposed) return
+            scrollIframeToTarget(target, attempts - 1)
+        })
     }
 }
 
@@ -517,7 +526,10 @@ function handleIframeLink(href: string) {
                         }
                     }
                     if (attempts > 0) {
-                        requestAnimationFrame(() => tryScroll(attempts - 1))
+                        requestAnimationFrame(() => {
+                            if (disposed) return
+                            tryScroll(attempts - 1)
+                        })
                     }
                 }
                 requestAnimationFrame(() => tryScroll(5))
@@ -542,6 +554,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+    disposed = true
     document.removeEventListener('keydown', handleKeydown)
 })
 </script>
