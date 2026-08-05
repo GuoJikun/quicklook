@@ -19,25 +19,43 @@ defineOptions({
 const file = ref<FileInfo>()
 const content = ref<string>()
 const loading = ref<boolean>(true)
+const error = ref<string>('')
 
 onMounted(async () => {
-    if (md === null) {
-        md = await createMd()
-    }
     loading.value = true
+    error.value = ''
     file.value = route?.query as unknown as FileInfo
     const path = file.value.path as string
-    const txt = await readTextFile(path)
 
-    content.value = md.render(txt)
-    loading.value = false
+    try {
+        if (md === null) {
+            md = await createMd()
+        }
+    } catch (e) {
+        error.value = `创建md解析器失败：${e instanceof Error ? e.message : String(e)}`
+        loading.value = false
+        return
+    }
+
+    try {
+        const txt = await readTextFile(path)
+        content.value = (md as MarkdownIt).render(txt)
+    } catch (e) {
+        error.value = `读取md文件失败：${e instanceof Error ? e.message : String(e)}`
+    } finally {
+        loading.value = false
+    }
 })
 </script>
 
 <template>
     <LayoutPreview :file="file" :loading="loading">
         <div class="md-support">
-            <div class="md-support-inner" id="markdown-body">
+            <div v-if="error" class="md-error">
+                <p class="md-error-title">文件加载失败</p>
+                <p class="md-error-detail">{{ error }}</p>
+            </div>
+            <div v-else class="md-support-inner" id="markdown-body">
                 <MdViewer :key="file?.path" :content="content" />
             </div>
         </div>
@@ -58,6 +76,23 @@ onMounted(async () => {
         overflow: hidden auto;
         padding: 12px 24px;
         font-size: 14px;
+    }
+}
+
+.md-error {
+    text-align: center;
+    color: var(--color-text-secondary);
+    padding: var(--space-5);
+
+    &-title {
+        font-size: var(--font-lg);
+        color: var(--color-danger);
+        margin-bottom: var(--space-2);
+    }
+
+    &-detail {
+        font-size: var(--font-sm);
+        word-break: break-all;
     }
 }
 </style>
