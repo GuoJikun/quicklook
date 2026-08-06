@@ -114,7 +114,8 @@ impl PreviewFile {
         match app.get_webview_window("preview") {
             Some(window) => {
                 navigate_to(&window, &route.to_url());
-
+                let _ = window.set_size(tauri::LogicalSize::new(width, height));
+                let _ = window.center();
                 let _ = window.show();
                 let _ = window.set_focus();
             },
