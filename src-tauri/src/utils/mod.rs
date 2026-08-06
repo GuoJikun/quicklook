@@ -35,18 +35,18 @@ impl File {
     }
 
     // 获取文件类型
-    pub fn get_file_type(&self) -> String {
-        self.file_type.clone()
+    pub fn get_file_type(&self) -> &str {
+        &self.file_type
     }
 
     // 获取文件路径
-    pub fn get_path(&self) -> String {
-        self.path.clone()
+    pub fn get_path(&self) -> &str {
+        &self.path
     }
 
     // 获取文件扩展名
-    pub fn get_extension(&self) -> String {
-        self.extension.clone()
+    pub fn get_extension(&self) -> &str {
+        &self.extension
     }
 
     // 获取文件大小
@@ -60,8 +60,8 @@ impl File {
     }
 
     // 获取文件名
-    pub fn get_name(&self) -> String {
-        self.name.clone()
+    pub fn get_name(&self) -> &str {
+        &self.name
     }
 }
 

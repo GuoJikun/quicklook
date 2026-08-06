@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use crate::utils::File as UFile;
 
 pub struct WebRoute {
@@ -7,19 +9,20 @@ pub struct WebRoute {
 
 impl WebRoute {
     pub fn to_url(&self) -> String {
-        let query = [
-            ("file_type", self.query.get_file_type()),
-            ("path", self.query.get_path()),
-            ("extension", self.query.get_extension()),
-            ("size", self.query.get_size().to_string()),
-            ("last_modified", self.query.get_last_modified().to_string()),
-            ("name", self.query.get_name()),
-        ];
-        let encoded: Vec<String> = query
-            .iter()
-            .map(|(k, v)| format!("{}={}", k, urlencoding::encode(v)))
-            .collect();
-        format!("{}?{}", self.path, encoded.join("&"))
+        let mut url = String::new();
+        write!(url, "{}?", self.path).unwrap();
+        write!(
+            url,
+            "file_type={}&path={}&extension={}&size={}&last_modified={}&name={}",
+            urlencoding::encode(self.query.get_file_type()),
+            urlencoding::encode(self.query.get_path()),
+            urlencoding::encode(self.query.get_extension()),
+            self.query.get_size(),
+            self.query.get_last_modified(),
+            urlencoding::encode(self.query.get_name()),
+        )
+        .unwrap();
+        url
     }
 
     pub fn new(path: String, query: UFile) -> Self {

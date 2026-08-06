@@ -107,7 +107,7 @@ impl PreviewFile {
         };
         preview_state.input_path = file_path;
 
-        let type_str = file_info.get_file_type();
+        let type_str = file_info.get_file_type().to_string();
         let (width, height) = Self::calc_window_size(&type_str);
         let route = WebRoute::get_route(&type_str, file_info);
 

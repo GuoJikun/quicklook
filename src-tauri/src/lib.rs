@@ -44,7 +44,7 @@ pub fn run() {
                 .filter(|metadata| {
                     use std::sync::atomic::Ordering;
                     let current = match crate::commands::system::CURRENT_LOG_LEVEL
-                        .load(Ordering::SeqCst)
+                        .load(Ordering::Relaxed)
                     {
                         0 => log::LevelFilter::Off,
                         1 => log::LevelFilter::Error,
