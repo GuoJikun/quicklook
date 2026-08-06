@@ -56,7 +56,7 @@ pub fn run() {
                     metadata.level().to_level_filter() <= current
                 })
                 .max_file_size(1024 * 1024)
-                .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepN(6))
+                .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepSome(6))
                 .timezone_strategy(tauri_plugin_log::TimezoneStrategy::UseLocal)
                 .build(),
         );

@@ -17,6 +17,16 @@ static HOOK_HANDLE: LazyLock<Mutex<HookHandle>> = LazyLock::new(|| Mutex::new(Ho
 // 防止重复按键导致并发创建/导航预览窗口。
 static PREVIEW_RUNNING: AtomicBool = AtomicBool::new(false);
 
+// RAII guard：无论任务正常结束还是 panic（栈展开时 Drop），都保证复位 PREVIEW_RUNNING，
+// 避免标志永久停留在 true 导致空格键预览失效。
+struct PreviewGuard;
+
+impl Drop for PreviewGuard {
+    fn drop(&mut self) {
+        PREVIEW_RUNNING.store(false, Ordering::SeqCst);
+    }
+}
+
 pub fn set_keyboard_hook() {
     let hook_ex = unsafe {
         WindowsAndMessaging::SetWindowsHookExW(
@@ -72,6 +82,7 @@ extern "system" fn keyboard_proc(ncode: i32, wparam: WPARAM, lparam: LPARAM) -> 
         {
             if let Some(app) = get_global_app() {
                 tauri::async_runtime::spawn_blocking(move || {
+                    let _guard = PreviewGuard;
                     let result = (|| {
                         let type_str =
                             crate::helper::selected_file::Selected::get_focused_type();
@@ -83,7 +94,6 @@ extern "system" fn keyboard_proc(ncode: i32, wparam: WPARAM, lparam: LPARAM) -> 
                     if let Err(e) = result {
                         log::error!("Error: {:?}", e);
                     }
-                    PREVIEW_RUNNING.store(false, Ordering::SeqCst);
                 });
             } else {
                 PREVIEW_RUNNING.store(false, Ordering::SeqCst);
