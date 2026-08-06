@@ -23,7 +23,7 @@ struct PreviewGuard;
 
 impl Drop for PreviewGuard {
     fn drop(&mut self) {
-        PREVIEW_RUNNING.store(false, Ordering::SeqCst);
+        PREVIEW_RUNNING.store(false, Ordering::Release);
     }
 }
 
@@ -77,7 +77,7 @@ extern "system" fn keyboard_proc(ncode: i32, wparam: WPARAM, lparam: LPARAM) -> 
         // （COM 查询选中文件、窗口创建、导航）移到 spawn_blocking 异步执行。
         if vk_code == KeyboardAndMouse::VK_SPACE.0 as u32
             && PREVIEW_RUNNING
-                .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+                .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
                 .is_ok()
         {
             if let Some(app) = get_global_app() {
@@ -96,7 +96,7 @@ extern "system" fn keyboard_proc(ncode: i32, wparam: WPARAM, lparam: LPARAM) -> 
                     }
                 });
             } else {
-                PREVIEW_RUNNING.store(false, Ordering::SeqCst);
+                PREVIEW_RUNNING.store(false, Ordering::Release);
             }
         }
     }
