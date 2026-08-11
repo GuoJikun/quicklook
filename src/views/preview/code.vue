@@ -19,45 +19,55 @@ const content = ref<string>()
 const loading = ref<boolean>(false)
 const innerRef = ref<HTMLDivElement | null>(null)
 
-const getLanguage = (extension: string) => {
-    let ext = extension
-    if (['cjs', 'mjs'].includes(extension)) {
-        ext = 'js'
-    } else if (['cts', 'mts'].includes(extension)) {
-        ext = 'ts'
-    } else if (['markdown'].includes(extension)) {
-        ext = 'md'
-    } else if (['json5', 'json'].includes(extension)) {
-        ext = 'json'
-    } else if (extension === 'ps1') {
-        ext = 'powershell'
+const getLanguage = (extension: string): string => {
+    // shiki 语言标识符映射表（扩展名 -> shiki 支持的 lang id）
+    const langMap: Record<string, string> = {
+        cjs: 'javascript',
+        mjs: 'javascript',
+        cts: 'typescript',
+        mts: 'typescript',
+        markdown: 'markdown',
+        json5: 'json',
+        ps1: 'powershell',
+        styl: 'stylus',
+        h: 'c',
+        pas: 'pascal',
+        m: 'matlab',
+        txt: 'plaintext',
     }
-    return ext
+    return langMap[extension] || extension
 }
 
 const genHtml = async () => {
     loading.value = true
+    content.value = undefined
     const path = fileInfo.value?.path as string
 
-    const code = await readTextFile(path)
-    const lang = getLanguage(fileInfo.value?.extension as string)
-    const highlighter = await createHighlighter({
-        langs: [lang],
-        themes: ['github-light', 'github-dark'], // 注册主题
-    })
-    content.value = highlighter.codeToHtml(code, {
-        lang: lang,
-        theme: isDark.value ? 'github-dark' : 'github-light',
-        colorReplacements: {
-            'github-dark': {
-                '#24292e': 'var(--color-bg)',
+    try {
+        const code = await readTextFile(path)
+        const lang = getLanguage(fileInfo.value?.extension as string)
+        const highlighter = await createHighlighter({
+            langs: [lang],
+            themes: ['github-light', 'github-dark'], // 注册主题
+        })
+        content.value = highlighter.codeToHtml(code, {
+            lang: lang,
+            theme: isDark.value ? 'github-dark' : 'github-light',
+            colorReplacements: {
+                'github-dark': {
+                    '#24292e': 'var(--color-bg)',
+                },
+                'github-light': {
+                    '#fff': 'var(--color-bg)',
+                },
             },
-            'github-light': {
-                '#fff': 'var(--color-bg)',
-            },
-        },
-    })
-    loading.value = false
+        })
+    } catch (error) {
+        console.error('Code preview error:', error)
+        content.value = `<pre><code>${String(error)}</code></pre>`
+    } finally {
+        loading.value = false
+    }
 }
 
 onMounted(async () => {
