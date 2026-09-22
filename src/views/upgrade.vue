@@ -2,7 +2,6 @@
 import { check, type Update } from '@tauri-apps/plugin-updater'
 import { computed, onMounted, onUnmounted, ref, shallowRef } from 'vue'
 import { error as logError, info } from '@tauri-apps/plugin-log'
-import { ElMessage } from 'element-plus'
 import { Check, CircleClose, Download, Refresh, Warning } from '@element-plus/icons-vue'
 import { app } from '@tauri-apps/api'
 import MdViewer from '@/components/md-viewer/index.vue'
