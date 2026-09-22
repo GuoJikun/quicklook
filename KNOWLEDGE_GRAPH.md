@@ -32,8 +32,8 @@ E:/private/Rust/quicklook/
 │   ├── App.vue                    # 根组件 (<RouterView>)
 │   ├── router/index.ts            # 15 个路由
 │   ├── stores/index.ts            # Pinia store (音视频配置列表)
-│   ├── hooks/                     # theme.ts, use-window.ts
-│   ├── utils/                     # index.ts, typescript.ts, theme.ts, sentry.ts
+│   ├── hooks/                     # theme.ts (useTheme, 实际使用), use-window.ts
+│   ├── utils/                     # index.ts, typescript.ts, theme.ts (死代码), sentry.ts
 │   │   └── markdown/              # markdown-it 工厂 + 插件
 │   ├── components/                # layout-preview, header, footer, setting-item, md-viewer, excel
 │   └── views/
@@ -66,13 +66,15 @@ E:/private/Rust/quicklook/
 │       ├── tray.rs                # 系统托盘
 │       ├── commands/              # IPC 命令入口
 │       │   ├── mod.rs             # 重导出
-│       │   ├── archive.rs         # archive()
+│       │   ├── archive.rs         # archive(), archive_is_password_protected()
+│       │   ├── book.rs            # get_epub_info(), get_epub_chapter(), resolve_epub_link()
 │       │   ├── document.rs        # document()
 │       │   ├── image.rs           # convert_to_png(), clear_image_cache()
 │       │   ├── audio.rs           # read_audio_info(), parse_lrc()
-│       │   ├── video.rs           # check_ffmpeg(), convert_video_to_hls(), cancel_video_conversion()
-│       │   └── system.rs          # set_log_level(), show_open_with_dialog(), get_monitor_info(),
-│       │                          #   get_default_program_name(), clear_cache()
+│       │   ├── pdf.rs             # render_pdf_page(), get_pdf_page_count(), get_pdf_outline(), clear_pdf_cache()
+│       │   ├── video.rs           # check_ffmpeg(), prepare_video_for_preview(), convert_video_to_hls(), cancel_video_conversion()
+│       │   └── system.rs          # set_log_level(), restart_app(), show_open_with_dialog(),
+│       │                          #   get_monitor_info(), get_default_program_name(), clear_cache()
 │       ├── helper/                # 内部业务逻辑
 │       │   ├── mod.rs             # get_webview_window(), get_scaled_size()
 │       │   ├── config.rs          # 读取 resources/config.json
@@ -101,14 +103,16 @@ E:/private/Rust/quicklook/
 │   ├── archive/                   # quicklook-archive
 │   │   ├── src/lib.rs             # Extract, build_tree(), list_archive_tree()
 │   │   └── src/extractors/        # zip, tar, gz, bz2, xz, zst, 7z, rar, cpio, ar
-│   └── docs/                      # quicklook-docs
-│       └── src/lib.rs             # Docs enum (Excel, CSV, DOCX)
+│   ├── docs/                      # quicklook-docs
+│   │   ├── src/lib.rs             # Docs enum (Excel, CSV, DOCX)
+│   │   └── src/pdf.rs             # pdfium 渲染 (render_pdf_page 等)
 │   └── book/                      # quicklook-book
-    │       └── src/epub.rs            # epub 解析 (章节/目录/HTML)
+│       └── src/epub.rs            # epub 解析 (章节/目录/HTML)
 ├── .github/workflows/
 │   ├── build.yml                  # 发布构建 (NSIS 安装包)
 │   ├── check-rust.yml             # cargo check CI
-│   └── check-ts-type.yml          # TypeScript 类型检查 CI
+│   ├── check-ts-type.yml          # TypeScript 类型检查 CI
+│   └── winget.yml                 # WinGet 发布
 └── KNOWLEDGE_GRAPH.md             # 本文件
 ```
 
@@ -125,7 +129,7 @@ lib.rs (Tauri Builder)
   │   ├── app.listen("config_update")   → 热更新配置
   │   ├── preview::init_preview_file()  → 安装键盘钩子
   │   └── tray::create_tray()           → 系统托盘
-  └── invoke_handler (注册 13 个 command)
+  └── invoke_handler (注册 24 个 command)
 
 commands/ (IPC 入口)     helper/ (业务逻辑)     crates/ (工作空间)
 ┌──────────┐            ┌────────────┐        ┌──────────────────┐
@@ -159,26 +163,34 @@ error.rs (统一错误类型: QuickLookError)
 
 ```
 
-## IPC 命令清单 (13 个)
+## IPC 命令清单 (24 个)
 
 | 命令 | 方向 | 前端模块 | 后端入口 | 后端实现 |
 |------|------|----------|----------|----------|
-| `archive` | FE → BE | archive.vue | `commands/archive.rs` | quicklook-archive (8种格式) |
+| `archive` | FE → BE | archive.vue | `commands/archive.rs` | quicklook-archive (多格式) |
+| `archive_is_password_protected` | FE → BE | archive.vue | `commands/archive.rs` | quicklook-archive (zip/7z/rar) |
 | `document` | FE → BE | document.vue | `commands/document.rs` | quicklook-docs (Excel/CSV/DOCX) |
 | `get_epub_info` | FE → BE | book.vue | `commands/book.rs` | quicklook-book::epub |
 | `get_epub_chapter` | FE → BE | book.vue | `commands/book.rs` | quicklook-book::epub |
+| `resolve_epub_link` | FE → BE | book.vue | `commands/book.rs` | quicklook-book::epub |
 | `convert_to_png` | FE → BE | image.vue | `commands/image.rs` | helper/image (psd/heic/jxl) |
 | `clear_image_cache` | FE → BE | settings.vue | `commands/image.rs` | 删除 %TEMP%/quicklook_images/ |
 | `read_audio_info` | FE → BE | audio.vue | `commands/audio.rs` | helper/audio (lofty crate) |
 | `parse_lrc` | FE → BE | audio.vue | `commands/audio.rs` | helper/audio (LRC 解析) |
-| `check_ffmpeg` | FE → BE | video.vue | `commands/video.rs` | helper/ffmp (which ffmpeg) |
+| `check_ffmpeg` | FE → BE | settings.vue | `commands/video.rs` | helper/ffmp (store 缓存 + which ffmpeg) |
+| `prepare_video_for_preview` | FE → BE | video.vue | `commands/video.rs` | helper/ffmp (ffprobe 兼容性预检) |
 | `convert_video_to_hls` | FE → BE | video.vue | `commands/video.rs` | helper/ffmp (ffmpeg 转码) |
 | `cancel_video_conversion` | FE → BE | video.vue | `commands/video.rs` | helper/ffmp (taskkill) |
-| `clear_cache` | FE → BE | settings.vue | `commands/system.rs` | helper/ffmp + helper/image |
-| `get_monitor_info` | FE → BE | window.rs | `commands/system.rs` | helper/monitor (GDI) |
+| `render_pdf_page` | FE → BE | pdf-viewer.vue | `commands/pdf.rs` | quicklook-docs::pdf (pdfium) |
+| `get_pdf_page_count` | FE → BE | pdf-viewer.vue | `commands/pdf.rs` | quicklook-docs::pdf |
+| `get_pdf_outline` | FE → BE | pdf-viewer.vue | `commands/pdf.rs` | quicklook-docs::pdf |
+| `clear_pdf_cache` | FE → BE | settings.vue | `commands/pdf.rs` | 删除 %TEMP%/quicklook_pdf/ |
+| `clear_cache` | FE → BE | settings.vue | `commands/system.rs` | helper/ffmp + image + pdf 缓存汇总 |
 | `show_open_with_dialog` | FE → BE | header.vue | `commands/system.rs` | helper/win (SHOpenWithDialog) |
 | `get_default_program_name` | FE → BE | header.vue | `commands/system.rs` | helper/win (AssocQueryStringW) |
-| `set_log_level` | FE → BE | lib.rs / settings.vue | `commands/system.rs` | log::set_max_level |
+| `set_log_level` | FE → BE | settings.vue | `commands/system.rs` | log::set_max_level |
+| `get_monitor_info` | FE → BE | （暂无前端调用） | `commands/system.rs` | helper/monitor (GDI) |
+| `restart_app` | FE → BE | （暂无前端调用） | `commands/system.rs` | app.restart() |
 
 ## 空格键预览完整流程
 
@@ -214,7 +226,7 @@ window.rs: PreviewFile::preview_file()
         │     └── ...
         │
         │  5. 窗口管理
-        │     ┌── 已有 preview 窗口 → window.eval("location.href = '...'")
+        │     ┌── 已有 preview 窗口 → window.navigate(url)（原生跳转，不 eval 注入 JS）
         │     └── 无 preview 窗口 → WebviewWindowBuilder
         │           ├── 无边框 decorations(false)
         │           ├── 80% 屏幕大小 (Audio 除外 560x200)
@@ -235,8 +247,9 @@ window.rs: PreviewFile::preview_file()
         ├── Audio 视图: <audio> + invoke('read_audio_info') + invoke('parse_lrc')
         ├── Font 视图:  FontFace.load(convertFileSrc(path)) → 示例文本
         ├── Book 视图:   epub → IPC 获取章节 HTML → iframe/内联渲染
-        ├── Archive:    invoke('archive') → el-tree
+        ├── Archive:    invoke('archive') → el-tree（加密包先 invoke('archive_is_password_protected')）
         └── Document:
+              ├── PDF:    invoke('render_pdf_page' / 'get_pdf_page_count' / 'get_pdf_outline') → pdf-viewer
               ├── Excel: invoke('document') → Handsontable
               └── DOCX:  readFile(path) → docx-preview.renderAsync()
 ```
@@ -244,26 +257,26 @@ window.rs: PreviewFile::preview_file()
 ## 文件分类映射 (utils/mod.rs)
 
 ```
-FILE_TYPE_MAPPING (约 120 个扩展名)
+FILE_TYPE_MAPPING（约 145 个生效扩展名；doc/ppt/pptx 已注释）
 
 Markdown  : md, markdown
-Doc       : docx, xlsx, xls, xlsm, xlsb, xla, xlam, ods, csv
+Doc       : docx, xls, xlsx, xlsm, xlsb, xla, xlam, ods, csv, pdf
 Image     : jpg, jpeg, png, gif, webp, bmp, ico, svg, apng
-            psd, tiff, tif, tga, pbm, pgm, ppm, qoi, exr, heic, heif
+            psd, tiff, tif, tga, pbm, pgm, ppm, qoi, exr, heic, heif, jxl
 Video     : mp4, webm, mkv, avi, mov, wmv, mpg, mpeg, m4v, 3gp, 3g2
-Audio     : mp3, ogg, m4a, flac, wav, aac, wma, opus, ape, aiff, aifc, aif
+Audio     : mp3, ogg, m4a
 Book      : epub
-Font      : ttf, otf, woff2, woff, eot
+Font      : ttf, otf, woff2, woff
 Archive   : zip, 7z, rar, tar, gz, tgz, bz2, tbz2, xz, txz, zst, tzst
             cpio, ar, deb, a, jar, war, ear, apk, aar, whl, vsix
             nupkg, crx, xpi, egg, kra, xps, oxps
-Code (50+): cpp, js, mjs, cjs, ts, mts, tsx, rs, py, java, html, css
+Code (50): txt, cpp, js, mjs, cjs, ts, mts, tsx, rs, py, java, html, css
             scss, sass, less, styl, c, cs, go, vue, svelte, astro, jsx
             json, yml, yaml, toml, bat, ps1, ini, swift, kt, php, h
-            xml, sql, pug, lua, r, d, vb, pas, scala, m, log, sh, bash, zsh, zig
+            xml, sql, pug, lua, r, d, vb, pas, scala, dart, rb, m, log, bash, zig
 Model3D   : gltf, glb, stl, obj, ply, fbx, 3mf, dae, 3ds, amf, wrl, lwo, lws
 无扩展名检测: README → markdown, Makefile → makefile, Dockerfile → docker,
-           .bashrc → bash, .gitignore → gitignore, ...
+           .bashrc → bash, .env → ini, ...
 
 用户自定义: customCodeExtensions (plugin-store)
            customVideoExtensions (plugin-store)
@@ -285,7 +298,7 @@ Model3D   : gltf, glb, stl, obj, ply, fbx, 3mf, dae, 3ds, amf, wrl, lwo, lws
 | `/preview/book` | BookSupport | epub 电子书阅读 |
 | `/preview/archive` | ArchiveSupport | 压缩包目录树 |
 | `/preview/model` | ModelSupport | 3D 模型预览 (Three.js) |
-| `/preview/document` | DocumentSupport | Excel/CSV/DOCX |
+| `/preview/document` | DocumentSupport | Excel/CSV/DOCX/PDF（PDF 走 document.vue 内嵌 PdfViewer，无独立路由） |
 | `/settings` | Settings | 设置页面 |
 | `/upgrade` | Upgrade | 更新管理 |
 
@@ -345,15 +358,17 @@ Tauri Plugin Store (config.data) -- 持久化到磁盘
 ├── autostart: boolean               (开机自启)
 └── ... (其他设置项)
 
-resources/config.json (编译时内嵌)
-├── preview.markdown: string[]     (Markdown 格式白名单)
-├── preview.markdown.checked: string[]
-├── preview.audio: string[]
-├── preview.audio.checked: string[]
-├── preview.video: string[]
-├── preview.video.checked: string[]
-├── preview.model: string[]        (3D 模型格式白名单)
-└── preview.model.checked: string[]
+resources/config.json (编译时内嵌，扁平 key：preview.<类型>[.checked])
+├── preview.markdown / preview.markdown.checked     (Markdown 格式白名单)
+├── preview.image / preview.image.checked
+├── preview.video / preview.video.checked
+├── preview.audio / preview.audio.checked
+├── preview.doc / preview.doc.checked
+├── preview.code / preview.code.checked
+├── preview.font / preview.font.checked
+├── preview.archive / preview.archive.checked
+├── preview.book / preview.book.checked
+├── preview.model / preview.model.checked           (3D 模型格式白名单)
 ```
 
 ## Rust 工作空间依赖
@@ -371,7 +386,7 @@ resources/config.json (编译时内嵌)
 Cargo workspace (resolver = "2")
 │
 ├── app (src-tauri/)
-│   ├── tauri 2.x (protocol-asset, tray-icon)
+│   ├── tauri 2.x (protocol-asset, unstable, tray-icon)
 │   ├── tauri-plugins x 9
 │   ├── windows 0.61 (Win32/COM/UI Automation)
 │   ├── serde + serde_json (workspace)
@@ -411,7 +426,8 @@ Cargo workspace (resolver = "2")
 │── quicklook-docs (crates/docs/)
 │   ├── serde + log + image (workspace)
 │   ├── calamine (Excel: .xls/.xlsx/.xlsb/.ods)
-│   └── csv (CSV 解析)
+│   ├── csv (CSV 解析)
+│   └── pdfium-render (PDF 渲染为 PNG，运行时加载 pdfium.dll)
 │
 └── quicklook-book (crates/book/)
     └── epub (EPUB 解析: 章节/目录/HTML)
@@ -422,20 +438,20 @@ Cargo workspace (resolver = "2")
 
 ```
 生产依赖:
-├── Vue 3.5 + vue-router 4.6 + pinia 3.x
-├── Element Plus 2.13 (UI 组件库, 中文语言包)
-├── Naive UI 2.44 (仅 NIcon)
+├── Vue 3.5 + vue-router 5.x + pinia 4.x
+├── Element Plus 2.14 (UI 组件库, 中文语言包)
+├── Naive UI 2.44 (仅 header 的 NIcon)
 ├── @vueuse/core (dark mode, 元素尺寸, 节流, 事件监听)
 ├── @vicons/fluent + @vicons/ionicons5 (图标)
-├── markdown-it 14.x + 11 个插件 (markdown 渲染)
+├── markdown-it 14.x + 多个插件 (markdown 渲染)
 ├── shiki 4.x + @shikijs/markdown-it (代码高亮)
 ├── handsontable (Excel 表格)
 ├── docx-preview (DOCX 渲染)
-├── pdfjs-dist (PDF 解析, document.vue 中 PdfViewer 使用)
-├── leafer-ui 2.x + 6 个插件 (PDF 画布渲染, document.vue 中 PdfViewer 使用)
+├── PDF 由后端渲染: 无 pdfjs-dist / leafer-ui（invoke render_pdf_page → canvas）
 ├── xgplayer 3.x + xgplayer-hls (视频播放)
+├── three (3D 模型)
 ├── @sentry/vue (错误监控)
-└── @tauri-apps/api + 9 个插件绑定
+└── @tauri-apps/api + 插件绑定 (autostart/dialog/fs/log/opener/shell/store/updater)
 
 开发依赖:
 ├── Vite 6 + TypeScript 6

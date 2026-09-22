@@ -32,17 +32,29 @@ jobs:
         if: matrix.settings.target == 'windows-aarch64'
         run: rustup target add aarch64-pc-windows-msvc
 
-      - name: Get latest release
-        id: get_release
-        uses: actions/github-script@v4
+      - name: Extract release notes from CHANGELOG
+        id: release_notes
+        uses: actions/github-script@v7
         with:
           script: |
-            const latestRelease = await github.repos.getLatestRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-            });
-            const notes = latestRelease.data.body || '没有更新信息';
-            return notes;
+            const fs = require('fs');
+            const version = context.ref.replace(/^refs\/tags\/v/, '');
+            const repo = context.repo.owner + '/' + context.repo.repo;
+            let body = `See [CHANGELOG.md](https://github.com/${repo}/blob/main/CHANGELOG.md) for details.`;
+            try {
+              const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
+              const escaped = version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              const re = new RegExp(`##\\s*v${escaped}\\b[^\\n]*\\n([\\s\\S]*?)(?=\\n##\\s|$)`);
+              const matched = changelog.match(re);
+              if (matched && matched[1].trim()) {
+                body = matched[1].trim();
+              } else {
+                core.warning(`CHANGELOG.md has no section for v${version}`);
+              }
+            } catch (e) {
+              core.warning(`Failed to read CHANGELOG.md: ${e.message}`);
+            }
+            return body;
 
       - name: Rust setup
         uses: dtolnay/rust-toolchain@stable
@@ -95,6 +107,6 @@ jobs:
           args: ${{ matrix.settings.args }}
           tagName: v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version
           releaseName: 'v__VERSION__'
-          releaseBody: "${{ steps.get_release.outputs.result }}"
+          releaseBody: "${{ steps.release_notes.outputs.result }}"
           releaseDraft: false
           prerelease: true

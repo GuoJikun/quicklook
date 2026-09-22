@@ -11,7 +11,7 @@ QuickLook 是一个 windows 平台的快速预览工具。
 ## 支持预览的格式
 
 - Markdown：markdown、md
-- Doc：docx、xls、xlsx、xlsm、xlsb、xla、xlam、ods、csv
+- Doc：docx、xls、xlsx、xlsm、xlsb、xla、xlam、ods、csv、pdf
 - Code：txt、cpp、js、mjs、cjs、ts、mts、tsx、rs、py、java、html、css、scss、sass、less、styl、c、cs、go、vue、svelte、astro、jsx、json、yml、yaml、toml、bat、ps1、ini、swift、kt、php、h、xml、sql、pug、lua、r、d、vb、pas、scala、dart、rb、m、log、bash、zig
 - Image：jpg、jpeg、png、gif、webp、bmp、ico、svg、apng、psd、tiff、tif、tga、pbm、pgm、ppm、qoi、exr、heic、heif、jxl
 - Video：mp4、webm、mkv、avi、mov、wmv、mpg、mpeg、m4v、3gp、3g2
@@ -28,6 +28,11 @@ QuickLook 是一个 windows 平台的快速预览工具。
 - Rust [官方网站](https://www.rust-lang.org/tools/install)
 - Tauri [官方网站](https://tauri.app/start/prerequisites/)
 - NodeJS [官方网站](https://nodejs.org/)
+- vcpkg + libheif（HEIC/HEIF 图片解码依赖，无需 cargo-vcpkg）：
+  ```bash
+  vcpkg install "libheif[core]:x64-windows-static-md"  # 按目标架构安装对应 triplet
+  ```
+  安装后即可执行 `cargo check` / `pnpm tauri dev`。
 
 ### 拉取项目代码
 
@@ -41,8 +46,11 @@ git clone https://github.com/GuoJikun/quicklook.git
 > 使用 Volta 来锁定 NodeJS 和 pnpm 版本
 
 ```bash
-pnpm i #安装项目依赖
-pnpm tauri dev 运行项目
+pnpm i
+# 安装项目依赖
+
+pnpm tauri dev
+# 运行项目
 ```
 
 ### 打包
@@ -59,39 +67,39 @@ pnpm tauri build
 
 ### 预览 Code (utf-8)
 
-![code.png](./screenshots/preview-code.png)
+![preview-code.png](./screenshots/preview-code.png)
 
 ### 预览 Docx
 
-![code.png](./screenshots/preview-docx.png)
+![preview-docx.png](./screenshots/preview-docx.png)
 
 ### 预览 Excel
 
-![code.png](./screenshots/preview-excel.png)
+![preview-excel.png](./screenshots/preview-excel.png)
 
 ### 预览 Image
 
-![code.png](./screenshots/preview-image.png)
+![preview-image.png](./screenshots/preview-image.png)
 
 ### 预览 Md
 
-![code.png](./screenshots/preview-md.png)
+![preview-md.png](./screenshots/preview-md.png)
 
 ### 预览 Pdf
 
-![code.png](./screenshots/preview-pdf.png)
+![preview-pdf.png](./screenshots/preview-pdf.png)
 
 ### 预览 Zip
 
-![code.png](./screenshots/preview-zip.png)
+![preview-zip.png](./screenshots/preview-zip.png)
 
 ### 预览 Video
 
-![code.png](./screenshots/preview-video.png)
+![preview-video.png](./screenshots/preview-video.png)
 
 ### 预览 Audio
 
-![code.png](./screenshots/preview-audio.png)
+![preview-audio.png](./screenshots/preview-audio.png)
 
 ## License/许可证
 
