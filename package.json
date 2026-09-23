@@ -30,7 +30,6 @@
     "@tauri-apps/plugin-store": "2.4.4",
     "@tauri-apps/plugin-updater": "^2.10.1",
     "@vicons/fluent": "^0.13.0",
-    "@vicons/ionicons5": "^0.13.0",
     "@vueuse/core": "^14.3.0",
     "docx-preview": "^0.4.0",
     "element-plus": "^2.14.3",
