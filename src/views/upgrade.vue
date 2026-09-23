@@ -6,6 +6,7 @@ import { Check, CircleClose, Download, Refresh, Warning } from '@element-plus/ic
 import { app } from '@tauri-apps/api'
 import MdViewer from '@/components/md-viewer/index.vue'
 import { createMd } from '@/utils/markdown/index'
+import { formatBytes } from '@/utils/index'
 import type MarkdownIt from 'markdown-it'
 
 type Phase = 'idle' | 'downloading' | 'finished' | 'cancelled'
@@ -45,19 +46,6 @@ const percentage = computed(() => {
     if (!progress.value.total) return 0
     return Math.min(100, parseFloat(((progress.value.downloaded / progress.value.total) * 100).toFixed(2)))
 })
-
-const formatBytes = (bytes: number): string => {
-    if (!Number.isFinite(bytes) || bytes <= 0) return '0 B'
-    const units = ['B', 'KB', 'MB', 'GB']
-    let n = bytes
-    let i = 0
-    while (n >= 1024 && i < units.length - 1) {
-        n /= 1024
-        i++
-    }
-    const fixed = n >= 100 || i === 0 ? 0 : n >= 10 ? 1 : 2
-    return `${n.toFixed(fixed)} ${units[i]}`
-}
 
 const formatSpeed = (bytesPerSec: number): string => `${formatBytes(bytesPerSec)}/s`
 
