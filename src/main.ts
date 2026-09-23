@@ -9,7 +9,6 @@ import { error, warn } from '@tauri-apps/plugin-log'
 import 'element-plus/theme-chalk/base.css'
 import 'element-plus/theme-chalk/dark/css-vars.css'
 
-import initSentry from './utils/sentry'
 // 初始化主题（暗黑/明亮），在应用创建前执行以减少闪烁
 import './hooks/theme'
 
@@ -30,6 +29,8 @@ app.config.warnHandler = (msg, vm, trace) => {
     warn(`[Vue Warn]: Message- ${msg}；Trace- ${trace}`)
 }
 if (!import.meta.env.DEV) {
-    initSentry({ app, router })
+    void import('./utils/sentry').then(({ default: initSentry }) => {
+        initSentry({ app, router })
+    })
 }
 app.mount('#app')
