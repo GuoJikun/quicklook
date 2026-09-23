@@ -60,10 +60,8 @@
 - [pinia](https://github.com/vuejs/pinia) — 状态管理
 - [element-plus](https://github.com/element-plus/element-plus) — UI 组件库
 - [@element-plus/icons-vue](https://github.com/element-plus/icons) — Element Plus 图标
-- [naive-ui](https://github.com/tusen-ai/naive-ui) — 备用 UI 组件库
 - [@vueuse/core](https://github.com/vueuse/vueuse) — Vue 组合式工具集
 - [@vicons/fluent](https://github.com/07akioni/vicons) — Fluent 风格图标
-- [@vicons/ionicons5](https://github.com/07akioni/vicons) — Ionicons 图标
 
 **Markdown 渲染**
 

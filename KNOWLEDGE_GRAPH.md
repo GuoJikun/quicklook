@@ -440,9 +440,8 @@ Cargo workspace (resolver = "2")
 生产依赖:
 ├── Vue 3.5 + vue-router 5.x + pinia 4.x
 ├── Element Plus 2.14 (UI 组件库, 中文语言包)
-├── Naive UI 2.44 (仅 header 的 NIcon)
 ├── @vueuse/core (dark mode, 元素尺寸, 节流, 事件监听)
-├── @vicons/fluent + @vicons/ionicons5 (图标)
+├── @vicons/fluent (图标)
 ├── markdown-it 14.x + 多个插件 (markdown 渲染)
 ├── shiki 4.x + @shikijs/markdown-it (代码高亮)
 ├── handsontable (Excel 表格)

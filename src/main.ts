@@ -6,11 +6,6 @@ import App from './App.vue'
 import router from './router'
 import { error, warn } from '@tauri-apps/plugin-log'
 
-import { NIcon, create } from 'naive-ui'
-const naive = create({
-    components: [NIcon],
-})
-
 import 'element-plus/theme-chalk/base.css'
 import 'element-plus/theme-chalk/dark/css-vars.css'
 
@@ -22,7 +17,6 @@ const app = createApp(App)
 
 app.use(createPinia())
 app.use(router)
-app.use(naive)
 
 app.config.errorHandler = (err, vm, code) => {
     error(`[Vue Error]: Error- ${err?.toString()}；Code- ${code}`)

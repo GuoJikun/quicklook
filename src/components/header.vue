@@ -90,22 +90,22 @@ watch(
                 @click="toggle"
                 :title="isDark ? '切换为明亮模式' : '切换为暗黑模式'"
             >
-                <n-icon :size="16"><WeatherMoon16Regular v-if="isDark" /><WeatherSunny16Regular v-else /></n-icon>
+                <el-icon :size="16"><WeatherMoon16Regular v-if="isDark" /><WeatherSunny16Regular v-else /></el-icon>
             </div>
             <div class="layout-header-operate-item" @click="pin" :title="`${pined ? '取消固定' : '固定'}`">
-                <n-icon :size="16"><PinOff16Regular v-if="pined" /><Pin16Regular v-else /></n-icon>
+                <el-icon :size="16"><PinOff16Regular v-if="pined" /><Pin16Regular v-else /></el-icon>
             </div>
             <div class="layout-header-operate-item" @click="openByDefault" :title="defaultProgrameName">
-                <n-icon :size="16"><Open16Regular /></n-icon>
+                <el-icon :size="16"><Open16Regular /></el-icon>
             </div>
             <div class="layout-header-operate-item" @click="openWith" title="推荐打开程序列表">
-                <n-icon :size="16"><Apps16Regular /></n-icon>
+                <el-icon :size="16"><Apps16Regular /></el-icon>
             </div>
             <div class="layout-header-operate-item" @click="handleMax" title="最大化">
-                <n-icon :size="16"><Maximize16Regular /></n-icon>
+                <el-icon :size="16"><Maximize16Regular /></el-icon>
             </div>
             <div class="layout-header-operate-item is-close" @click="handleClose" title="关闭">
-                <n-icon :size="16"><Dismiss16Regular /></n-icon>
+                <el-icon :size="16"><Dismiss16Regular /></el-icon>
             </div>
         </div>
     </div>
@@ -123,7 +123,7 @@ watch(
     background-color: var(--color-surface);
     color: var(--color-text-primary);
     gap: var(--space-3);
-    :deep(i.n-icon) {
+    :deep(i.el-icon) {
         cursor: pointer;
         pointer-events: none;
     }
