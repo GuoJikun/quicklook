@@ -1,5 +1,18 @@
 # 更新日志
 
+## v0.24.0 (2026-09-28)
+
+**更新内容**
+
+* chore: 升级 Tauri 至 2.12，Rust crate 迁移至 edition 2024
+* perf: 移除 Naive UI，全面改用 Element Plus 并按需引入以减小打包体积
+* chore: 升级 archive 相关依赖（zip 8.6.0，xz 解压迁移至 lzma-rust2，ruzstd 0.9，hadris-cpio 2.4）
+* chore: 统一 cpio/zst 日期格式为 YYYY-MM-DD HH:MM:SS
+* chore: audio 的 lofty 升至 0.25.4
+* chore: 优化 Sentry 初始化，调整采样率并移除 replay 集成
+* chore: 移除未使用的依赖与冗余代码，简化音频组件
+* docs: 添加隐私政策文档，更新架构文档
+
 ## v0.23.2 (2026-08-13)
 
 **更新内容**
