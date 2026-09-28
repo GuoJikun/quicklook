@@ -84,8 +84,7 @@ extern "system" fn keyboard_proc(ncode: i32, wparam: WPARAM, lparam: LPARAM) -> 
                 tauri::async_runtime::spawn_blocking(move || {
                     let _guard = PreviewGuard;
                     let result = (|| {
-                        let type_str =
-                            crate::helper::selected_file::Selected::get_focused_type();
+                        let type_str = crate::helper::selected_file::Selected::get_focused_type();
                         if type_str.is_none() {
                             return Ok(());
                         }

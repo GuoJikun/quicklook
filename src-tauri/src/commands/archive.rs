@@ -1,4 +1,4 @@
-use quicklook_archive::{extractors, Extract};
+use quicklook_archive::{Extract, extractors};
 use tauri::command;
 
 use crate::error::QuickLookError;

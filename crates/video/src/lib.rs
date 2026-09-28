@@ -40,7 +40,12 @@ pub fn prepare_video_for_preview(path: &str) -> Result<VideoPreviewDecision, Qui
         .to_lowercase();
 
     let codec = probe_video_codec(path)?;
-    log::info!("prepare_video_for_preview: path={:?}, ext={}, codec={}", path, extension, codec);
+    log::info!(
+        "prepare_video_for_preview: path={:?}, ext={}, codec={}",
+        path,
+        extension,
+        codec
+    );
     let is_compatible = is_compatible_video(path, &extension, &codec);
 
     if is_compatible {

@@ -17,4 +17,6 @@ pub use system::{
     clear_cache, get_default_program_name, get_monitor_info, restart_app, set_log_level,
     show_open_with_dialog,
 };
-pub use video::{cancel_video_conversion, check_ffmpeg, convert_video_to_hls, prepare_video_for_preview};
+pub use video::{
+    cancel_video_conversion, check_ffmpeg, convert_video_to_hls, prepare_video_for_preview,
+};

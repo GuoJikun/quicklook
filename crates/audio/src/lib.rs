@@ -22,7 +22,7 @@ pub fn read_music_info<P: AsRef<Path>>(path: P) -> Option<MusicInfo> {
         Err(e) => {
             log::error!("audio metadata read failed: {:?}: {}", path.as_ref(), e);
             return None;
-        }
+        },
     };
 
     // 标签

@@ -1,6 +1,6 @@
 use tauri::{
-    webview::PageLoadEvent, AppHandle, Error as TauriError, Manager, WebviewUrl,
-    WebviewWindowBuilder,
+    AppHandle, Error as TauriError, Manager, WebviewUrl, WebviewWindowBuilder,
+    webview::PageLoadEvent,
 };
 use tauri_plugin_store::StoreExt;
 
