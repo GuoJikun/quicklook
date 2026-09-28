@@ -46,5 +46,5 @@ pub fn list_tar_bz2_entries<P: AsRef<Path>>(path: P) -> Result<Vec<Extract>, Arc
 
 /// 列举 TAR.XZ 文件条目
 pub fn list_tar_xz_entries<P: AsRef<Path>>(path: P) -> Result<Vec<Extract>, ArchiveError> {
-    parse_tar_entries(xz2::read::XzDecoder::new(File::open(path)?))
+    parse_tar_entries(lzma_rust2::XzReader::new(File::open(path)?, true))
 }

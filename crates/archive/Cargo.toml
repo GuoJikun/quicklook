@@ -17,13 +17,13 @@ crate-type = ["cdylib", "rlib"]
 serde = { workspace = true }
 serde_json = { workspace = true }
 chrono = { workspace = true }
-zip = { version = "2.2.1", features = [] }
+zip = { version = "8.6.0", features = [] }
 tar = "0.4.46"
 flate2 = { version = "1.0", default-features = false, features = [
     "rust_backend",
 ] }
 bzip2 = { version = "0.6.1", default-features = false }
-xz2 = { version = "0.1.0", default-features = false }
+lzma-rust2 = { version = "0.16", default-features = false, features = ["std"] }
 sevenz-rust = { version = "0.6.0", features = ["aes256"] }
 ruzstd = { version = "0.8.0", default-features = false, features = ["std"] }
 hadris-cpio = "1.2.1"
