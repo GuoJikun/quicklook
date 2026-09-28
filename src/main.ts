@@ -6,17 +6,9 @@ import App from './App.vue'
 import router from './router'
 import { error, warn } from '@tauri-apps/plugin-log'
 
-import { NIcon, create } from 'naive-ui'
-const naive = create({
-    components: [NIcon],
-})
-
-import ElementPlus from 'element-plus'
-import 'element-plus/dist/index.css'
+import 'element-plus/theme-chalk/base.css'
 import 'element-plus/theme-chalk/dark/css-vars.css'
-import zhCn from 'element-plus/es/locale/lang/zh-cn'
 
-import initSentry from './utils/sentry'
 // 初始化主题（暗黑/明亮），在应用创建前执行以减少闪烁
 import './hooks/theme'
 
@@ -24,10 +16,6 @@ const app = createApp(App)
 
 app.use(createPinia())
 app.use(router)
-app.use(naive)
-app.use(ElementPlus, {
-    locale: zhCn,
-})
 
 app.config.errorHandler = (err, vm, code) => {
     error(`[Vue Error]: Error- ${err?.toString()}；Code- ${code}`)
@@ -41,6 +29,8 @@ app.config.warnHandler = (msg, vm, trace) => {
     warn(`[Vue Warn]: Message- ${msg}；Trace- ${trace}`)
 }
 if (!import.meta.env.DEV) {
-    initSentry({ app, router })
+    void import('./utils/sentry').then(({ default: initSentry }) => {
+        initSentry({ app, router })
+    })
 }
 app.mount('#app')

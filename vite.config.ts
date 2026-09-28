@@ -7,6 +7,9 @@ import { defineConfig, loadEnv, type PluginOption } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import { sentryVitePlugin } from '@sentry/vite-plugin'
+import AutoImport from 'unplugin-auto-import/vite'
+import Components from 'unplugin-vue-components/vite'
+import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import pkg from './package.json'
 
 function copyPdfiumDll(): PluginOption {
@@ -44,7 +47,17 @@ function copyPdfiumDll(): PluginOption {
 export default defineConfig(({ mode, command }) => {
     const env = loadEnv(mode, process.cwd())
 
-    let plugins: PluginOption[] = [vue(), vueJsx(), copyPdfiumDll()]
+    let plugins: PluginOption[] = [
+        vue(),
+        vueJsx(),
+        copyPdfiumDll(),
+        AutoImport({
+            resolvers: [ElementPlusResolver()],
+        }),
+        Components({
+            resolvers: [ElementPlusResolver({ directives: true })],
+        }),
+    ]
     if (command === 'build') {
         plugins = [
             ...plugins,

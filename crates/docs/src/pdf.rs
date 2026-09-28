@@ -52,11 +52,11 @@ fn get_pdfium() -> Result<&'static Pdfium, QuickLookError> {
             Ok(bindings) => {
                 log::info!("[pdf] pdfium 库加载成功");
                 Ok(Pdfium::new(bindings))
-            }
+            },
             Err(e) => {
                 log::error!("[pdf] 加载 pdfium 库失败: {}", e);
                 Err(format!("加载 pdfium 库失败: {}", e))
-            }
+            },
         }
     });
     match cached {

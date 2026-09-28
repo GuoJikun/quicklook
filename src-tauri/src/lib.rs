@@ -15,10 +15,9 @@ use tauri_plugin_store::StoreExt;
 use commands::{
     archive, archive_is_password_protected, cancel_video_conversion, check_ffmpeg, clear_cache,
     clear_image_cache, clear_pdf_cache, convert_to_png, convert_video_to_hls, document,
-    prepare_video_for_preview,
     get_default_program_name, get_epub_chapter, get_epub_info, get_monitor_info, get_pdf_outline,
-    get_pdf_page_count, parse_lrc, read_audio_info, render_pdf_page, resolve_epub_link,
-    restart_app, set_log_level, show_open_with_dialog,
+    get_pdf_page_count, parse_lrc, prepare_video_for_preview, read_audio_info, render_pdf_page,
+    resolve_epub_link, restart_app, set_log_level, show_open_with_dialog,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -43,16 +42,15 @@ pub fn run() {
                 .level(log::LevelFilter::Trace) // 打底放行全部级别，实际级别由运行时 set_log_level 控制
                 .filter(|metadata| {
                     use std::sync::atomic::Ordering;
-                    let current = match crate::commands::system::CURRENT_LOG_LEVEL
-                        .load(Ordering::Relaxed)
-                    {
-                        0 => log::LevelFilter::Off,
-                        1 => log::LevelFilter::Error,
-                        2 => log::LevelFilter::Warn,
-                        3 => log::LevelFilter::Info,
-                        4 => log::LevelFilter::Debug,
-                        _ => log::LevelFilter::Trace,
-                    };
+                    let current =
+                        match crate::commands::system::CURRENT_LOG_LEVEL.load(Ordering::Relaxed) {
+                            0 => log::LevelFilter::Off,
+                            1 => log::LevelFilter::Error,
+                            2 => log::LevelFilter::Warn,
+                            3 => log::LevelFilter::Info,
+                            4 => log::LevelFilter::Debug,
+                            _ => log::LevelFilter::Trace,
+                        };
                     metadata.level().to_level_filter() <= current
                 })
                 .max_file_size(1024 * 1024)

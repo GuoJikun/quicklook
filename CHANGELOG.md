@@ -1,5 +1,54 @@
 # 更新日志
 
+## v0.24.0 (2026-09-28)
+
+**更新内容**
+
+* chore: 升级 Tauri 至 2.12，Rust crate 迁移至 edition 2024
+* perf: 移除 Naive UI，全面改用 Element Plus 并按需引入以减小打包体积
+* chore: 升级 archive 相关依赖（zip 8.6.0，xz 解压迁移至 lzma-rust2，ruzstd 0.9，hadris-cpio 2.4）
+* chore: 统一 cpio/zst 日期格式为 YYYY-MM-DD HH:MM:SS
+* chore: audio 的 lofty 升至 0.25.4
+* chore: 优化 Sentry 初始化，调整采样率并移除 replay 集成
+* chore: 移除未使用的依赖与冗余代码，简化音频组件
+* docs: 添加隐私政策文档，更新架构文档
+
+## v0.23.2 (2026-08-13)
+
+**更新内容**
+
+* chore: 更新版本号至 0.23.2
+* chore: 优化脚本源安全策略
+
+## v0.23.1 (2026-08-12)
+
+**更新内容**
+
+* fix: 优化语言识别逻辑并增强错误处理
+* feat: winget 发布流程支持动态获取最新发布标签
+* fix: 修正发布工作流名称与触发条件
+
+## v0.23.0 (2026-08-06)
+
+**更新内容**
+
+* feat: 恢复 HEIC/HEIF 图片预览支持，更新 vcpkg/libheif 构建配置 (#70)
+* feat: 预览窗口创建时设置大小并居中显示
+* feat: 预览窗口路由跳转改用原生 navigate，替代 eval 注入 JS
+* feat: 移除 CSP 中的 `unsafe-eval`，增强安全性
+* feat: 键盘钩子增加防重入机制，并优化内存序以提升并发安全
+* feat: 预览窗口生命周期增加 RAII 保护
+* feat: 多个 IPC 命令改为异步执行，引入 memmap2 优化大文件处理
+* feat: ffmpeg 检测结果改为 store 缓存，启动时重置并增强错误处理
+* feat: 改进 pdfium 库加载逻辑，增强错误处理与日志
+* feat: 增强音频元数据、Markdown 加载、默认程序名获取等错误处理
+* feat: 增强 ShellView / ShellItems 查询的容错逻辑
+* feat: AR 归档条目改用头部存储的 mtime 显示修改时间
+* feat: quicklook-archive 支持按需启用 C ABI 导出（`capi` feature）
+* feat: 日志改为 1MB 轮换并保留最近 6 个文件；修复日志级别设置不生效
+* feat: 组件卸载时补充清理逻辑，避免内存泄漏
+* fix: 调整日志文件大小限制和轮换策略
+
 ## v0.22.2 (2026-07-20)
 
 **更新内容**

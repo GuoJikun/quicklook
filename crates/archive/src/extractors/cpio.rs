@@ -1,6 +1,6 @@
 use crate::{ArchiveError, Extract};
 use hadris_cpio::mode::FileType;
-use hadris_cpio::sync::CpioReader;
+use hadris_cpio::sync::CpioArchiveReader;
 use std::{
     fs::File,
     io::BufReader,
@@ -11,7 +11,7 @@ use std::{
 /// 列举 CPIO 文件条目
 pub fn list_cpio_entries<P: AsRef<Path>>(path: P) -> Result<Vec<Extract>, ArchiveError> {
     let file = File::open(path)?;
-    let mut reader = CpioReader::new(BufReader::new(file));
+    let mut reader = CpioArchiveReader::new(BufReader::new(file));
     let mut entries = Vec::new();
 
     loop {
@@ -31,7 +31,9 @@ pub fn list_cpio_entries<P: AsRef<Path>>(path: P) -> Result<Vec<Extract>, Archiv
         let is_dir = matches!(entry.file_type(), FileType::Directory);
 
         let dt = UNIX_EPOCH + Duration::from_secs(mtime as u64);
-        let last_modified = chrono::DateTime::<chrono::Local>::from(dt).to_rfc3339();
+        let last_modified = chrono::DateTime::<chrono::Local>::from(dt)
+            .format("%Y-%m-%d %H:%M:%S")
+            .to_string();
 
         entries.push(Extract::new(name, size, last_modified, is_dir));
 

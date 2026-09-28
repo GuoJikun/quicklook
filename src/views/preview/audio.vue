@@ -6,7 +6,6 @@ import { invoke } from '@tauri-apps/api/core'
 
 import { useWindow } from '@/hooks/use-window'
 import { Dismiss16Regular, PauseCircle20Regular, PlayCircle20Regular } from '@vicons/fluent'
-// import { VolumeMediumOutline } from '@vicons/ionicons5'
 
 import type { FileInfo } from '@/utils/typescript'
 import { convertFileSrc } from '@tauri-apps/api/core'
@@ -230,11 +229,7 @@ watch(duration, val => {
         <audio ref="player" class="audio-player-hidden" hidden autoplay></audio>
         <div class="audio-player" data-tauri-drag-region>
             <div class="audio-poster" data-tauri-drag-region>
-                <img
-                    v-if="audioInfo.poster"
-                    :src="audioInfo.poster as string"
-                    alt="封面"
-                />
+                <img v-if="audioInfo.poster" :src="audioInfo.poster as string" alt="封面" />
                 <div class="audio-poster-overlay">
                     <el-icon class="audio-poster-btn" @click="togglePlay" size="48">
                         <PauseCircle20Regular v-if="isPlaying" />

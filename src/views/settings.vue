@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { onMounted, ref } from 'vue'
-import { ElMessage } from 'element-plus'
 import { BaseDirectory } from '@tauri-apps/plugin-fs'
 import { readTextFile } from '@/utils'
 import { app } from '@tauri-apps/api'

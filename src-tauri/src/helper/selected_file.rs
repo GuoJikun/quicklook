@@ -1,13 +1,12 @@
-use std::sync::{mpsc, LazyLock};
+use std::sync::{LazyLock, mpsc};
 use std::thread;
 use windows::{
-    core::{w, Error as WError, Interface, BOOL, HSTRING},
     Win32::{
         Foundation::{HWND, LPARAM},
         System::{
             Com::{
-                CoCreateInstance, CoInitializeEx, CoUninitialize, IDispatch, IServiceProvider,
                 CLSCTX_INPROC_SERVER, CLSCTX_LOCAL_SERVER, COINIT_APARTMENTTHREADED,
+                CoCreateInstance, CoInitializeEx, CoUninitialize, IDispatch, IServiceProvider,
             },
             SystemServices::SFGAO_FILESYSTEM,
             Variant::{self, VARIANT},
@@ -20,13 +19,14 @@ use windows::{
             Shell::{
                 FOLDERID_Desktop, FOLDERID_Documents, FOLDERID_Downloads, FOLDERID_Libraries,
                 FOLDERID_Music, FOLDERID_Pictures, FOLDERID_Videos, IShellBrowser, IShellItem,
-                IShellItemArray, IShellView, IShellWindows, SHCreateItemFromParsingName,
-                SHGetKnownFolderPath, ShellWindows, KF_FLAG_DEFAULT, SIGDN_DESKTOPABSOLUTEPARSING,
-                SIGDN_FILESYSPATH, SVGIO_SELECTION, SWC_DESKTOP, SWFO_NEEDDISPATCH,
+                IShellItemArray, IShellView, IShellWindows, KF_FLAG_DEFAULT,
+                SHCreateItemFromParsingName, SHGetKnownFolderPath, SIGDN_DESKTOPABSOLUTEPARSING,
+                SIGDN_FILESYSPATH, SVGIO_SELECTION, SWC_DESKTOP, SWFO_NEEDDISPATCH, ShellWindows,
             },
             WindowsAndMessaging,
         },
     },
+    core::{BOOL, Error as WError, HSTRING, Interface, w},
 };
 
 use crate::helper::win;
@@ -76,8 +76,8 @@ impl ComThread {
         COM_THREAD
             .tx
             .send((Box::new(task), result_tx))
-            .map_err(|_| WError::from_win32())?;
-        result_rx.recv().map_err(|_| WError::from_win32())?
+            .map_err(|_| WError::from_thread())?;
+        result_rx.recv().map_err(|_| WError::from_thread())?
     }
 }
 
@@ -104,7 +104,7 @@ impl Selected {
                 FwWindowType::Dialog => Self::get_selected_file_from_dialog(),
             }
         } else {
-            Err(WError::from_win32())
+            Err(WError::from_thread())
         }
     }
     pub fn get_focused_type() -> Option<FwWindowType> {
@@ -360,89 +360,97 @@ impl Selected {
     }
 
     unsafe extern "system" fn dialog_defview_proc(hwnd: HWND, lparam: LPARAM) -> BOOL {
-        let list_view = lparam.0 as *mut Option<HWND>;
-        let class_name = win::get_window_class_name(hwnd);
-        if class_name.contains("SHELLDLL_DefView") {
-            *list_view = Some(hwnd);
-            return BOOL(0);
+        unsafe {
+            let list_view = lparam.0 as *mut Option<HWND>;
+            let class_name = win::get_window_class_name(hwnd);
+            if class_name.contains("SHELLDLL_DefView") {
+                *list_view = Some(hwnd);
+                return BOOL(0);
+            }
+            BOOL(1)
         }
-        BOOL(1)
     }
     unsafe extern "system" fn breadcrumb_proc(hwnd: HWND, lparam: LPARAM) -> BOOL {
-        let list_view = lparam.0 as *mut Option<HWND>;
-        let class_name = win::get_window_class_name(hwnd);
-        if class_name.contains("Breadcrumb Parent") {
-            *list_view = Some(hwnd);
-            return BOOL(0);
+        unsafe {
+            let list_view = lparam.0 as *mut Option<HWND>;
+            let class_name = win::get_window_class_name(hwnd);
+            if class_name.contains("Breadcrumb Parent") {
+                *list_view = Some(hwnd);
+                return BOOL(0);
+            }
+            BOOL(1)
         }
-        BOOL(1)
     }
 
     unsafe fn dispath2browser(dispatch: IDispatch) -> Option<IShellBrowser> {
-        let mut service_provider: Option<IServiceProvider> = None;
-        if dispatch
-            .query(
-                &IServiceProvider::IID,
-                &mut service_provider as *mut _ as *mut _,
-            )
-            .is_err()
-        {
-            return None;
+        unsafe {
+            let mut service_provider: Option<IServiceProvider> = None;
+            if dispatch
+                .query(
+                    &IServiceProvider::IID,
+                    &mut service_provider as *mut _ as *mut _,
+                )
+                .is_err()
+            {
+                return None;
+            }
+            let shell_browser = service_provider
+                .unwrap()
+                .QueryService::<IShellBrowser>(&IShellBrowser::IID)
+                .ok();
+            shell_browser
         }
-        let shell_browser = service_provider
-            .unwrap()
-            .QueryService::<IShellBrowser>(&IShellBrowser::IID)
-            .ok();
-        shell_browser
     }
 
     unsafe fn get_selected_file_path_from_shellview(shell_view: IShellView) -> String {
-        let mut target_path = String::new();
-        let shell_items = shell_view.GetItemObject::<IShellItemArray>(SVGIO_SELECTION);
+        unsafe {
+            let mut target_path = String::new();
+            let shell_items = shell_view.GetItemObject::<IShellItemArray>(SVGIO_SELECTION);
 
-        if shell_items.is_err() {
-            return target_path;
+            if shell_items.is_err() {
+                return target_path;
+            }
+            log::debug!("shell_items: {:?}", shell_items);
+            let shell_items = shell_items.unwrap();
+            let count = shell_items.GetCount().unwrap_or_default();
+            for i in 0..count {
+                let shell_item = match shell_items.GetItemAt(i) {
+                    Ok(item) => item,
+                    Err(e) => {
+                        log::debug!("GetItemAt({}) 失败: {:?}", i, e);
+                        continue;
+                    },
+                };
+
+                // 如果不是文件对象则继续循环
+                if let Ok(attrs) = shell_item.GetAttributes(SFGAO_FILESYSTEM) {
+                    log::info!("attrs: {:?}", attrs);
+                    if attrs.0 == 0 {
+                        continue;
+                    }
+                }
+
+                if let Ok(display_name) = shell_item.GetDisplayName(SIGDN_DESKTOPABSOLUTEPARSING) {
+                    let tmp = display_name.to_string();
+                    if tmp.is_err() {
+                        continue;
+                    }
+                    target_path = tmp.unwrap();
+                    break;
+                }
+
+                if let Ok(display_name) = shell_item.GetDisplayName(SIGDN_FILESYSPATH) {
+                    log::debug!("display_name: {:?}", display_name);
+                    let tmp = display_name.to_string();
+                    if tmp.is_err() {
+                        log::debug!("display_name error: {:?}", tmp.err());
+                        continue;
+                    }
+                    target_path = tmp.unwrap();
+                    break;
+                }
+            }
+            target_path
         }
-        log::debug!("shell_items: {:?}", shell_items);
-        let shell_items = shell_items.unwrap();
-        let count = shell_items.GetCount().unwrap_or_default();
-        for i in 0..count {
-            let shell_item = match shell_items.GetItemAt(i) {
-                Ok(item) => item,
-                Err(e) => {
-                    log::debug!("GetItemAt({}) 失败: {:?}", i, e);
-                    continue;
-                },
-            };
-
-            // 如果不是文件对象则继续循环
-            if let Ok(attrs) = shell_item.GetAttributes(SFGAO_FILESYSTEM) {
-                log::info!("attrs: {:?}", attrs);
-                if attrs.0 == 0 {
-                    continue;
-                }
-            }
-
-            if let Ok(display_name) = shell_item.GetDisplayName(SIGDN_DESKTOPABSOLUTEPARSING) {
-                let tmp = display_name.to_string();
-                if tmp.is_err() {
-                    continue;
-                }
-                target_path = tmp.unwrap();
-                break;
-            }
-
-            if let Ok(display_name) = shell_item.GetDisplayName(SIGDN_FILESYSPATH) {
-                log::debug!("display_name: {:?}", display_name);
-                let tmp = display_name.to_string();
-                if tmp.is_err() {
-                    log::debug!("display_name error: {:?}", tmp.err());
-                    continue;
-                }
-                target_path = tmp.unwrap();
-                break;
-            }
-        }
-        target_path
     }
 }

@@ -1,5 +1,5 @@
 use tauri::{
-    webview::WebviewWindow, AppHandle, Error as TError, Manager, WebviewUrl, WebviewWindowBuilder,
+    AppHandle, Error as TError, Manager, WebviewUrl, WebviewWindowBuilder, webview::WebviewWindow,
 };
 
 pub mod audio;

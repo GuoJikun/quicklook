@@ -3,7 +3,7 @@ use crate::helper::{ffmp, monitor, win};
 use log::LevelFilter;
 use quicklook_docs::pdf as pdf_helper;
 use std::sync::atomic::{AtomicU8, Ordering};
-use tauri::{command, AppHandle, Manager};
+use tauri::{AppHandle, Manager, command};
 use windows::Win32::Foundation::HWND;
 
 /// 当前生效的日志级别（LevelFilter 的枚举值）。

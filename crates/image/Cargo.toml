@@ -6,8 +6,8 @@ authors = ["GuoJikun <guojikun486546@163.com>"]
 license = ""
 repository = "https://github.com/GuoJikun/quicklook.git"
 homepage = "https://github.com/GuoJikun/quicklook"
-edition = "2021"
-rust-version = "1.77.2"
+edition = "2024"
+rust-version = "1.90"
 
 [lib]
 name = "quicklook_image"

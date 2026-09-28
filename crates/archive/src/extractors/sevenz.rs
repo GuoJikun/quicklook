@@ -42,7 +42,7 @@ pub fn list_7z_entries<P: AsRef<Path>>(
             return Err(ArchiveError::Other(format!(
                 "Failed to read 7z archive: {}",
                 e
-            )))
+            )));
         },
     };
 

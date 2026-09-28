@@ -1,11 +1,11 @@
 use std::path::Path;
 use windows::{
-    core::{BOOL, PCWSTR, PWSTR},
     Win32::{
         Foundation::{HWND, LPARAM, S_OK},
         System::Com,
         UI::{Shell, WindowsAndMessaging},
     },
+    core::{BOOL, PCWSTR, PWSTR},
 };
 
 use crate::error::QuickLookError;
@@ -156,21 +156,23 @@ pub fn is_cursor_activated(hwnd: HWND) -> bool {
 
 fn is_listary_toolbar_visible() -> bool {
     unsafe extern "system" fn find_listary_window_proc(hwnd: HWND, l_param: LPARAM) -> BOOL {
-        let mut class_buffer = [0u16; 256];
-        let result = WindowsAndMessaging::GetClassNameW(hwnd, &mut class_buffer);
+        unsafe {
+            let mut class_buffer = [0u16; 256];
+            let result = WindowsAndMessaging::GetClassNameW(hwnd, &mut class_buffer);
 
-        if result != 0 {
-            let class_name = String::from_utf16_lossy(&class_buffer[..result as usize]);
+            if result != 0 {
+                let class_name = String::from_utf16_lossy(&class_buffer[..result as usize]);
 
-            if class_name.starts_with("Listary_WidgetWin_")
-                && WindowsAndMessaging::IsWindowVisible(hwnd).as_bool()
-            {
-                *(l_param.0 as usize as *mut bool) = true;
-                return BOOL::from(false); // FALSE
+                if class_name.starts_with("Listary_WidgetWin_")
+                    && WindowsAndMessaging::IsWindowVisible(hwnd).as_bool()
+                {
+                    *(l_param.0 as usize as *mut bool) = true;
+                    return BOOL::from(false); // FALSE
+                }
             }
-        }
 
-        BOOL::from(true) // TRUE
+            BOOL::from(true) // TRUE
+        }
     }
 
     let mut found = false;

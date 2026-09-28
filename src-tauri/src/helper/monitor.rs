@@ -2,7 +2,7 @@ use std::ptr::null_mut;
 
 use windows::Win32::{
     Foundation::HWND,
-    Graphics::Gdi::{GetDC, GetDeviceCaps, ReleaseDC, HORZRES, LOGPIXELSX, VERTRES},
+    Graphics::Gdi::{GetDC, GetDeviceCaps, HORZRES, LOGPIXELSX, ReleaseDC, VERTRES},
 };
 
 #[derive(Debug, serde::Serialize, Clone, Default)]

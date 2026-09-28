@@ -6,7 +6,6 @@ import type { FileInfo } from '@/utils/typescript'
 import { invoke } from '@tauri-apps/api/core'
 import { formatBytes } from '@/utils/index'
 import { ArrowRight } from '@element-plus/icons-vue'
-import { ElMessageBox } from 'element-plus'
 
 const route = useRoute()
 

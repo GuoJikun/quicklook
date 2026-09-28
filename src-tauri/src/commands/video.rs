@@ -1,4 +1,4 @@
-use tauri::{command, AppHandle};
+use tauri::{AppHandle, command};
 use tauri_plugin_store::StoreExt;
 
 use crate::error::QuickLookError;

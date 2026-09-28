@@ -1,7 +1,7 @@
 use std::{fs::File, io::BufReader};
 
 use serde_json::Value;
-use tauri::{path::BaseDirectory, AppHandle, Manager};
+use tauri::{AppHandle, Manager, path::BaseDirectory};
 
 use crate::error::QuickLookError;
 

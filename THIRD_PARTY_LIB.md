@@ -25,7 +25,7 @@
 - [tar](https://github.com/alexcrichton/tar-rs) — TAR 归档
 - [flate2](https://github.com/rust-lang/flate2-rs) — gzip / zlib 压缩
 - [bzip2](https://github.com/alexcrichton/bzip2-rs) — bzip2 压缩
-- [xz2](https://github.com/alexcrichton/xz2-rs) — xz / lzma 压缩
+- [lzma-rust2](https://github.com/hasenbanck/lzma-rust2) — xz / lzma 压缩（纯 Rust，移植自 xz for Java）
 - [sevenz-rust](https://github.com/dyz1990/sevenz-rust) — 7z 格式
 - [ruzstd](https://github.com/KillingSpark/zstd-rs) — Zstandard 压缩 (tar.zst)
 - [hadris-cpio](https://github.com/hxyulin/hadris) — CPIO 归档
@@ -60,10 +60,8 @@
 - [pinia](https://github.com/vuejs/pinia) — 状态管理
 - [element-plus](https://github.com/element-plus/element-plus) — UI 组件库
 - [@element-plus/icons-vue](https://github.com/element-plus/icons) — Element Plus 图标
-- [naive-ui](https://github.com/tusen-ai/naive-ui) — 备用 UI 组件库
 - [@vueuse/core](https://github.com/vueuse/vueuse) — Vue 组合式工具集
 - [@vicons/fluent](https://github.com/07akioni/vicons) — Fluent 风格图标
-- [@vicons/ionicons5](https://github.com/07akioni/vicons) — Ionicons 图标
 
 **Markdown 渲染**
 
