@@ -26,10 +26,9 @@ bzip2 = { version = "0.6.1", default-features = false }
 lzma-rust2 = { version = "0.16", default-features = false, features = ["std"] }
 sevenz-rust = { version = "0.6.0", features = ["aes256"] }
 ruzstd = { version = "0.9.0", default-features = false, features = ["std"] }
-hadris-cpio = "1.2.1"
+hadris-cpio = "2.4.0"
 ar = "0.9.0"
 unrar = { package = "unrar-ng", version = "0.7.7" }
-# libarchive = "0.1.1"  # 这个库需要系统依赖，暂时注释掉
 encoding_rs = "0.8.35"
 log = { workspace = true }
 

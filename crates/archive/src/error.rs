@@ -5,7 +5,7 @@ pub enum ArchiveError {
     IoError(std::io::Error),
     ZipError(zip::result::ZipError),
     SevenZError(sevenz_rust::Error),
-    CpioError(hadris_cpio::error::CpioError),
+    CpioError(hadris_cpio::error::Error),
     UnsupportedFormat(String),
     InvalidPath(String),
     Other(String),
@@ -55,8 +55,8 @@ impl From<sevenz_rust::Error> for ArchiveError {
     }
 }
 
-impl From<hadris_cpio::error::CpioError> for ArchiveError {
-    fn from(err: hadris_cpio::error::CpioError) -> Self {
+impl From<hadris_cpio::error::Error> for ArchiveError {
+    fn from(err: hadris_cpio::error::Error) -> Self {
         ArchiveError::CpioError(err)
     }
 }
