@@ -151,7 +151,7 @@ pub struct Extract {
 - `tar` - TAR 格式支持
 - `flate2` - GZIP 压缩支持
 - `bzip2` - BZIP2 压缩支持
-- `xz2` - XZ 压缩支持
+- `lzma-rust2` - XZ 压缩支持
 - `sevenz-rust` - 7Z 格式支持
 - `chrono` - 时间处理
 

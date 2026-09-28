@@ -418,7 +418,7 @@ Cargo workspace (resolver = "2")
 │
 ├── quicklook-archive (crates/archive/)
 │   ├── serde + serde_json + chrono + log (workspace)
-│   ├── zip, tar, flate2, bzip2, xz2
+│   ├── zip, tar, flate2, bzip2, lzma-rust2
 │   ├── sevenz-rust, ruzstd, hadris-cpio, ar
 │   ├── unrar-ng (RAR 支持)
 │   └── 条件 feature gate (每个格式独立)

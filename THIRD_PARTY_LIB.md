@@ -25,7 +25,7 @@
 - [tar](https://github.com/alexcrichton/tar-rs) — TAR 归档
 - [flate2](https://github.com/rust-lang/flate2-rs) — gzip / zlib 压缩
 - [bzip2](https://github.com/alexcrichton/bzip2-rs) — bzip2 压缩
-- [xz2](https://github.com/alexcrichton/xz2-rs) — xz / lzma 压缩
+- [lzma-rust2](https://github.com/hasenbanck/lzma-rust2) — xz / lzma 压缩（纯 Rust，移植自 xz for Java）
 - [sevenz-rust](https://github.com/dyz1990/sevenz-rust) — 7z 格式
 - [ruzstd](https://github.com/KillingSpark/zstd-rs) — Zstandard 压缩 (tar.zst)
 - [hadris-cpio](https://github.com/hxyulin/hadris) — CPIO 归档
