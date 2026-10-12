@@ -354,7 +354,7 @@ const handleClearPdfCache = async () => {
                         <div class="cache-item">
                             <div class="cache-item-info">
                                 <div class="cache-item-title">PDF 渲染缓存</div>
-                                <div class="cache-item-desc">由 PDF 预览渲染生成的临时 PNG 缓存文件。</div>
+                                <div class="cache-item-desc">由 PDF 预览渲染生成的临时 WebP 缓存文件。</div>
                             </div>
                             <el-button type="danger" plain :loading="clearingPdfCache" @click="handleClearPdfCache">
                                 <el-icon><Delete /></el-icon>

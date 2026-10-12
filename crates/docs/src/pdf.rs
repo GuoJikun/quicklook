@@ -188,7 +188,7 @@ pub fn render_pdf_page(
 
     let normalized_rotation = normalize_rotation(rotation);
     let cache_path = cache_dir.join(format!(
-        "pdf_{:x}_{}_{}_{}.png",
+        "pdf_{:x}_{}_{}_{}.webp",
         file_hash, page_index, dpi, normalized_rotation
     ));
 
@@ -245,13 +245,13 @@ pub fn render_pdf_page(
         .as_image()
         .map_err(|e| QuickLookError::PdfRendering(format!("转换图像失败: {}", e)))?;
 
+    // WebP 无损：相对 PNG 显著减小体积且保持文字清晰（image 0.25 仅有损需额外 libwebp）
+    let mut file = std::fs::File::create(&cache_path)
+        .map_err(|e| QuickLookError::PdfRendering(format!("创建文件失败: {}", e)))?;
+    let encoder = image::codecs::webp::WebPEncoder::new_lossless(&mut file);
     dynamic_image
-        .write_to(
-            &mut std::fs::File::create(&cache_path)
-                .map_err(|e| QuickLookError::PdfRendering(format!("创建文件失败: {}", e)))?,
-            image::ImageFormat::Png,
-        )
-        .map_err(|e| QuickLookError::PdfRendering(format!("保存 PNG 失败: {}", e)))?;
+        .write_with_encoder(encoder)
+        .map_err(|e| QuickLookError::PdfRendering(format!("保存 WebP 失败: {}", e)))?;
     log::info!(
         "[pdf] page {} 保存到: {}",
         page_index + 1,

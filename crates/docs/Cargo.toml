@@ -21,7 +21,7 @@ log = { workspace = true }
 quicklook-error = { workspace = true }
 # PDF rendering
 pdfium-render = "0.9"
-image = { workspace = true, features = ["png"] }
+image = { workspace = true, features = ["webp"] }
 
 [features]
 default = ["excel", "csv", "docx", "pdf"]

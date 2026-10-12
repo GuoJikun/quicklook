@@ -1,6 +1,6 @@
 <!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { convertFileSrc, invoke } from '@tauri-apps/api/core'
 import { CollectionTag, RefreshRight, ZoomIn, ZoomOut } from '@element-plus/icons-vue'
 
@@ -21,6 +21,15 @@ interface OutlineItem {
     items: OutlineItem[]
 }
 
+/** 缩放 100% 对应的参考 DPI；base 尺寸始终按此归一化，避免 scale 与 dpi 双重计数 */
+const REF_DPI = 150
+const PAGE_GAP = 16
+const CANVAS_PAD_Y = 20
+/** 虚拟窗口外额外保留的页数（DOM） */
+const WINDOW_PAD = 2
+/** 预渲染窗口外额外页数 */
+const RENDER_PAD = 3
+
 const pages = ref<Map<number, RenderedPage>>(new Map())
 const outline = ref<OutlineItem[]>([])
 const pager = ref<{
@@ -33,19 +42,22 @@ const pager = ref<{
     current: 1,
     total: 0,
     scale: 1,
-    dpi: 150,
+    dpi: REF_DPI,
     rotation: 0,
 })
 const visible = ref(true)
 const pageNum = ref<number>(1)
 const scrollContainer = ref<HTMLDivElement>()
-let observer: IntersectionObserver | null = null
-let scrollHandler: (() => void) | null = null
 const renderGeneration = ref(0)
 const renderingPages = ref<Map<number, number>>(new Map())
+/** 页面在 REF_DPI 下的逻辑尺寸，仅由第 0 页归一化写入 */
 const baseWidth = ref<number>(0)
 const baseHeight = ref<number>(0)
+const virtualStart = ref(1)
+const virtualEnd = ref(5)
 let disposed = false
+let scrollRaf = 0
+let renderTimer: ReturnType<typeof setTimeout> | null = null
 
 interface RenderTask {
     pageIndex: number
@@ -55,13 +67,33 @@ interface RenderTask {
 const renderQueue: RenderTask[] = []
 let queueProcessing = false
 
+const pageWidth = computed(() => baseWidth.value * pager.value.scale)
+const pageHeight = computed(() => baseHeight.value * pager.value.scale)
+const pageSlot = computed(() => {
+    const h = pageHeight.value
+    return h > 0 ? h + PAGE_GAP : 0
+})
+const totalContentHeight = computed(() => {
+    const total = pager.value.total
+    const slot = pageSlot.value
+    if (!total || !slot) return 0
+    return total * slot - PAGE_GAP
+})
+
+const virtualPages = computed(() => {
+    const list: number[] = []
+    const start = Math.max(1, virtualStart.value)
+    const end = Math.min(pager.value.total, virtualEnd.value)
+    for (let i = start; i <= end; i++) list.push(i)
+    return list
+})
+
 const beginRenderSession = () => {
     renderGeneration.value += 1
     pages.value.clear()
     renderQueue.length = 0
     renderingPages.value.clear()
-    baseWidth.value = 0
-    baseHeight.value = 0
+    // 不清空 baseWidth/baseHeight：尺寸按 REF_DPI 归一化，仅在旋转等导致宽高互换时由第 0 页更新
 }
 
 const processQueue = async () => {
@@ -81,9 +113,16 @@ const processQueue = async () => {
 const enqueuePages = (pageIndices: number[]) => {
     const generation = renderGeneration.value
     for (const idx of pageIndices) {
-        if (!pages.value.has(idx) && !renderingPages.value.has(idx) && !renderQueue.some(task => task.pageIndex === idx)) {
-            renderQueue.push({ pageIndex: idx, generation })
+        if (
+            idx < 0 ||
+            idx >= pager.value.total ||
+            pages.value.has(idx) ||
+            renderingPages.value.has(idx) ||
+            renderQueue.some(task => task.pageIndex === idx)
+        ) {
+            continue
         }
+        renderQueue.push({ pageIndex: idx, generation })
     }
     processQueue()
 }
@@ -102,12 +141,12 @@ const renderPage = async (pageIndex: number, generation: number) => {
         })
         if (disposed || generation !== renderGeneration.value) return
         pages.value.set(pageIndex, result)
-        if (pageIndex === 0 && baseWidth.value === 0) {
-            baseWidth.value = result.width
-            baseHeight.value = result.height
-            console.log(`[pdf] baseSize: ${baseWidth.value}x${baseHeight.value}`)
+        if (pageIndex === 0 && pager.value.dpi > 0) {
+            // 归一化到 REF_DPI，保证 scale% 与显示尺寸稳定
+            const ratio = REF_DPI / pager.value.dpi
+            baseWidth.value = result.width * ratio
+            baseHeight.value = result.height * ratio
         }
-        console.log(`[pdf] page ${pageIndex + 1} rendered`, result)
     } catch (e) {
         if (!disposed && generation === renderGeneration.value) {
             console.error(`[pdf] page ${pageIndex + 1} render failed`, e)
@@ -119,90 +158,72 @@ const renderPage = async (pageIndex: number, generation: number) => {
     }
 }
 
-/** Track which page is most visible in the scroll container. */
-const updateCurrentPage = () => {
+/** 将第 n 页（1-based）滚到可视区顶部 */
+const scrollToPage = (n: number) => {
     const container = scrollContainer.value
-    if (!container) return
-    const scrollTop = container.scrollTop
-    const viewBottom = scrollTop + container.clientHeight
-
-    let bestPage = 1
-    let bestVisiblePx = 0
-
-    for (let i = 1; i <= pager.value.total; i++) {
-        const el = document.getElementById(`page-placeholder-${i}`)
-        if (!el) continue
-        const rect = el.getBoundingClientRect()
-        // Page position relative to scroll container
-        const pageTop = rect.top + scrollTop
-        const pageBottom = pageTop + rect.height
-
-        // Overlap between page and viewport
-        const overlapTop = Math.max(pageTop, scrollTop)
-        const overlapBottom = Math.min(pageBottom, viewBottom)
-        const overlap = Math.max(0, overlapBottom - overlapTop)
-
-        if (overlap > bestVisiblePx) {
-            bestVisiblePx = overlap
-            bestPage = i
-        }
-    }
-
-    if (bestPage !== pager.value.current) {
-        pager.value.current = bestPage
-        pageNum.value = bestPage
-    }
+    if (!container || !pageSlot.value) return
+    const idx = Math.min(Math.max(1, n), Math.max(1, pager.value.total)) - 1
+    container.scrollTop = CANVAS_PAD_Y + idx * pageSlot.value
 }
 
-const initObserver = () => {
-    observer?.disconnect()
-    if (scrollHandler) {
-        scrollContainer.value?.removeEventListener('scroll', scrollHandler)
-        scrollHandler = null
+/** 根据滚动位置更新：虚拟窗口、当前页、预渲染队列 */
+const updateFromScroll = () => {
+    const container = scrollContainer.value
+    if (!container) return
+
+    const total = pager.value.total
+    if (total <= 0) return
+
+    const slot = pageSlot.value
+    if (!slot) {
+        // 尚未拿到页面基准尺寸，先保证前几页可渲染
+        virtualStart.value = 1
+        virtualEnd.value = Math.min(total, 5)
+        enqueuePages([0, 1, 2].filter(i => i < total))
+        return
     }
 
-    // Observer is only used for pre-rendering (enqueuePages), not for page tracking
-    observer = new IntersectionObserver(
-        entries => {
-            const visiblePages: number[] = []
-            for (const entry of entries) {
-                if (entry.isIntersecting) {
-                    const id = entry.target.id
-                    const num = parseInt(id.replace('page-placeholder-', ''), 10)
-                    if (!isNaN(num)) {
-                        visiblePages.push(num - 1)
-                    }
-                }
-            }
-            enqueuePages(visiblePages)
-        },
-        {
-            root: scrollContainer.value,
-            rootMargin: '400px 0px',
-            threshold: 0,
-        },
-    )
+    const viewH = container.clientHeight
+    const rel = Math.max(0, container.scrollTop - CANVAS_PAD_Y)
 
-    nextTick(() => {
-        for (let i = 0; i < pager.value.total; i++) {
-            const el = document.getElementById(`page-placeholder-${i + 1}`)
-            if (el) observer!.observe(el)
-        }
+    const firstIdx = Math.floor(rel / slot)
+    const lastIdx = Math.floor((rel + viewH) / slot)
+    const centerIdx = Math.floor((rel + viewH / 2) / slot)
+
+    const current = Math.min(total, Math.max(1, centerIdx + 1))
+    if (current !== pager.value.current) {
+        pager.value.current = current
+        pageNum.value = current
+    }
+
+    virtualStart.value = Math.max(1, firstIdx + 1 - WINDOW_PAD)
+    virtualEnd.value = Math.min(total, lastIdx + 1 + WINDOW_PAD)
+
+    const renderStart = Math.max(0, firstIdx - RENDER_PAD)
+    const renderEnd = Math.min(total - 1, lastIdx + RENDER_PAD)
+    const toRender: number[] = []
+    for (let i = renderStart; i <= renderEnd; i++) toRender.push(i)
+    enqueuePages(toRender)
+}
+
+const onScroll = () => {
+    if (scrollRaf || disposed) return
+    scrollRaf = requestAnimationFrame(() => {
+        scrollRaf = 0
+        if (!disposed) updateFromScroll()
     })
-
-    // Scroll handler for page tracking
-    scrollHandler = () => updateCurrentPage()
-    scrollContainer.value?.addEventListener('scroll', scrollHandler!)
 }
 
 const handleJump = () => {
-    const el = document.getElementById(`page-placeholder-${pageNum.value}`)
-    if (el) {
-        el.scrollIntoView({ block: 'start' })
-    }
+    const total = pager.value.total
+    const n = Math.min(Math.max(1, Math.round(pageNum.value) || 1), Math.max(1, total))
+    pageNum.value = n
+    scrollToPage(n)
+    updateFromScroll()
 }
 
 const handleNodeClick = (data: OutlineItem) => {
+    if (!data.page || data.page < 1) return
     pageNum.value = data.page
     handleJump()
 }
@@ -221,70 +242,73 @@ const handleRotate = async () => {
 
     beginRenderSession()
     const generation = renderGeneration.value
+
+    // 先渲染第 0 页以更新基准宽高（旋转后宽高可能互换）
+    await renderPage(0, generation)
+    if (disposed || generation !== renderGeneration.value) return
+
     await nextTick()
-
-    if (generation !== renderGeneration.value || disposed) return
-
-    const el = document.getElementById(`page-placeholder-${savedPage}`)
-    if (el) el.scrollIntoView({ block: 'start' })
+    scrollToPage(savedPage)
     pager.value.current = savedPage
     pageNum.value = savedPage
 
-    initObserver()
+    updateFromScroll()
     for (let i = 0; i < Math.min(3, pager.value.total); i++) {
-        renderPage(i, generation)
+        if (i > 0) renderPage(i, generation)
     }
 }
 
 const handleFitWidth = () => {
-    if (!scrollContainer.value || !pages.value.size) return
-    const containerWidth = scrollContainer.value.clientWidth - 40
-    const firstPage = pages.value.get(0)
-    if (firstPage) {
-        pager.value.scale = containerWidth / firstPage.width
-    }
+    if (!scrollContainer.value || !baseWidth.value) return
+    const containerWidth = scrollContainer.value.clientWidth - CANVAS_PAD_Y * 2
+    if (containerWidth <= 0) return
+    pager.value.scale = Math.min(5, Math.max(0.25, containerWidth / baseWidth.value))
 }
 
-let renderTimer: ReturnType<typeof setTimeout> | null = null
+const handleWheel = (e: WheelEvent) => {
+    if (!e.ctrlKey) return
+    e.preventDefault()
+    if (e.deltaY < 0) handleZoomIn()
+    else handleZoomOut()
+}
+
 watch(
     () => pager.value.scale,
     () => {
         if (renderTimer) clearTimeout(renderTimer)
         renderTimer = setTimeout(async () => {
-            if (!props.path) return
-            const baseDpi = 150
-            const newDpi = Math.round(baseDpi * pager.value.scale)
+            if (!props.path || disposed) return
+            const newDpi = Math.round(REF_DPI * pager.value.scale)
             const clampedDpi = Math.max(72, Math.min(600, newDpi))
-            if (clampedDpi !== pager.value.dpi) {
-                const savedPage = pager.value.current
+            if (clampedDpi === pager.value.dpi) {
+                // 仅 CSS 缩放，无需重渲染，同步虚拟窗口即可
+                updateFromScroll()
+                return
+            }
 
-                beginRenderSession()
-                pager.value.dpi = clampedDpi
+            const savedPage = pager.value.current
+            beginRenderSession()
+            pager.value.dpi = clampedDpi
 
-                await nextTick()
+            await nextTick()
+            if (disposed) return
 
-                // Restore scroll position to keep the same page in view
-                const el = document.getElementById(`page-placeholder-${savedPage}`)
-                if (el) el.scrollIntoView({ block: 'start' })
-                pager.value.current = savedPage
-                pageNum.value = savedPage
+            scrollToPage(savedPage)
+            pager.value.current = savedPage
+            pageNum.value = savedPage
 
-                initObserver()
-                for (let i = 0; i < Math.min(3, pager.value.total); i++) {
-                    renderPage(i, renderGeneration.value)
-                }
+            updateFromScroll()
+            for (let i = 0; i < Math.min(3, pager.value.total); i++) {
+                renderPage(i, renderGeneration.value)
             }
         }, 300)
     },
 )
 
-const handleWheel = (e: WheelEvent) => {
-    if (e.ctrlKey) {
-        e.preventDefault()
-        if (e.deltaY < 0) handleZoomIn()
-        else handleZoomOut()
-    }
-}
+// 占位符尺寸变化（缩放/旋转）后重算窗口
+watch([pageWidth, pageHeight], () => {
+    nextTick(() => updateFromScroll())
+})
 
 const loadOutline = async (path: string) => {
     const [count, outlineData] = await Promise.all([
@@ -299,8 +323,16 @@ onMounted(async () => {
     console.log('[pdf] onMounted', props.path)
     await loadOutline(props.path)
     console.log('[pdf] total pages:', pager.value.total)
+
+    virtualStart.value = 1
+    virtualEnd.value = Math.min(pager.value.total, 5)
+
     beginRenderSession()
-    initObserver()
+    scrollContainer.value?.addEventListener('scroll', onScroll, { passive: true })
+    // 非 passive，否则 preventDefault 无法拦截 Ctrl+滚轮
+    scrollContainer.value?.addEventListener('wheel', handleWheel, { passive: false })
+
+    updateFromScroll()
     for (let i = 0; i < Math.min(3, pager.value.total); i++) {
         renderPage(i, renderGeneration.value)
     }
@@ -308,11 +340,12 @@ onMounted(async () => {
 
 onUnmounted(() => {
     disposed = true
-    observer?.disconnect()
-    if (scrollHandler) {
-        scrollContainer.value?.removeEventListener('scroll', scrollHandler)
-        scrollHandler = null
+    if (scrollRaf) {
+        cancelAnimationFrame(scrollRaf)
+        scrollRaf = 0
     }
+    scrollContainer.value?.removeEventListener('scroll', onScroll)
+    scrollContainer.value?.removeEventListener('wheel', handleWheel)
     if (renderTimer) clearTimeout(renderTimer)
     renderQueue.length = 0
     renderingPages.value.clear()
@@ -368,31 +401,27 @@ onUnmounted(() => {
                 </el-scrollbar>
             </div>
 
-            <div
-                ref="scrollContainer"
-                class="pdf-viewer-canvas"
-                :class="{ 'pdf-viewer-canvas--full': !visible }"
-                @wheel.passive="handleWheel"
-            >
-                <template v-for="i in pager.total" :key="i">
+            <div ref="scrollContainer" class="pdf-viewer-canvas" :class="{ 'pdf-viewer-canvas--full': !visible }">
+                <div class="pdf-viewer-pages" :style="{ height: `${totalContentHeight}px` }">
                     <div
-                        :id="`page-placeholder-${i}`"
+                        v-for="n in virtualPages"
+                        :id="`page-placeholder-${n}`"
+                        :key="n"
                         class="pdf-viewer-page-placeholder"
                         :style="{
-                            flex: `0 0 ${baseHeight * pager.scale}px`,
-                            width: `${baseWidth * pager.scale}px`,
+                            top: `${(n - 1) * pageSlot}px`,
+                            width: `${pageWidth}px`,
+                            height: `${pageHeight}px`,
                         }"
                     >
                         <img
-                            v-if="pages.get(i - 1)"
-                            :src="convertFileSrc(pages.get(i - 1)!.path)"
+                            v-if="pages.get(n - 1)"
+                            :src="convertFileSrc(pages.get(n - 1)!.path)"
                             class="pdf-viewer-page"
-                            @load="console.log('[pdf] img loaded', i)"
-                            @error="console.error('[pdf] img error', i)"
                         />
-                        <div v-else-if="renderingPages.has(i - 1)" class="pdf-viewer-page-loading">渲染中...</div>
+                        <div v-else-if="renderingPages.has(n - 1)" class="pdf-viewer-page-loading">渲染中...</div>
                     </div>
-                </template>
+                </div>
             </div>
         </div>
     </div>
@@ -459,25 +488,27 @@ onUnmounted(() => {
     &-canvas {
         flex: 1;
         overflow-y: auto;
+        overflow-x: hidden;
         padding: 20px;
         background-color: #efefef;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 16px;
+    }
 
-        &--full {
-            width: 100%;
-        }
+    &-pages {
+        position: relative;
+        width: 100%;
     }
 
     &-page-placeholder {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
         display: flex;
         align-items: center;
         justify-content: center;
         background: white;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
         overflow: hidden;
+        box-sizing: border-box;
     }
 
     &-page {
