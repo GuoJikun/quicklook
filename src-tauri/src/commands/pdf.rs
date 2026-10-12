@@ -30,16 +30,16 @@ pub async fn render_pdf_page(
     result
 }
 
-/// 获取 PDF 总页数。
+/// 获取 PDF 各页逻辑尺寸（point，MediaBox），长度即总页数。
 #[command(async)]
-pub async fn get_pdf_page_count(path: String) -> Result<u32, QuickLookError> {
-    log::info!("[cmd] get_pdf_page_count path={}", path);
-    let result = tokio::task::spawn_blocking(move || pdf_helper::get_pdf_page_count(&path))
+pub async fn get_pdf_page_sizes(path: String) -> Result<Vec<pdf_helper::PageSize>, QuickLookError> {
+    log::info!("[cmd] get_pdf_page_sizes path={}", path);
+    let result = tokio::task::spawn_blocking(move || pdf_helper::get_pdf_page_sizes(&path))
         .await
         .map_err(|e| QuickLookError::PdfRendering(format!("任务执行失败: {}", e)))?;
     match &result {
-        Ok(count) => log::info!("[cmd] get_pdf_page_count={}", count),
-        Err(e) => log::error!("[cmd] get_pdf_page_count 失败: {}", e),
+        Ok(sizes) => log::info!("[cmd] get_pdf_page_sizes={} 页", sizes.len()),
+        Err(e) => log::error!("[cmd] get_pdf_page_sizes 失败: {}", e),
     }
     result
 }

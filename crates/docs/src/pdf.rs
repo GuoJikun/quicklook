@@ -35,6 +35,13 @@ pub struct OutlineItem {
     pub items: Vec<OutlineItem>,
 }
 
+/// 逻辑页尺寸（PDF point，1/72 英寸），不含用户额外旋转
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct PageSize {
+    pub width: f32,
+    pub height: f32,
+}
+
 fn get_pdfium() -> Result<&'static Pdfium, QuickLookError> {
     static INSTANCE: OnceLock<Result<Pdfium, String>> = OnceLock::new();
     let cached = INSTANCE.get_or_init(|| {
@@ -97,15 +104,30 @@ fn ensure_doc(
     Ok(guard)
 }
 
-pub fn get_pdf_page_count(path: &str) -> Result<u32, QuickLookError> {
-    log::info!("[pdf] get_pdf_page_count path={}", path);
+/// 读取各页逻辑尺寸（MediaBox，已含页面自身 /Rotate），无需渲染
+pub fn get_pdf_page_sizes(path: &str) -> Result<Vec<PageSize>, QuickLookError> {
+    log::info!("[pdf] get_pdf_page_sizes path={}", path);
     let guard = ensure_doc(path)?;
     let cache = guard
         .as_ref()
         .ok_or_else(|| QuickLookError::PdfRendering("文档未加载".into()))?;
-    let count = cache.doc.pages().len() as u32;
-    log::info!("[pdf] page_count={}", count);
-    Ok(count)
+    let pages = cache.doc.pages();
+    let count = pages.len();
+    let mut sizes = Vec::with_capacity(count as usize);
+    for i in 0..count {
+        match pages.page_size(i as i32) {
+            Ok(rect) => sizes.push(PageSize {
+                width: rect.width().value.max(1.0),
+                height: rect.height().value.max(1.0),
+            }),
+            Err(e) => {
+                log::warn!("[pdf] page {} size 失败: {}，回退 Letter", i + 1, e);
+                sizes.push(PageSize { width: 612.0, height: 792.0 });
+            },
+        }
+    }
+    log::info!("[pdf] page_sizes={} 页", sizes.len());
+    Ok(sizes)
 }
 
 pub fn get_pdf_outline(path: &str) -> Result<Vec<OutlineItem>, QuickLookError> {
