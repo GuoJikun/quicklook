@@ -111,6 +111,19 @@ const layout = computed(() => {
 const pageTops = computed(() => layout.value.tops)
 const totalContentHeight = computed(() => layout.value.totalHeight)
 
+/**
+ * 滚动内容宽度 = 最宽页显示宽度。
+ * 配合 min-width:100% 与 left:50%+translateX(-50%)，页始终不向左溢出，
+ * 放大后可通过 overflow-x 横向平移。
+ */
+const contentWidth = computed(() => {
+    let maxW = 0
+    for (const s of displaySizes.value) {
+        if (s.w > maxW) maxW = s.w
+    }
+    return maxW
+})
+
 const virtualPages = computed(() => {
     const list: number[] = []
     const start = Math.max(1, virtualStart.value)
@@ -445,7 +458,13 @@ onUnmounted(() => {
             </div>
 
             <div ref="scrollContainer" class="pdf-viewer-canvas" :class="{ 'pdf-viewer-canvas--full': !visible }">
-                <div class="pdf-viewer-pages" :style="{ height: `${totalContentHeight}px` }">
+                <div
+                    class="pdf-viewer-pages"
+                    :style="{
+                        height: `${totalContentHeight}px`,
+                        width: contentWidth > 0 ? `${contentWidth}px` : undefined,
+                    }"
+                >
                     <div
                         v-for="n in virtualPages"
                         :id="`page-placeholder-${n}`"
@@ -530,8 +549,7 @@ onUnmounted(() => {
 
     &-canvas {
         flex: 1;
-        overflow-y: auto;
-        overflow-x: hidden;
+        overflow: auto;
         padding: 20px;
         background-color: var(--color-bg);
     }
@@ -539,6 +557,7 @@ onUnmounted(() => {
     &-pages {
         position: relative;
         width: 100%;
+        min-width: 100%;
     }
 
     &-page-placeholder {
