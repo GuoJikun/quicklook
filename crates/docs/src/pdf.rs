@@ -228,44 +228,49 @@ pub fn render_pdf_page(
         }
     }
 
-    let guard = ensure_doc(path)?;
-    let cache = guard
-        .as_ref()
-        .ok_or_else(|| QuickLookError::PdfRendering("文档未加载".into()))?;
-    let pages = cache.doc.pages();
-    let page_count = pages.len();
-    if page_index >= page_count as u32 {
-        return Err(QuickLookError::PdfRendering(format!(
-            "页索引 {} 超出范围 (共 {} 页)",
-            page_index, page_count
-        )));
-    }
+    // 只在栅格化阶段持锁；DynamicImage 已持有像素数据，编码/写盘放到锁外，
+    // 避免 WebP 编码期间阻塞其它页渲染请求。
+    let (dynamic_image, width, height) = {
+        let guard = ensure_doc(path)?;
+        let cache = guard
+            .as_ref()
+            .ok_or_else(|| QuickLookError::PdfRendering("文档未加载".into()))?;
+        let pages = cache.doc.pages();
+        let page_count = pages.len();
+        if page_index >= page_count as u32 {
+            return Err(QuickLookError::PdfRendering(format!(
+                "页索引 {} 超出范围 (共 {} 页)",
+                page_index, page_count
+            )));
+        }
 
-    log::info!("[pdf] 渲染第 {} 页...", page_index + 1);
-    let page = pages.get(page_index as i32).map_err(|e| {
-        QuickLookError::PdfRendering(format!("获取第 {} 页失败: {}", page_index + 1, e))
-    })?;
+        log::info!("[pdf] 渲染第 {} 页...", page_index + 1);
+        let page = pages.get(page_index as i32).map_err(|e| {
+            QuickLookError::PdfRendering(format!("获取第 {} 页失败: {}", page_index + 1, e))
+        })?;
 
-    let render_config = PdfRenderConfig::default()
-        .scale_page_by_factor(dpi as f32 / 72.0)
-        .rotate(rotation_to_pdfium(rotation), false);
+        let render_config = PdfRenderConfig::default()
+            .scale_page_by_factor(dpi as f32 / 72.0)
+            .rotate(rotation_to_pdfium(rotation), false);
 
-    let bitmap = page.render_with_config(&render_config).map_err(|e| {
-        QuickLookError::PdfRendering(format!("渲染第 {} 页失败: {}", page_index + 1, e))
-    })?;
+        let bitmap = page.render_with_config(&render_config).map_err(|e| {
+            QuickLookError::PdfRendering(format!("渲染第 {} 页失败: {}", page_index + 1, e))
+        })?;
 
-    let width = bitmap.width() as u32;
-    let height = bitmap.height() as u32;
-    log::info!(
-        "[pdf] page {} 渲染完成: {}x{}",
-        page_index + 1,
-        width,
-        height
-    );
+        let width = bitmap.width() as u32;
+        let height = bitmap.height() as u32;
+        log::info!(
+            "[pdf] page {} 渲染完成: {}x{}",
+            page_index + 1,
+            width,
+            height
+        );
 
-    let dynamic_image = bitmap
-        .as_image()
-        .map_err(|e| QuickLookError::PdfRendering(format!("转换图像失败: {}", e)))?;
+        let dynamic_image = bitmap
+            .as_image()
+            .map_err(|e| QuickLookError::PdfRendering(format!("转换图像失败: {}", e)))?;
+        (dynamic_image, width, height)
+    };
 
     // WebP 无损：相对 PNG 显著减小体积且保持文字清晰（image 0.25 仅有损需额外 libwebp）
     let mut file = std::fs::File::create(&cache_path)

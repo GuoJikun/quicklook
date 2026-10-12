@@ -78,7 +78,9 @@ interface RenderTask {
 }
 
 const renderQueue: RenderTask[] = []
-let queueProcessing = false
+/** 同时在飞的渲染请求数（前端并发上限，配合后端锁外编码形成流水线） */
+const MAX_CONCURRENT_RENDERS = 3
+let activeRenders = 0
 
 /** 施加用户旋转后的逻辑尺寸（REF_DPI 像素，scale=1） */
 const logicalSize = (idx: number): PageBaseSize => {
@@ -162,18 +164,21 @@ const pageAtOffset = (y: number) => {
     return ans
 }
 
-const processQueue = async () => {
-    if (queueProcessing || disposed) return
-    queueProcessing = true
-    while (renderQueue.length > 0 && !disposed) {
+const processQueue = () => {
+    if (disposed) return
+    while (renderQueue.length > 0 && activeRenders < MAX_CONCURRENT_RENDERS) {
         const current = pager.value.current - 1
         renderQueue.sort((a, b) => Math.abs(a.pageIndex - current) - Math.abs(b.pageIndex - current))
         const task = renderQueue.shift()!
-        if (!isFresh(task.pageIndex) && !renderingPages.value.has(task.pageIndex)) {
-            await renderPage(task.pageIndex, task.generation)
+        if (isFresh(task.pageIndex) || renderingPages.value.has(task.pageIndex)) {
+            continue
         }
+        activeRenders++
+        renderPage(task.pageIndex, task.generation).finally(() => {
+            activeRenders = Math.max(0, activeRenders - 1)
+            if (!disposed) processQueue()
+        })
     }
-    queueProcessing = false
 }
 
 const enqueuePages = (pageIndices: number[]) => {
@@ -388,9 +393,6 @@ onMounted(async () => {
     scrollContainer.value?.addEventListener('wheel', handleWheel, { passive: false })
 
     updateFromScroll()
-    for (let i = 0; i < Math.min(3, pager.value.total); i++) {
-        renderPage(i, renderGeneration.value)
-    }
 })
 
 onUnmounted(() => {
