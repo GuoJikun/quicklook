@@ -406,13 +406,18 @@ function prevChapter() {
     if (!fileInfo.value) return
     if (currentChapterIndex.value > 0) {
         loadEpubChapter(fileInfo.value.path, currentChapterIndex.value - 1)
+    } else if (currentChapterIndex.value === -1) {
+        // 封面视图：上一章回到第 0 章
+        loadEpubChapter(fileInfo.value.path, 0)
     }
 }
 
 function nextChapter() {
     if (!fileInfo.value) return
-    const total = epubInfo.value?.chapters.length || 0
-    if (currentChapterIndex.value < total - 1) {
+    // currentChapterIndex 是 spine 索引，边界必须用 total_chapters（spine 数量），
+    // 不能用 chapters.length（TOC 条目数，可含同文件多锚点）
+    const total = epubInfo.value?.total_chapters || 0
+    if (currentChapterIndex.value >= 0 && currentChapterIndex.value < total - 1) {
         loadEpubChapter(fileInfo.value.path, currentChapterIndex.value + 1)
     }
 }

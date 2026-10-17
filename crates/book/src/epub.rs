@@ -4,12 +4,23 @@ use iepub::prelude::*;
 use quicklook_error::QuickLookError;
 use std::collections::HashMap;
 use std::path::Path;
-use std::sync::Mutex;
-use std::time::SystemTime;
+use std::sync::{Arc, LazyLock, Mutex};
+use std::time::{Instant, SystemTime};
 
-/// 章节内容缓存：文件路径 → (总章节数, 各章节 HTML, 文件修改时间)
-static EPUB_CONTENT_CACHE: Mutex<Option<HashMap<String, (usize, Vec<String>, SystemTime)>>> =
-    Mutex::new(None);
+/// 缓存书籍数量上限（按最近使用淘汰）
+const MAX_CACHED_BOOKS: usize = 3;
+
+/// 一本书的章节 HTML 缓存（Arc 避免整书 clone）
+#[derive(Clone)]
+struct CachedBook {
+    chapters: Arc<Vec<String>>,
+    mtime: SystemTime,
+    last_used: Instant,
+}
+
+/// 章节内容缓存：文件路径 → 章节 HTML 列表 + mtime + 最近使用时间
+static EPUB_CONTENT_CACHE: LazyLock<Mutex<HashMap<String, CachedBook>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
 
 /// epub 章节信息
 #[derive(Debug, Clone, serde::Serialize)]
@@ -380,16 +391,37 @@ fn inline_css_urls(css: &str, chapter_dir: &str, resources: &ResourceMap) -> Str
     result
 }
 
+/// 判断 `attr_pos` 处的属性名是否处于合法边界
+///
+/// 属性名前必须是空白、`>` 或 `/`，避免 `data-src=` 误匹配 `src=`、
+/// `xlink:href=` 误匹配 `href=`。
+fn is_attr_boundary(lower: &str, attr_pos: usize) -> bool {
+    if attr_pos == 0 {
+        return true;
+    }
+    let prev = lower.as_bytes()[attr_pos - 1];
+    prev.is_ascii_whitespace() || prev == b'>' || prev == b'/'
+}
+
 /// 从 HTML 标签内容中提取指定属性的值
 ///
 /// 支持 `attr="value"`、`attr='value'` 和无引号 `attr=value`
 fn extract_attr_value(tag_body: &str, attr_name: &str) -> Option<String> {
     let lower = tag_body.to_lowercase();
     let attr_lower = attr_name.to_lowercase();
+    let search_key = format!("{}=", attr_lower);
 
-    // 查找属性名的位置（后面必须跟 =）
-    let attr_pos = lower.find(&format!("{}=", attr_lower))?;
-    let after_attr = &tag_body[attr_pos + attr_name.len() + 1..];
+    // 查找属性名的位置（后面必须跟 =，且前面必须是合法属性边界）
+    let mut from = 0;
+    let attr_pos = loop {
+        let rel = lower[from..].find(&search_key)?;
+        let pos = from + rel;
+        if is_attr_boundary(&lower, pos) {
+            break pos;
+        }
+        from = pos + search_key.len();
+    };
+    let after_attr = &tag_body[attr_pos + search_key.len()..];
 
     // 跳过空白
     let after_attr = after_attr.trim_start();
@@ -486,7 +518,7 @@ fn resolve_path(base_dir: &str, relative: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::resolve_path;
+    use super::{extract_attr_value, resolve_path};
 
     #[test]
     fn resolves_relative_paths_against_current_chapter_dir() {
@@ -523,6 +555,41 @@ mod tests {
             "data:image/png;base64,abc"
         );
     }
+
+    #[test]
+    fn extracts_attr_value_with_quote_styles() {
+        assert_eq!(
+            extract_attr_value(r#" src="a.png""#, "src").as_deref(),
+            Some("a.png")
+        );
+        assert_eq!(
+            extract_attr_value(" src='a.png'", "src").as_deref(),
+            Some("a.png")
+        );
+        assert_eq!(
+            extract_attr_value(" src=a.png ", "src").as_deref(),
+            Some("a.png")
+        );
+    }
+
+    #[test]
+    fn does_not_match_partial_attr_names() {
+        assert_eq!(extract_attr_value(r#" data-src="a.png""#, "src"), None);
+        assert_eq!(extract_attr_value(r#" xlink:href="a.png""#, "href"), None);
+        assert_eq!(extract_attr_value(r#" data-href="a.png""#, "href"), None);
+    }
+
+    #[test]
+    fn finds_attr_after_other_attributes() {
+        assert_eq!(
+            extract_attr_value(r#" class="x" src="a.png" alt="t""#, "src").as_deref(),
+            Some("a.png")
+        );
+        assert_eq!(
+            extract_attr_value(r#" xlink:href="a.png" href="b.png""#, "href").as_deref(),
+            Some("b.png")
+        );
+    }
 }
 
 /// 将 iepub 错误映射为 QuickLookError
@@ -540,10 +607,13 @@ fn map_iepub_error(_path: &str, context: &str, e: IError) -> QuickLookError {
 }
 
 /// 预加载所有章节内容到缓存，并将图片内联为 data URI
-fn preload_chapters(path: &str, book: &mut EpubBook) -> Result<Vec<String>, QuickLookError> {
+///
+/// 返回 `Arc<Vec<String>>`，写入缓存时共享底层数据，避免整书 clone。
+fn preload_chapters(
+    path: &str,
+    book: &mut EpubBook,
+) -> Result<Arc<Vec<String>>, QuickLookError> {
     let total = book.chapters().len();
-
-    // 注意：不要在每次预加载时清空全局缓存；缓存失效由 mtime 校验处理。
 
     // 构建资源映射表（图片、CSS 等）
     let resources = build_resource_map(book);
@@ -577,35 +647,63 @@ fn preload_chapters(path: &str, book: &mut EpubBook) -> Result<Vec<String>, Quic
         .and_then(|m| m.modified())
         .unwrap_or(SystemTime::UNIX_EPOCH);
 
-    // 写入缓存
+    let chapters = Arc::new(contents);
+
+    // 写入缓存（共享 Arc，不 clone 底层字符串）
     if let Ok(mut cache) = EPUB_CONTENT_CACHE.lock() {
-        let map = cache.get_or_insert_with(HashMap::new);
-        map.insert(path.to_string(), (total, contents.clone(), mtime));
+        insert_with_eviction(
+            &mut cache,
+            path.to_string(),
+            CachedBook {
+                chapters: Arc::clone(&chapters),
+                mtime,
+                last_used: Instant::now(),
+            },
+        );
     }
 
-    Ok(contents)
+    Ok(chapters)
+}
+
+/// 写入缓存，超出 `MAX_CACHED_BOOKS` 时淘汰最久未使用的条目
+fn insert_with_eviction(map: &mut HashMap<String, CachedBook>, key: String, entry: CachedBook) {
+    map.insert(key, entry);
+    while map.len() > MAX_CACHED_BOOKS {
+        let Some(oldest) = map
+            .iter()
+            .min_by_key(|(_, e)| e.last_used)
+            .map(|(k, _)| k.clone())
+        else {
+            break;
+        };
+        log::info!("[epub] 缓存淘汰: path={}", oldest);
+        map.remove(&oldest);
+    }
 }
 
 /// 从缓存中读取章节内容，校验文件修改时间确保缓存有效
 fn get_cached_chapter(path: &str, chapter_index: usize) -> Option<String> {
-    let cache = EPUB_CONTENT_CACHE.lock().ok()?;
-    let map = cache.as_ref()?;
-    let (total, contents, cached_mtime) = map.get(path)?;
+    let mut cache = EPUB_CONTENT_CACHE.lock().ok()?;
 
     // 校验文件修改时间：如果文件已被修改，缓存失效
     let current_mtime = std::fs::metadata(path)
         .and_then(|m| m.modified())
         .unwrap_or(SystemTime::UNIX_EPOCH);
-    if current_mtime != *cached_mtime {
+
+    let expired = match cache.get(path) {
+        Some(entry) if current_mtime != entry.mtime => true,
+        Some(_) => false,
+        None => return None,
+    };
+    if expired {
         log::info!("[epub] 缓存已过期 (mtime 变化), path={}", path);
+        cache.remove(path);
         return None;
     }
 
-    if chapter_index < *total {
-        contents.get(chapter_index).cloned()
-    } else {
-        None
-    }
+    let entry = cache.get_mut(path)?;
+    entry.last_used = Instant::now();
+    entry.chapters.get(chapter_index).cloned()
 }
 
 /// 从 epub 中提取封面图片，返回 base64 编码的 data URI
@@ -918,14 +1016,14 @@ pub fn get_epub_chapter(path: &str, chapter_index: usize) -> Result<String, Quic
     );
     let mut book = read_from_file(path).map_err(|e| map_iepub_error(path, "打开 epub", e))?;
 
-    // 预加载所有章节到缓存（同时也返回当前请求的章节）
-    let contents = preload_chapters(path, &mut book)?;
+    // 预加载所有章节到缓存（Arc 共享，只取当前章节）
+    let chapters = preload_chapters(path, &mut book)?;
 
-    contents.into_iter().nth(chapter_index).ok_or_else(|| {
+    chapters.get(chapter_index).cloned().ok_or_else(|| {
         QuickLookError::DocumentParse(format!(
             "章节索引 {} 超出范围 (共 {} 章)",
             chapter_index,
-            book.chapters().len()
+            chapters.len()
         ))
     })
 }
@@ -965,10 +1063,20 @@ pub fn resolve_epub_link(
         String::new()
     };
 
+    // 规范化链接路径：去掉前导 `/`，用于精确比较
+    // resolve_path 会把 `/xxx` 当作包根路径，相对路径则基于 current_dir 解析
+    let link_normalized = link_path.trim_start_matches('/');
+    let full_path = if current_dir.is_empty() {
+        link_normalized.to_string()
+    } else {
+        resolve_path(&current_dir, link_path)
+    };
+
     log::info!(
-        "[epub] resolve_epub_link: href={}, link_path={}, current_dir={}, current_index={}",
+        "[epub] resolve_epub_link: href={}, link_path={}, full_path={}, current_dir={}, current_index={}",
         href,
         link_path,
+        full_path,
         current_dir,
         current_chapter_index
     );
@@ -981,21 +1089,12 @@ pub fn resolve_epub_link(
         let link_file_name = link_path.rsplit('/').next().unwrap_or(link_path);
         let ch_file_name = ch_file.rsplit('/').next().unwrap_or(ch_file);
 
-        // 策略 2: 带目录前缀匹配（处理 ./、../）
-        let full_path = if current_dir.is_empty() {
-            link_path.to_string()
-        } else if link_path.starts_with("./") || link_path.starts_with("../") {
-            resolve_path(&current_dir, link_path)
-        } else {
-            format!("{}/{}", current_dir, link_path)
-        };
-
-        let matched = ch_file == link_path
+        let matched = ch_file == link_normalized
             || ch_file == full_path
             || ch_file_name == link_file_name
             // 后缀匹配要求路径边界为 '/' 或文件结尾，避免 chapter11.xhtml 误匹配 chapter1.xhtml
-            || has_suffix_boundary(ch_file, link_path)
-            || has_suffix_boundary(ch_file, &format!("/{}", link_path));
+            || has_suffix_boundary(ch_file, link_normalized)
+            || has_suffix_boundary(ch_file, &format!("/{}", link_normalized));
 
         if matched {
             log::info!(
