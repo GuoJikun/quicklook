@@ -22,6 +22,100 @@ struct CachedBook {
 static EPUB_CONTENT_CACHE: LazyLock<Mutex<HashMap<String, CachedBook>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
+/// spine 文件名列表缓存上限（仅路径字符串，可多留几本）
+const MAX_SPINE_CACHE: usize = 16;
+
+/// spine 表缓存条目：章节文件名列表，用于链接解析，避免重复打开 epub
+#[derive(Clone)]
+struct SpineCacheEntry {
+    file_names: Arc<Vec<String>>,
+    mtime: SystemTime,
+    last_used: Instant,
+}
+
+/// spine 文件名缓存：文件路径 → 章节文件名列表
+static EPUB_SPINE_CACHE: LazyLock<Mutex<HashMap<String, SpineCacheEntry>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+fn file_mtime(path: &str) -> SystemTime {
+    std::fs::metadata(path)
+        .and_then(|m| m.modified())
+        .unwrap_or(SystemTime::UNIX_EPOCH)
+}
+
+/// 获取或加载 epub 的 spine 章节文件名列表（不读章节正文）
+fn get_or_load_spine(path: &str) -> Result<Arc<Vec<String>>, QuickLookError> {
+    if !Path::new(path).exists() {
+        return Err(QuickLookError::FileNotFound(path.to_string()));
+    }
+    let mtime = file_mtime(path);
+
+    if let Ok(mut cache) = EPUB_SPINE_CACHE.lock() {
+        if let Some(entry) = cache.get_mut(path) {
+            if entry.mtime == mtime {
+                entry.last_used = Instant::now();
+                return Ok(Arc::clone(&entry.file_names));
+            }
+            cache.remove(path);
+        }
+    }
+
+    log::debug!("[epub] spine 缓存未命中，加载文件列表 path={}", path);
+    let book = read_from_file(path).map_err(|e| map_iepub_error(path, "打开 epub", e))?;
+    let file_names = Arc::new(
+        book.chapters()
+            .map(|ch| ch.file_name().to_string())
+            .collect::<Vec<_>>(),
+    );
+
+    if let Ok(mut cache) = EPUB_SPINE_CACHE.lock() {
+        cache.insert(
+            path.to_string(),
+            SpineCacheEntry {
+                file_names: Arc::clone(&file_names),
+                mtime,
+                last_used: Instant::now(),
+            },
+        );
+        while cache.len() > MAX_SPINE_CACHE {
+            let Some(oldest) = cache
+                .iter()
+                .min_by_key(|(_, e)| e.last_used)
+                .map(|(k, _)| k.clone())
+            else {
+                break;
+            };
+            cache.remove(&oldest);
+        }
+    }
+
+    Ok(file_names)
+}
+
+/// 写入 spine 缓存（preload 后同步，避免下次链接再打开文件）
+fn store_spine(path: &str, file_names: Arc<Vec<String>>, mtime: SystemTime) {
+    if let Ok(mut cache) = EPUB_SPINE_CACHE.lock() {
+        cache.insert(
+            path.to_string(),
+            SpineCacheEntry {
+                file_names,
+                mtime,
+                last_used: Instant::now(),
+            },
+        );
+        while cache.len() > MAX_SPINE_CACHE {
+            let Some(oldest) = cache
+                .iter()
+                .min_by_key(|(_, e)| e.last_used)
+                .map(|(k, _)| k.clone())
+            else {
+                break;
+            };
+            cache.remove(&oldest);
+        }
+    }
+}
+
 /// epub 章节信息
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct EpubChapter {
@@ -98,7 +192,7 @@ fn build_resource_map(book: &mut EpubBook) -> ResourceMap {
         let media_type = guess_mime_type(&file_name).to_string();
         // 必须用 data_mut() 触发惰性读取，data() 在未读取时返回 None
         if let Some(data) = asset.data_mut() {
-            log::info!(
+            log::debug!(
                 "[epub] 资源: name={}, id={}, mime={}, size={}",
                 file_name,
                 asset_id,
@@ -110,8 +204,175 @@ fn build_resource_map(book: &mut EpubBook) -> ResourceMap {
             log::warn!("[epub] 资源读取失败: name={}, id={}", file_name, asset_id);
         }
     }
-    log::info!("[epub] 资源映射表构建完成, 共 {} 个资源", map.len());
+    log::debug!("[epub] 资源映射表构建完成, 共 {} 个资源", map.len());
     map
+}
+
+/// 资源相关标签类型
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ResourceTagKind {
+    Img,
+    Image,
+    Link,
+}
+
+/// 从 `pos` 开始查找下一个资源标签
+/// 返回 (标签起始, 标签名结束, `>` 后一位, 标签类型)
+fn find_next_resource_tag(
+    html: &str,
+    pos: usize,
+) -> Option<(usize, usize, usize, ResourceTagKind)> {
+    let bytes = html.as_bytes();
+    let mut i = pos;
+    while i < bytes.len() {
+        if bytes[i] != b'<' {
+            i += 1;
+            continue;
+        }
+        let name_start = i + 1;
+        if name_start >= bytes.len() {
+            return None;
+        }
+        let mut name_end = name_start;
+        while name_end < bytes.len() && bytes[name_end].is_ascii_alphanumeric() {
+            name_end += 1;
+        }
+        if name_end == name_start {
+            i = name_end.max(i + 1);
+            continue;
+        }
+        let name = &html[name_start..name_end];
+        let kind = if name.eq_ignore_ascii_case("img") {
+            ResourceTagKind::Img
+        } else if name.eq_ignore_ascii_case("image") {
+            ResourceTagKind::Image
+        } else if name.eq_ignore_ascii_case("link") {
+            ResourceTagKind::Link
+        } else {
+            i = name_end;
+            continue;
+        };
+        let Some(gt_rel) = html[name_end..].find('>') else {
+            return None;
+        };
+        let tag_end = name_end + gt_rel + 1; // '>' 后一位
+        return Some((i, name_end, tag_end, kind));
+    }
+    None
+}
+
+/// 尝试把标签属性替换为 data URI；命中返回新 tag body，未命中返回 None
+fn try_inline_attr(
+    tag_body: &str,
+    attr_name: &str,
+    attr_value: &str,
+    chapter_dir: &str,
+    resources: &ResourceMap,
+) -> Option<String> {
+    let resolved = resolve_path(chapter_dir, attr_value);
+    let (mime, data) = resources.get(&resolved)?;
+    if mime.is_empty() || data.is_empty() || mime.starts_with("application/octet") {
+        log::debug!(
+            "[epub] 资源类型不可用: resolved={}, mime={}, data_len={}",
+            resolved,
+            mime,
+            data.len()
+        );
+        return None;
+    }
+    let data_uri = to_data_uri(mime, data);
+    Some(replace_attr_value(
+        tag_body, attr_name, attr_value, &data_uri,
+    ))
+}
+
+/// 单遍内联 img / image / link 标签中的资源引用
+fn inline_resource_tags(html: &str, chapter_dir: &str, resources: &ResourceMap) -> String {
+    let mut out = String::with_capacity(html.len() + html.len() / 2);
+    let mut pos = 0;
+    let mut inlined = 0usize;
+
+    while let Some((tag_start, name_end, tag_end, kind)) = find_next_resource_tag(html, pos) {
+        out.push_str(&html[pos..tag_start]);
+        let gt = tag_end - 1;
+        let open_tag = &html[tag_start..name_end]; // 含 `<` 与标签名
+        let body = &html[name_end..gt];
+
+        match kind {
+            ResourceTagKind::Img => {
+                if let Some(src) = extract_attr_value(body, "src") {
+                    if let Some(new_body) =
+                        try_inline_attr(body, "src", &src, chapter_dir, resources)
+                    {
+                        out.push_str(open_tag);
+                        out.push_str(&new_body);
+                        out.push('>');
+                        inlined += 1;
+                        pos = tag_end;
+                        continue;
+                    }
+                }
+                out.push_str(&html[tag_start..tag_end]);
+                pos = tag_end;
+            },
+            ResourceTagKind::Image => {
+                let (attr_name, src) = if let Some(val) = extract_attr_value(body, "xlink:href") {
+                    ("xlink:href", val)
+                } else if let Some(val) = extract_attr_value(body, "href") {
+                    ("href", val)
+                } else {
+                    out.push_str(&html[tag_start..tag_end]);
+                    pos = tag_end;
+                    continue;
+                };
+                if let Some(new_body) =
+                    try_inline_attr(body, attr_name, &src, chapter_dir, resources)
+                {
+                    out.push_str(open_tag);
+                    out.push_str(&new_body);
+                    out.push('>');
+                    inlined += 1;
+                } else {
+                    out.push_str(&html[tag_start..tag_end]);
+                }
+                pos = tag_end;
+            },
+            ResourceTagKind::Link => {
+                let body_lower = body.to_lowercase();
+                let is_stylesheet = body_lower.contains("rel=\"stylesheet\"")
+                    || body_lower.contains("rel='stylesheet'");
+                let style_tag = if is_stylesheet {
+                    extract_attr_value(body, "href").and_then(|href| {
+                        let resolved = resolve_path(chapter_dir, &href);
+                        let (mime, data) = resources.get(&resolved)?;
+                        if mime != "text/css" || data.is_empty() {
+                            return None;
+                        }
+                        let css_text = std::str::from_utf8(data).ok()?;
+                        Some(format!(
+                            "<style>/* Inlined from {} */\n{}</style>",
+                            href, css_text
+                        ))
+                    })
+                } else {
+                    None
+                };
+                if let Some(style_tag) = style_tag {
+                    out.push_str(&style_tag);
+                    inlined += 1;
+                } else {
+                    out.push_str(&html[tag_start..tag_end]);
+                }
+                pos = tag_end;
+            },
+        }
+    }
+
+    out.push_str(&html[pos..]);
+    if inlined > 0 {
+        log::debug!("[epub] inline_resource_tags: 内联了 {} 处资源", inlined);
+    }
+    out
 }
 
 /// 将 HTML 中的资源路径替换为 base64 data URI
@@ -128,208 +389,38 @@ fn inline_resources(html: &str, chapter_file: &str, resources: &ResourceMap) -> 
     // 获取章节所在目录（如 `Text/chapter1.xhtml` → `Text/`）
     let chapter_dir = chapter_file.rsplit_once('/').map_or("", |(dir, _)| dir);
 
-    log::info!(
+    log::debug!(
         "[epub] inline_resources: chapter={}, dir={}, resources={}",
         chapter_file,
         chapter_dir,
         resources.len()
     );
 
-    let mut result = html.to_string();
-
-    // 处理 <img src="..."> 标签
-    result = inline_img_tags(&result, chapter_dir, resources);
-
-    // 处理 <image href="..."> 和 <image xlink:href="..."> 标签 (SVG)
-    result = inline_image_tags(&result, chapter_dir, resources);
-
-    // 处理 <link rel="stylesheet" href="..."> 标签
-    result = inline_link_tags(&result, chapter_dir, resources);
-
-    // 处理 CSS 中的 url() 引用
-    result = inline_css_urls(&result, chapter_dir, resources);
-
-    result
+    // 第一遍：img / image / link 标签
+    let tagged = inline_resource_tags(html, chapter_dir, resources);
+    // 第二遍：CSS url()（覆盖 <style>、style 属性等）
+    inline_css_urls(&tagged, chapter_dir, resources)
 }
 
-/// 内联 <img src="..."> 标签
-fn inline_img_tags(html: &str, chapter_dir: &str, resources: &ResourceMap) -> String {
-    let mut result = html.to_string();
-    let mut pos = 0;
-    let mut inlined_count = 0;
-
-    while let Some(img_start) = result[pos..].find("<img") {
-        let abs_img_start = pos + img_start;
-
-        // 找到标签的结束位置（>）
-        let tag_content_start = abs_img_start + 4; // 跳过 "<img"
-        let Some(tag_end_rel) = result[tag_content_start..].find('>') else {
-            break;
-        };
-        let tag_end = tag_content_start + tag_end_rel;
-
-        // 在标签内查找 src="..." 或 src='...'
-        let tag_body = &result[tag_content_start..tag_end];
-        if let Some(src_value) = extract_attr_value(tag_body, "src") {
-            let resolved = resolve_path(chapter_dir, &src_value);
-            log::info!("[epub] img src原始值={}, 解析后={}", src_value, resolved);
-            if let Some((mime, data)) = resources.get(&resolved) {
-                if !mime.is_empty() && !data.is_empty() && !mime.starts_with("application/octet") {
-                    let data_uri = to_data_uri(mime, data);
-                    let tag_body_new = replace_attr_value(tag_body, "src", &src_value, &data_uri);
-                    result = format!(
-                        "{}{}{}",
-                        &result[..tag_content_start],
-                        tag_body_new,
-                        &result[tag_end..]
-                    );
-                    inlined_count += 1;
-                } else {
-                    log::warn!(
-                        "[epub] 图片资源类型不可用: mime={}, data_len={}",
-                        mime,
-                        data.len()
-                    );
-                }
-            } else {
-                log::warn!(
-                    "[epub] 未找到图片资源: resolved={}, 资源表有{}个条目",
-                    resolved,
-                    resources.len()
-                );
-            }
-        }
-
-        pos = tag_end + 1;
-    }
-
-    if inlined_count > 0 {
-        log::info!("[epub] inline_img_tags: 内联了 {} 个图片", inlined_count);
-    }
-
-    result
-}
-
-/// 内联 <image href="..."> 和 <image xlink:href="..."> 标签 (SVG)
-fn inline_image_tags(html: &str, chapter_dir: &str, resources: &ResourceMap) -> String {
-    let mut result = html.to_string();
-    let mut pos = 0;
-
-    while let Some(img_start) = result[pos..].find("<image") {
-        let abs_img_start = pos + img_start;
-
-        // 找到标签的结束位置（> 或 />）
-        let tag_content_start = abs_img_start + 6; // 跳过 "<image"
-        let Some(tag_end_rel) = result[tag_content_start..].find('>') else {
-            break;
-        };
-        let tag_end = tag_content_start + tag_end_rel;
-
-        let tag_body = &result[tag_content_start..tag_end];
-
-        // 优先检查 xlink:href，然后是 href
-        let (attr_name, src_value) = if let Some(val) = extract_attr_value(tag_body, "xlink:href") {
-            ("xlink:href", val)
-        } else if let Some(val) = extract_attr_value(tag_body, "href") {
-            ("href", val)
-        } else {
-            pos = tag_end + 1;
-            continue;
-        };
-
-        let resolved = resolve_path(chapter_dir, &src_value);
-        if let Some((mime, data)) = resources.get(&resolved) {
-            if !mime.is_empty() && !data.is_empty() && !mime.starts_with("application/octet") {
-                let data_uri = to_data_uri(mime, data);
-                let tag_body_new = replace_attr_value(tag_body, attr_name, &src_value, &data_uri);
-                result = format!(
-                    "{}{}{}",
-                    &result[..tag_content_start],
-                    tag_body_new,
-                    &result[tag_end..]
-                );
-            }
-        }
-
-        pos = tag_end + 1;
-    }
-    result
-}
-
-/// 内联 <link rel="stylesheet" href="..."> 标签，将 CSS 转为 <style> 标签
-fn inline_link_tags(html: &str, chapter_dir: &str, resources: &ResourceMap) -> String {
-    let mut result = html.to_string();
-    let mut pos = 0;
-
-    while let Some(link_start) = result[pos..].find("<link") {
-        let abs_link_start = pos + link_start;
-
-        // 找到标签的结束位置（>）
-        let tag_content_start = abs_link_start + 5; // 跳过 "<link"
-        let Some(tag_end_rel) = result[tag_content_start..].find('>') else {
-            break;
-        };
-        let tag_end = tag_content_start + tag_end_rel;
-
-        let tag_body = &result[tag_content_start..tag_end].to_lowercase();
-
-        // 检查是否是 stylesheet
-        if tag_body.contains("rel=\"stylesheet\"") || tag_body.contains("rel='stylesheet'") {
-            if let Some(href_value) =
-                extract_attr_value(&result[tag_content_start..tag_end], "href")
-            {
-                let resolved = resolve_path(chapter_dir, &href_value);
-                if let Some((mime, data)) = resources.get(&resolved) {
-                    if mime == "text/css" && !data.is_empty() {
-                        if let Ok(css_text) = std::str::from_utf8(data) {
-                            // 处理 CSS 中的 url() 引用
-                            let css_with_inlined =
-                                inline_css_urls(css_text, chapter_dir, resources);
-                            let style_tag = format!(
-                                "<style>/* Inlined from {} */\n{}</style>",
-                                href_value, css_with_inlined
-                            );
-                            result = format!(
-                                "{}{}{}",
-                                &result[..abs_link_start],
-                                style_tag,
-                                &result[tag_end + 1..]
-                            );
-                            // 跳过新插入的 style 标签
-                            pos = abs_link_start + style_tag.len();
-                            continue;
-                        }
-                    }
-                }
-            }
-        }
-
-        pos = tag_end + 1;
-    }
-    result
-}
-
-/// 内联 CSS 中的 url('...') / url("...") 引用
+/// 内联 CSS 中的 url('...') / url("...") 引用（单遍缓冲，避免整段反复复制）
 fn inline_css_urls(css: &str, chapter_dir: &str, resources: &ResourceMap) -> String {
-    let mut result = css.to_string();
+    let mut out = String::with_capacity(css.len() * 2);
     let mut pos = 0;
 
-    while let Some(url_start) = result[pos..].find("url(") {
-        let abs_url_start = pos + url_start;
-        let after_url = &result[abs_url_start + 4..];
+    while let Some(url_start) = css[pos..].find("url(") {
+        let abs = pos + url_start;
+        out.push_str(&css[pos..abs]);
+        let after_url = &css[abs + 4..];
 
-        // 找到引号包裹的路径
-        let (quote_char, path_start) = if after_url.starts_with('"') {
-            ('"', 1)
-        } else if after_url.starts_with('\'') {
-            ('\'', 1)
-        } else {
-            // 无引号，取到下一个 ) 或空白
-            let end = after_url
-                .find(|c: char| c == ')' || c.is_whitespace())
-                .unwrap_or(after_url.len());
-            let path = &after_url[..end];
-            if !path.is_empty() && !path.starts_with("data:") {
+        // 解析 url(...) 路径与表达式长度
+        let parsed = parse_css_url_expr(after_url);
+        match parsed {
+            Some((path, expr_len)) => {
+                if path.starts_with("data:") || path.is_empty() {
+                    out.push_str(&css[abs..abs + 4 + expr_len]);
+                    pos = abs + 4 + expr_len;
+                    continue;
+                }
                 let resolved = resolve_path(chapter_dir, path);
                 if let Some((mime, data)) = resources.get(&resolved) {
                     if !mime.is_empty()
@@ -337,58 +428,49 @@ fn inline_css_urls(css: &str, chapter_dir: &str, resources: &ResourceMap) -> Str
                         && !mime.starts_with("application/octet")
                     {
                         let data_uri = to_data_uri(mime, data);
-                        let replacement = format!("url({})", data_uri);
-                        result = format!(
-                            "{}{}{}",
-                            &result[..abs_url_start],
-                            replacement,
-                            &result[abs_url_start + 4 + end..]
-                        );
-                        pos = abs_url_start + replacement.len();
+                        out.push_str(&format!("url(\"{}\")", data_uri));
+                        pos = abs + 4 + expr_len;
                         continue;
                     }
                 }
-            }
-            pos = abs_url_start + 4 + end + 1; // +1 for )
-            continue;
-        };
-
-        // 找到闭合引号
-        let Some(path_end) = after_url[path_start..].find(quote_char) else {
-            pos = abs_url_start + 4;
-            continue;
-        };
-        let path = &after_url[path_start..path_start + path_end];
-
-        // 跳过已经内联的 data: URI
-        if !path.starts_with("data:") && !path.is_empty() {
-            let resolved = resolve_path(chapter_dir, path);
-            if let Some((mime, data)) = resources.get(&resolved) {
-                if !mime.is_empty() && !data.is_empty() && !mime.starts_with("application/octet") {
-                    let data_uri = to_data_uri(mime, data);
-                    // 替换整个 url(...) 表达式
-                    let full_url_end = path_start + path_end + 1; // +1 for closing quote
-                    let after_paren = &after_url[full_url_end..];
-                    let close_paren = after_paren.find(')').map(|i| i + 1).unwrap_or(0);
-                    let total_len = 4 + full_url_end + close_paren; // "url(" + content + ")"
-                    let replacement = format!("url(\"{}\")", data_uri);
-                    result = format!(
-                        "{}{}{}",
-                        &result[..abs_url_start],
-                        replacement,
-                        &result[abs_url_start + total_len..]
-                    );
-                    pos = abs_url_start + replacement.len();
-                    continue;
-                }
-            }
+                // 未命中：保留原样
+                out.push_str(&css[abs..abs + 4 + expr_len]);
+                pos = abs + 4 + expr_len;
+            },
+            None => {
+                // 无法解析：原样输出 `url(`，继续向后扫描
+                out.push_str("url(");
+                pos = abs + 4;
+            },
         }
-
-        // 资源未命中时，跳过整个 url("...") 表达式，避免重复扫描导致死循环。
-        // 表达式布局：url( + " + path(path_end) + " + )，共 4 + path_start + path_end + 2 个字符
-        pos = abs_url_start + 4 + path_start + path_end + 2;
     }
-    result
+    out.push_str(&css[pos..]);
+    out
+}
+
+/// 解析 `url(` 之后的表达式，返回 (路径, 表达式长度（不含 `url(`，含 `)`）
+fn parse_css_url_expr(after_url: &str) -> Option<(&str, usize)> {
+    let (quote, path_start) = if after_url.starts_with('"') {
+        (Some('"'), 1)
+    } else if after_url.starts_with('\'') {
+        (Some('\''), 1)
+    } else {
+        let end = after_url
+            .find(|c: char| c == ')' || c.is_whitespace())
+            .unwrap_or(after_url.len());
+        let path = &after_url[..end];
+        // 无引号形式：path 后应是 ) 或空白+）
+        let rest = &after_url[end..];
+        let close = rest.find(')').map(|i| end + i + 1)?;
+        return Some((path, close));
+    };
+
+    let quote = quote?;
+    let path_end = after_url[path_start..].find(quote)?;
+    let path = &after_url[path_start..path_start + path_end];
+    let after_quote = path_start + path_end + 1; // 闭合引号之后
+    let close_rel = after_url[after_quote..].find(')')?;
+    Some((path, after_quote + close_rel + 1))
 }
 
 /// 判断 `attr_pos` 处的属性名是否处于合法边界
@@ -518,7 +600,7 @@ fn resolve_path(base_dir: &str, relative: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{extract_attr_value, resolve_path};
+    use super::{extract_attr_value, match_spine_href, parse_css_url_expr, resolve_path};
 
     #[test]
     fn resolves_relative_paths_against_current_chapter_dir() {
@@ -590,6 +672,36 @@ mod tests {
             Some("b.png")
         );
     }
+
+    #[test]
+    fn matches_spine_href_relative_and_fragment() {
+        let spine = vec![
+            "Text/ch1.xhtml".to_string(),
+            "Text/ch2.xhtml".to_string(),
+            "OEBPS/appendix.xhtml".to_string(),
+        ];
+        assert_eq!(match_spine_href(&spine, 0, "ch2.xhtml"), Some((1, None)));
+        assert_eq!(
+            match_spine_href(&spine, 0, "ch2.xhtml#sec"),
+            Some((1, Some("sec".to_string())))
+        );
+        assert_eq!(
+            match_spine_href(&spine, 1, "appendix.xhtml"),
+            Some((2, None))
+        );
+        assert_eq!(
+            match_spine_href(&spine, 0, "/OEBPS/appendix.xhtml"),
+            Some((2, None))
+        );
+    }
+
+    #[test]
+    fn parse_css_url_handles_quoted_and_unquoted() {
+        // `"a.png")` 长度 8；`'a.png')` 长度 8；`a.png)` 长度 6
+        assert_eq!(parse_css_url_expr(r#""a.png") rest"#), Some(("a.png", 8)));
+        assert_eq!(parse_css_url_expr("'a.png') rest"), Some(("a.png", 8)));
+        assert_eq!(parse_css_url_expr("a.png) rest"), Some(("a.png", 6)));
+    }
 }
 
 /// 将 iepub 错误映射为 QuickLookError
@@ -609,10 +721,7 @@ fn map_iepub_error(_path: &str, context: &str, e: IError) -> QuickLookError {
 /// 预加载所有章节内容到缓存，并将图片内联为 data URI
 ///
 /// 返回 `Arc<Vec<String>>`，写入缓存时共享底层数据，避免整书 clone。
-fn preload_chapters(
-    path: &str,
-    book: &mut EpubBook,
-) -> Result<Arc<Vec<String>>, QuickLookError> {
+fn preload_chapters(path: &str, book: &mut EpubBook) -> Result<Arc<Vec<String>>, QuickLookError> {
     let total = book.chapters().len();
 
     // 构建资源映射表（图片、CSS 等）
@@ -633,7 +742,7 @@ fn preload_chapters(
         } else {
             raw_html
         };
-        log::info!(
+        log::debug!(
             "[epub] 预加载章节 {} 标题={}, 长度={}",
             contents.len(),
             ch.title(),
@@ -643,11 +752,12 @@ fn preload_chapters(
     }
 
     // 获取文件修改时间，写入缓存时一并存储
-    let mtime = std::fs::metadata(path)
-        .and_then(|m| m.modified())
-        .unwrap_or(SystemTime::UNIX_EPOCH);
+    let mtime = file_mtime(path);
 
     let chapters = Arc::new(contents);
+
+    // 同步 spine 缓存，供 resolve_epub_link 直接使用
+    store_spine(path, Arc::new(chapter_files), mtime);
 
     // 写入缓存（共享 Arc，不 clone 底层字符串）
     if let Ok(mut cache) = EPUB_CONTENT_CACHE.lock() {
@@ -686,9 +796,7 @@ fn get_cached_chapter(path: &str, chapter_index: usize) -> Option<String> {
     let mut cache = EPUB_CONTENT_CACHE.lock().ok()?;
 
     // 校验文件修改时间：如果文件已被修改，缓存失效
-    let current_mtime = std::fs::metadata(path)
-        .and_then(|m| m.modified())
-        .unwrap_or(SystemTime::UNIX_EPOCH);
+    let current_mtime = file_mtime(path);
 
     let expired = match cache.get(path) {
         Some(entry) if current_mtime != entry.mtime => true,
@@ -1005,12 +1113,12 @@ pub fn get_epub_chapter(path: &str, chapter_index: usize) -> Result<String, Quic
 
     // 优先从缓存读取
     if let Some(html) = get_cached_chapter(path, chapter_index) {
-        log::info!("[epub] 缓存命中 chapter_index={}", chapter_index);
+        log::debug!("[epub] 缓存命中 chapter_index={}", chapter_index);
         return Ok(html);
     }
 
     // 缓存未命中，重新加载
-    log::info!(
+    log::debug!(
         "[epub] 缓存未命中，重新加载 chapter_index={}",
         chapter_index
     );
@@ -1029,31 +1137,35 @@ pub fn get_epub_chapter(path: &str, chapter_index: usize) -> Result<String, Quic
 }
 
 /// 解析 epub 内容中的链接 href，返回目标章节的 spine 索引和锚点
+///
+/// 优先从 spine 缓存读取章节文件名列表，未命中时只加载文件名（不读正文）。
 pub fn resolve_epub_link(
     path: &str,
     current_chapter_index: usize,
     href: &str,
 ) -> Result<Option<(usize, Option<String>)>, QuickLookError> {
-    if !Path::new(path).exists() {
-        return Err(QuickLookError::FileNotFound(path.to_string()));
-    }
+    let spine = get_or_load_spine(path)?;
+    Ok(match_spine_href(&spine, current_chapter_index, href))
+}
 
-    let book = read_from_file(path).map_err(|e| map_iepub_error(path, "打开 epub", e))?;
-
+/// 在 spine 文件名列表中匹配 href，返回 (章节索引, 锚点)
+fn match_spine_href(
+    spine: &[String],
+    current_chapter_index: usize,
+    href: &str,
+) -> Option<(usize, Option<String>)> {
     // 分离路径和锚点
     let (link_path, fragment) = match href.find('#') {
-        Some(pos) => (&href[..pos], Some(href[pos + 1..].to_string())),
+        Some(pos) => (
+            &href[..pos],
+            Some(href[pos + 1..].to_string()).filter(|s| !s.is_empty()),
+        ),
         None => (href, None),
     };
 
     // 获取当前章节的目录
-    let current_dir = if current_chapter_index < book.chapters().len() {
-        let current_file = book
-            .chapters()
-            .nth(current_chapter_index)
-            .map(|ch| ch.file_name().to_string())
-            .unwrap_or_default();
-        // 提取目录部分
+    let current_dir = if current_chapter_index < spine.len() {
+        let current_file = spine[current_chapter_index].as_str();
         current_file
             .rfind('/')
             .map(|pos| &current_file[..pos])
@@ -1072,7 +1184,7 @@ pub fn resolve_epub_link(
         resolve_path(&current_dir, link_path)
     };
 
-    log::info!(
+    log::debug!(
         "[epub] resolve_epub_link: href={}, link_path={}, full_path={}, current_dir={}, current_index={}",
         href,
         link_path,
@@ -1082,31 +1194,29 @@ pub fn resolve_epub_link(
     );
 
     // 在所有 spine 章节中查找匹配
-    for (i, ch) in book.chapters().enumerate() {
-        let ch_file = ch.file_name();
-
+    for (i, ch_file) in spine.iter().enumerate() {
         // 策略 1: 纯文件名匹配（链接无目录前缀）
         let link_file_name = link_path.rsplit('/').next().unwrap_or(link_path);
-        let ch_file_name = ch_file.rsplit('/').next().unwrap_or(ch_file);
+        let ch_file_name = ch_file.rsplit('/').next().unwrap_or(ch_file.as_str());
 
         let matched = ch_file == link_normalized
-            || ch_file == full_path
+            || ch_file == &full_path
             || ch_file_name == link_file_name
             // 后缀匹配要求路径边界为 '/' 或文件结尾，避免 chapter11.xhtml 误匹配 chapter1.xhtml
             || has_suffix_boundary(ch_file, link_normalized)
             || has_suffix_boundary(ch_file, &format!("/{}", link_normalized));
 
         if matched {
-            log::info!(
+            log::debug!(
                 "[epub] resolve_epub_link: matched chapter {} file_name={}, fragment={:?}",
                 i,
                 ch_file,
                 fragment
             );
-            return Ok(Some((i, fragment)));
+            return Some((i, fragment));
         }
     }
 
-    log::warn!("[epub] resolve_epub_link: no match found for href={}", href);
-    Ok(None)
+    log::debug!("[epub] resolve_epub_link: no match found for href={}", href);
+    None
 }
