@@ -15,12 +15,10 @@ jobs:
           - platform: windows-latest
             args: "--target x86_64-pc-windows-msvc"
             rust-target: "x86_64-pc-windows-msvc"
-            triplet: "x64-windows-static-md"
             target: "windows"
           - platform: windows-latest
             args: "--target aarch64-pc-windows-msvc"
             rust-target: "aarch64-pc-windows-msvc"
-            triplet: "arm64-windows-static-md"
             target: "windows-aarch64"
 
     runs-on: ${{ matrix.settings.platform }}
@@ -63,24 +61,6 @@ jobs:
         with:
           workspaces: ". -> target"
 
-      - name: Setup vcpkg
-        run: |
-          git clone https://github.com/microsoft/vcpkg.git --depth 1 --branch 2026.05.25 C:\vcpkg
-          C:\vcpkg\bootstrap-vcpkg.bat -disableMetrics
-        shell: cmd
-
-      - name: Cache vcpkg binary cache
-        uses: actions/cache@v4
-        with:
-          path: C:\vcpkg-cache
-          key: vcpkg-${{ matrix.settings.triplet }}-${{ hashFiles('vcpkg') }}
-
-      - name: Install libheif (vcpkg)
-        run: C:\vcpkg\vcpkg.exe install "libheif[core]:${{ matrix.settings.triplet }}"
-        shell: cmd
-        env:
-          VCPKG_BINARY_SOURCES: 'files,C:\vcpkg-cache,readwrite'
-
       - name: setup pnpm
         uses: pnpm/action-setup@v2
         with:
@@ -102,7 +82,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          VCPKG_ROOT: C:\vcpkg
         with:
           args: ${{ matrix.settings.args }}
           tagName: v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version

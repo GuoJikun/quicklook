@@ -1,17 +1,6 @@
 use std::path::PathBuf;
-use std::sync::OnceLock;
 
 use quicklook_error::QuickLookError;
-
-// libheif 解码 hooks 是进程级全局状态，且 register_format_detection_hook 不去重，
-// 重复调用会让全局探测列表无限膨胀，因此整个进程生命周期只注册一次。
-static REGISTER_HOOKS: OnceLock<()> = OnceLock::new();
-
-fn ensure_decoding_hooks() {
-    REGISTER_HOOKS.get_or_init(|| {
-        libheif_rs::integration::image::register_all_decoding_hooks();
-    });
-}
 
 pub fn psd_to_png(path: &str, temp_path: &PathBuf) -> Result<(), QuickLookError> {
     let file = std::fs::File::open(path)
@@ -31,11 +20,15 @@ pub fn psd_to_png(path: &str, temp_path: &PathBuf) -> Result<(), QuickLookError>
 }
 
 pub fn heic_to_png(path: &str, temp_path: &PathBuf) -> Result<(), QuickLookError> {
-    ensure_decoding_hooks();
-    let img = image::open(path)
-        .map_err(|e| QuickLookError::ImageProcessing(format!("heic: 读取图片失败: {}", e)))?;
-    img.to_rgba8()
-        .save_with_format(temp_path, image::ImageFormat::Png)
+    let options = heic_rs::DecodeOptions {
+        layout: heic_rs::PixelLayout::Rgba8,
+        ..Default::default()
+    };
+    let decoded = heic_rs::io::decode_file(path, &options)
+        .map_err(|e| QuickLookError::ImageProcessing(format!("heic: 解码失败: {}", e)))?;
+    let img = image::RgbaImage::from_raw(decoded.width, decoded.height, decoded.data)
+        .ok_or_else(|| QuickLookError::ImageProcessing("heic: 构建 RgbaImage 失败".to_string()))?;
+    img.save_with_format(temp_path, image::ImageFormat::Png)
         .map_err(|e| QuickLookError::ImageProcessing(e.to_string()))
 }
 

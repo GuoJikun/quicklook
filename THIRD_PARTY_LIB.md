@@ -35,7 +35,7 @@
 
 - [image](https://github.com/image-rs/image) — 通用图像编解码
 - [psd](https://github.com/soenkehahn/psd) — PSD 解析
-- [libheif-rs](https://github.com/oknotokcomputer/libheif-rs) — HEIC/HEIF 解析（依赖系统 vcpkg 安装 libheif）
+- [heic-rs](https://github.com/tbraun96/heic-rs) — HEIC/HEIF 纯 Rust 解码（MIT OR Apache-2.0）
 - [jxl-oxide](https://github.com/tirr-c/jxl-oxide) — JPEG XL 解析
 
 **文档解析（crates/docs）**

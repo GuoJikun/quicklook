@@ -28,11 +28,7 @@ QuickLook 是一个 windows 平台的快速预览工具。
 - Rust [官方网站](https://www.rust-lang.org/tools/install)
 - Tauri [官方网站](https://tauri.app/start/prerequisites/)
 - NodeJS [官方网站](https://nodejs.org/)
-- vcpkg + libheif（HEIC/HEIF 图片解码依赖，无需 cargo-vcpkg）：
-  ```bash
-  vcpkg install "libheif[core]:x64-windows-static-md"  # 按目标架构安装对应 triplet
-  ```
-  安装后即可执行 `cargo check` / `pnpm tauri dev`。
+
 
 ### 拉取项目代码
 

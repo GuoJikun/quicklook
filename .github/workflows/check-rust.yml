@@ -28,24 +28,6 @@ jobs:
           workspaces: |
             . -> target
 
-      - name: Setup vcpkg
-        run: |
-          git clone https://github.com/microsoft/vcpkg.git --depth 1 --branch 2026.05.25 C:\vcpkg
-          C:\vcpkg\bootstrap-vcpkg.bat -disableMetrics
-        shell: cmd
-
-      - name: Cache vcpkg binary cache
-        uses: actions/cache@v4
-        with:
-          path: C:\vcpkg-cache
-          key: vcpkg-x64-windows-static-md-${{ hashFiles('vcpkg') }}
-
-      - name: Install libheif (vcpkg)
-        run: C:\vcpkg\vcpkg.exe install "libheif[core]:x64-windows-static-md"
-        shell: cmd
-        env:
-          VCPKG_BINARY_SOURCES: 'files,C:\vcpkg-cache,readwrite'
-
       - name: Copy pdfium dll
         run: |
           $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'x64' }
@@ -64,5 +46,4 @@ jobs:
         run: |
           cargo --version
           cargo check --locked --all-targets
-        env:
-          VCPKG_ROOT: C:\vcpkg
+

@@ -55,7 +55,7 @@ E:/private/Rust/quicklook/
 │           ├── not-support.vue    # 不支持提示
 │           └── components/preview-image.vue
 ├── src-tauri/                     # Rust 后端
-│   ├── Cargo.toml                 # 依赖 + vcpkg 配置
+│   ├── Cargo.toml                 # 依赖配置
 │   ├── tauri.conf.json            # Tauri 应用配置
 │   ├── capabilities/              # 权限配置
 │   ├── icons/                     # 应用图标
@@ -407,7 +407,7 @@ Cargo workspace (resolver = "2")
 ├── quicklook-image (crates/image/)
 │   ├── image (workspace, 多图像格式 features)
 │   ├── psd (Photoshop 解析)
-│   ├── libheif-rs (HEIC/HEIF 解码，需系统 vcpkg 安装 libheif)
+│   ├── heic-rs (HEIC/HEIF 纯 Rust 解码，无 C 依赖)
 │   ├── jxl-oxide (JPEG XL 解码)
 │   ├── log (workspace)
 │   └── quicklook-error (workspace)
