@@ -14,6 +14,33 @@ fn silent_command(program: &str) -> Command {
     cmd
 }
 
+/// 视频编码器：独显硬件编码优先，其次核显，最后 CPU 软编。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum VideoEncoder {
+    Nvenc,
+    Amf,
+    Qsv,
+    Libx264,
+}
+
+impl VideoEncoder {
+    fn codec_name(self) -> &'static str {
+        match self {
+            Self::Nvenc => "h264_nvenc",
+            Self::Amf => "h264_amf",
+            Self::Qsv => "h264_qsv",
+            Self::Libx264 => "libx264",
+        }
+    }
+
+    fn is_hardware(self) -> bool {
+        !matches!(self, Self::Libx264)
+    }
+}
+
+/// 进程内缓存已选定的编码器，避免重复探测。
+static SELECTED_ENCODER: LazyLock<Mutex<Option<VideoEncoder>>> = LazyLock::new(|| Mutex::new(None));
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VideoPreviewDecision {
@@ -167,8 +194,12 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, QuickLookError> {
     let (codec, audio_codec) = probe_codecs(Path::new(path))?;
     log::info!("检测到编解码器: video={}, audio={}", codec, audio_codec);
 
-    // 如果已是 h264，直接复制视频流；否则转码为 libx264
-    let video_codec = if codec == "h264" { "copy" } else { "libx264" };
+    // 如果已是 h264，直接复制视频流；否则按 独显 → 核显 → libx264 选编码器转码。
+    let video_encoder = if codec == "h264" {
+        None
+    } else {
+        Some(select_encoder())
+    };
 
     let mut hls_base_url = format!("{}", temp_dir.to_string_lossy().replace('\\', "/"));
     if !hls_base_url.ends_with('/') {
@@ -176,24 +207,13 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, QuickLookError> {
     }
 
     let mut ffmpeg = silent_command("ffmpeg");
-    ffmpeg
-        .current_dir(&temp_dir)
-        .arg("-i")
-        .arg(path)
-        .arg("-c:v")
-        .arg(video_codec);
+    ffmpeg.current_dir(&temp_dir).arg("-i").arg(path);
 
     // 转码时固定像素格式和 profile，提升浏览器/MSE 兼容性；copy 模式保持原编码。
-    if video_codec != "copy" {
-        ffmpeg
-            .arg("-preset")
-            .arg("veryfast")
-            .arg("-pix_fmt")
-            .arg("yuv420p")
-            .arg("-profile:v")
-            .arg("main")
-            .arg("-level")
-            .arg("4.0");
+    if let Some(encoder) = video_encoder {
+        apply_video_encode_args(&mut ffmpeg, encoder);
+    } else {
+        ffmpeg.arg("-c:v").arg("copy");
     }
 
     // 音频已是 aac 时直接复制，避免二次有损转码；否则转为 aac。
@@ -203,7 +223,7 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, QuickLookError> {
         ffmpeg.args(["-c:a", "aac", "-b:a", "128k", "-ac", "2", "-ar", "48000"]);
     }
 
-    let mut child = ffmpeg
+    let mut child = match ffmpeg
         .args([
             "-hls_time",
             "2",
@@ -220,7 +240,28 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, QuickLookError> {
             "index.m3u8",
         ])
         .spawn()
-        .map_err(|e| QuickLookError::VideoConversion(format!("启动 ffmpeg 失败: {}", e)))?;
+    {
+        Ok(child) => child,
+        Err(e) => {
+            // 硬件编码器启动失败时回退软编再试一次
+            if let Some(encoder) = video_encoder {
+                if encoder.is_hardware() {
+                    log::warn!(
+                        "硬件编码器 {} 启动失败: {}，回退 libx264 重试",
+                        encoder.codec_name(),
+                        e
+                    );
+                    set_selected_encoder(VideoEncoder::Libx264);
+                    let _ = std::fs::remove_dir_all(&temp_dir);
+                    return convert_video_to_hls(path);
+                }
+            }
+            return Err(QuickLookError::VideoConversion(format!(
+                "启动 ffmpeg 失败: {}",
+                e
+            )));
+        },
+    };
 
     // 记录 PID 和临时目录，以便在取消时终止进程
     {
@@ -272,10 +313,22 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, QuickLookError> {
         std::thread::sleep(std::time::Duration::from_millis(100));
     }
 
-    // m3u8 在 12 秒内未生成：终止进程、清理临时目录并向前端报错。
+    // m3u8 在 12 秒内未生成：终止进程、清理临时目录；硬件编码则回退软编重试。
     log::error!("ffmpeg 已启动，但 m3u8 生成超时，正在终止进程并清理临时文件");
     kill_ffmpeg_process();
     let _ = std::fs::remove_dir_all(&temp_dir);
+
+    if let Some(encoder) = video_encoder {
+        if encoder.is_hardware() && !FFMPEG_CANCELLED.load(Ordering::Relaxed) {
+            log::warn!(
+                "硬件编码器 {} 未产出 m3u8，回退 libx264 重试",
+                encoder.codec_name()
+            );
+            set_selected_encoder(VideoEncoder::Libx264);
+            return convert_video_to_hls(path);
+        }
+    }
+
     Err(QuickLookError::VideoConversion(
         "ffmpeg 已启动，但 m3u8 生成超时".to_string(),
     ))
@@ -335,6 +388,182 @@ fn probe_codecs(path: &Path) -> Result<(String, String), QuickLookError> {
 
     log::info!("ffprobe codecs: video='{}', audio='{}'", video, audio);
     Ok((video, audio))
+}
+
+/// 通过 WMI 读取显卡名称列表，用于决定硬件编码器试探顺序。
+fn detect_gpu_names() -> Vec<String> {
+    let output = match silent_command("powershell")
+        .args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            "Get-CimInstance Win32_VideoController | ForEach-Object { $_.Name }",
+        ])
+        .output()
+    {
+        Ok(output) => output,
+        Err(e) => {
+            log::warn!("读取显卡信息失败: {}", e);
+            return Vec::new();
+        },
+    };
+
+    if !output.status.success() {
+        log::warn!(
+            "读取显卡信息失败: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        );
+        return Vec::new();
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    stdout
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .map(str::to_string)
+        .collect()
+}
+
+fn gpu_name_contains(names: &[String], keyword: &str) -> bool {
+    let key = keyword.to_ascii_uppercase();
+    names.iter().any(|n| n.to_ascii_uppercase().contains(&key))
+}
+
+/// 编码器候选顺序：独显（NVIDIA/AMD）→ 核显（Intel）→ libx264 软编。
+fn encoder_candidates() -> Vec<VideoEncoder> {
+    let names = detect_gpu_names();
+    log::info!("检测到显卡: {:?}", names);
+
+    let mut candidates = Vec::new();
+    // 独显优先
+    if gpu_name_contains(&names, "NVIDIA") {
+        candidates.push(VideoEncoder::Nvenc);
+    }
+    if gpu_name_contains(&names, "AMD") || gpu_name_contains(&names, "ATI") {
+        candidates.push(VideoEncoder::Amf);
+    }
+    // 核显
+    if gpu_name_contains(&names, "INTEL") {
+        candidates.push(VideoEncoder::Qsv);
+    }
+    // 显卡识别失败时仍按常见独显顺序试探，由试编过滤
+    if candidates.is_empty() {
+        candidates.extend([VideoEncoder::Nvenc, VideoEncoder::Amf, VideoEncoder::Qsv]);
+    }
+    // 最终兜底
+    candidates.push(VideoEncoder::Libx264);
+    candidates
+}
+
+/// 试编 1 帧，确认该硬件编码器当前真能工作。
+fn probe_encoder(encoder: VideoEncoder) -> bool {
+    let ok = silent_command("ffmpeg")
+        .args([
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-f",
+            "lavfi",
+            "-i",
+            "color=c=black:s=256x256:d=0.1",
+            "-frames:v",
+            "1",
+            "-c:v",
+            encoder.codec_name(),
+            "-f",
+            "null",
+            "-",
+        ])
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false);
+    if ok {
+        log::info!("编码器 {} 试编通过", encoder.codec_name());
+    } else {
+        log::warn!("编码器 {} 试编失败", encoder.codec_name());
+    }
+    ok
+}
+
+fn set_selected_encoder(encoder: VideoEncoder) {
+    *SELECTED_ENCODER.lock().unwrap_or_else(|e| e.into_inner()) = Some(encoder);
+}
+
+/// 选定编码器并缓存：独显 → 核显 → libx264，每个候选用试编确认。
+fn select_encoder() -> VideoEncoder {
+    {
+        let guard = SELECTED_ENCODER.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(encoder) = *guard {
+            return encoder;
+        }
+    }
+
+    for candidate in encoder_candidates() {
+        if candidate == VideoEncoder::Libx264 || probe_encoder(candidate) {
+            log::info!("选用视频编码器: {}", candidate.codec_name());
+            set_selected_encoder(candidate);
+            return candidate;
+        }
+    }
+
+    set_selected_encoder(VideoEncoder::Libx264);
+    VideoEncoder::Libx264
+}
+
+/// 为转码命令追加编码器及其参数（像素格式/profile 固定以保证浏览器兼容）。
+fn apply_video_encode_args(ffmpeg: &mut Command, encoder: VideoEncoder) {
+    ffmpeg.arg("-c:v").arg(encoder.codec_name());
+    match encoder {
+        VideoEncoder::Libx264 => {
+            ffmpeg
+                .arg("-preset")
+                .arg("veryfast")
+                .arg("-pix_fmt")
+                .arg("yuv420p")
+                .arg("-profile:v")
+                .arg("main")
+                .arg("-level")
+                .arg("4.0");
+        },
+        VideoEncoder::Nvenc => {
+            ffmpeg
+                .arg("-preset")
+                .arg("p4")
+                .arg("-cq")
+                .arg("23")
+                .arg("-pix_fmt")
+                .arg("yuv420p")
+                .arg("-profile:v")
+                .arg("main")
+                .arg("-level")
+                .arg("4.0");
+        },
+        VideoEncoder::Qsv => {
+            ffmpeg
+                .arg("-preset")
+                .arg("fast")
+                .arg("-global_quality")
+                .arg("23")
+                .arg("-pix_fmt")
+                .arg("yuv420p")
+                .arg("-profile:v")
+                .arg("main")
+                .arg("-level")
+                .arg("4.0");
+        },
+        VideoEncoder::Amf => {
+            ffmpeg
+                .arg("-quality")
+                .arg("speed")
+                .arg("-pix_fmt")
+                .arg("yuv420p")
+                .arg("-profile:v")
+                .arg("main")
+                .arg("-level")
+                .arg("4.0");
+        },
+    }
 }
 
 fn is_compatible_video(_path: &Path, extension: &str, codec: &str) -> bool {
