@@ -48,7 +48,7 @@ pub fn prepare_video_for_preview(path: &str) -> Result<VideoPreviewDecision, Qui
         .unwrap_or_default()
         .to_lowercase();
 
-    let codec = probe_video_codec(path)?;
+    let (codec, _audio_codec) = probe_codecs(path)?;
     log::info!(
         "prepare_video_for_preview: path={:?}, ext={}, codec={}",
         path,
@@ -163,9 +163,9 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, QuickLookError> {
 
     std::fs::create_dir_all(&temp_dir)?;
 
-    // 用 ffprobe 检测视频流编解码器
-    let codec = probe_video_codec(Path::new(path))?;
-    log::info!("检测到视频编解码器: {}", codec);
+    // 用 ffprobe 检测视频/音频流编解码器
+    let (codec, audio_codec) = probe_codecs(Path::new(path))?;
+    log::info!("检测到编解码器: video={}, audio={}", codec, audio_codec);
 
     // 如果已是 h264，直接复制视频流；否则转码为 libx264
     let video_codec = if codec == "h264" { "copy" } else { "libx264" };
@@ -196,16 +196,15 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, QuickLookError> {
             .arg("4.0");
     }
 
+    // 音频已是 aac 时直接复制，避免二次有损转码；否则转为 aac。
+    if audio_codec == "aac" {
+        ffmpeg.arg("-c:a").arg("copy");
+    } else {
+        ffmpeg.args(["-c:a", "aac", "-b:a", "128k", "-ac", "2", "-ar", "48000"]);
+    }
+
     let mut child = ffmpeg
         .args([
-            "-c:a",
-            "aac",
-            "-b:a",
-            "128k",
-            "-ac",
-            "2",
-            "-ar",
-            "48000",
             "-hls_time",
             "2",
             "-hls_list_size",
@@ -282,15 +281,14 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, QuickLookError> {
     ))
 }
 
-fn probe_video_codec(path: &Path) -> Result<String, QuickLookError> {
+/// 探测首条视频流和音频流的编码名。失败时返回空串，由调用方走保守转码路径。
+fn probe_codecs(path: &Path) -> Result<(String, String), QuickLookError> {
     let output = match silent_command("ffprobe")
         .args([
             "-v",
             "error",
-            "-select_streams",
-            "v:0",
             "-show_entries",
-            "stream=codec_name",
+            "stream=codec_type,codec_name",
             "-of",
             "csv=p=0",
             path.to_string_lossy().as_ref(),
@@ -300,27 +298,43 @@ fn probe_video_codec(path: &Path) -> Result<String, QuickLookError> {
         Ok(output) => output,
         Err(e) => {
             log::warn!("ffprobe 执行失败: {}，将使用转码模式", e);
-            return Ok(String::new());
+            return Ok((String::new(), String::new()));
         },
     };
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         log::warn!("ffprobe 退出异常: {}，将使用转码模式", stderr.trim());
-        return Ok(String::new());
+        return Ok((String::new(), String::new()));
     }
 
     let stdout = match String::from_utf8(output.stdout) {
         Ok(stdout) => stdout,
         Err(e) => {
             log::warn!("ffprobe 输出解析失败: {}，将使用转码模式", e);
-            return Ok(String::new());
+            return Ok((String::new(), String::new()));
         },
     };
 
-    let codec = stdout.trim().to_lowercase();
-    log::info!("ffprobe stdout='{}'", codec);
-    Ok(codec)
+    let mut video = String::new();
+    let mut audio = String::new();
+    for line in stdout.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        let mut parts = line.splitn(2, ',');
+        let kind = parts.next().unwrap_or_default().trim().to_lowercase();
+        let name = parts.next().unwrap_or_default().trim().to_lowercase();
+        match kind.as_str() {
+            "video" if video.is_empty() => video = name,
+            "audio" if audio.is_empty() => audio = name,
+            _ => {},
+        }
+    }
+
+    log::info!("ffprobe codecs: video='{}', audio='{}'", video, audio);
+    Ok((video, audio))
 }
 
 fn is_compatible_video(_path: &Path, extension: &str, codec: &str) -> bool {
