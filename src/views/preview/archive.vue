@@ -39,6 +39,44 @@ async function loadArchive(path: string, password?: string) {
     })
 }
 
+/** 弹出密码输入框；用户取消/关闭返回 null */
+async function promptPassword(message: string): Promise<string | null> {
+    try {
+        const { value } = await ElMessageBox.prompt(message, '输入密码', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            inputType: 'password',
+            inputPlaceholder: '请输入密码',
+            closeOnClickModal: false,
+        })
+        return value ?? ''
+    } catch (err: unknown) {
+        // ElMessageBox.prompt 取消/关闭会 reject: 'cancel' | 'close'
+        if (err === 'cancel' || err === 'close') {
+            return null
+        }
+        throw err
+    }
+}
+
+/** 密码输错时允许重新输入，直到成功或用户取消 */
+async function loadArchiveWithPasswordRetry(path: string) {
+    let message = '该压缩文件需要密码才能查看'
+    for (;;) {
+        const password = await promptPassword(message)
+        if (password === null) {
+            return
+        }
+        try {
+            await loadArchive(path, password)
+            return
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err)
+            message = `密码错误或无法打开：${msg}，请重新输入`
+        }
+    }
+}
+
 onMounted(async () => {
     fileInfo.value = route?.query as unknown as FileInfo
     const val = fileInfo.value.path as string
@@ -46,24 +84,7 @@ onMounted(async () => {
     try {
         const isProtected = await invoke<boolean>('archive_is_password_protected', { path: val })
         if (isProtected) {
-            try {
-                const { value } = await ElMessageBox.prompt('该压缩文件需要密码才能查看', '输入密码', {
-                    confirmButtonText: '确定',
-                    cancelButtonText: '取消',
-                    inputType: 'password',
-                    inputPlaceholder: '请输入密码',
-                    closeOnClickModal: false,
-                })
-                await loadArchive(val, value ?? undefined)
-            } catch (err: unknown) {
-                // ElMessageBox.prompt 取消/关闭会 reject: 'cancel' | 'close'
-                if (err === 'cancel' || err === 'close') {
-                    // 用户点击取消，不做任何操作
-                    return
-                }
-                const msg = err instanceof Error ? err.message : String(err)
-                await ElMessageBox.alert(msg, '解压失败')
-            }
+            await loadArchiveWithPasswordRetry(val)
         } else {
             await loadArchive(val)
         }
