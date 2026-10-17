@@ -1,4 +1,4 @@
-use crate::{ArchiveError, Extract};
+use crate::{ArchiveError, Extract, normalize_entry_name};
 use hadris_cpio::mode::FileType;
 use hadris_cpio::sync::CpioArchiveReader;
 use std::{
@@ -22,10 +22,12 @@ pub fn list_cpio_entries<P: AsRef<Path>>(path: P) -> Result<Vec<Extract>, Archiv
         };
 
         let header = entry.header();
-        let name = entry
-            .name_str()
-            .map(str::to_string)
-            .unwrap_or_else(|_| "<invalid>".to_string());
+        let name = normalize_entry_name(
+            &entry
+                .name_str()
+                .map(str::to_string)
+                .unwrap_or_else(|_| "<invalid>".to_string()),
+        );
         let size = entry.file_size() as u64;
         let mtime = header.mtime;
         let is_dir = matches!(entry.file_type(), FileType::Directory);

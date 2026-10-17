@@ -1,4 +1,4 @@
-use crate::{ArchiveError, Extract};
+use crate::{ArchiveError, Extract, normalize_entry_name};
 use chrono::NaiveDate;
 use std::path::Path;
 
@@ -23,9 +23,8 @@ pub fn list_rar_entries<P: AsRef<Path>>(
     for entry in archive {
         match entry {
             Ok(header) => {
-                let raw_name = header.filename.to_string_lossy().to_string();
                 // 统一路径分隔符为 '/'
-                let name = raw_name.replace('\\', "/");
+                let name = normalize_entry_name(&header.filename.to_string_lossy());
                 let size = header.unpacked_size;
                 let is_dir = header.is_directory();
 

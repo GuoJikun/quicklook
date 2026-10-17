@@ -18,80 +18,30 @@ interface ExtractedFile {
     size: number
     last_modified: string
     dir: boolean
+    children?: ExtractedFile[] | null
 }
 
-class FileNode {
-    name: string
-    size: number
-    last_modified: string
-    isDir: boolean
-    children: FileNode[]
-    constructor(name: string, size: number, last_modified: string, isDir: boolean) {
-        this.name = name
-        this.size = size
-        this.last_modified = last_modified
-        this.isDir = isDir
-        this.children = [] // 子目录或文件
-    }
-
-    addChild(child: FileNode) {
-        this.children.push(child)
-    }
-}
-
-function buildFileTree(files: ExtractedFile[]): FileNode {
-    const root = new FileNode('root', 0, '', true) // 根节点是一个虚拟的根目录
-
-    files.forEach(file => {
-        const { name = '', size, last_modified = '', dir } = file
-        const isDir = dir === true // 'true' or 'false' 字符串转换成布尔值
-        const parts = name.split('/') // 按路径分割
-        const filename = parts.pop() // 文件名是路径的最后一部分
-
-        let currentNode = root
-
-        parts.forEach(part => {
-            // 查找是否已经存在该目录节点
-            let dirNode = currentNode.children.find(child => child.name === part && child.isDir)
-
-            // 如果目录节点不存在且不是空目录，则创建并添加
-            if (!dirNode) {
-                dirNode = new FileNode(part, 0, '', true)
-                if (dirNode.name !== '') currentNode.addChild(dirNode)
-            }
-
-            // 进入下一级目录
-            currentNode = dirNode
-        })
-
-        // 创建文件节点并添加到当前目录
-        if (filename !== '') {
-            const newFile = new FileNode(filename as string, size, last_modified, isDir)
-            currentNode.addChild(newFile)
-        }
-    })
-
-    return root
+function displayName(path: string): string {
+    const trimmed = path.replace(/\/+$/, '')
+    const parts = trimmed.split('/').filter(Boolean)
+    return parts[parts.length - 1] ?? path
 }
 
 const fileInfo = ref<FileInfo>()
-const content = ref<Array<FileNode>>()
+const content = ref<Array<ExtractedFile>>([])
 const loading = ref(true)
 
-async function loadArchive(path: string, mode: string, password?: string) {
-    const txt: Array<ExtractedFile> = await invoke('archive', {
+async function loadArchive(path: string, password?: string) {
+    // 后端返回已构建好的嵌套树（name 为完整路径）
+    content.value = await invoke<Array<ExtractedFile>>('archive', {
         path,
-        mode,
         password: password ?? null,
     })
-    const treeData = buildFileTree(txt)
-    content.value = treeData.children as Array<FileNode>
 }
 
 onMounted(async () => {
     fileInfo.value = route?.query as unknown as FileInfo
     const val = fileInfo.value.path as string
-    const mode = fileInfo.value.extension as string
 
     try {
         const isProtected = await invoke<boolean>('archive_is_password_protected', { path: val })
@@ -104,7 +54,7 @@ onMounted(async () => {
                     inputPlaceholder: '请输入密码',
                     closeOnClickModal: false,
                 })
-                await loadArchive(val, mode, value ?? undefined)
+                await loadArchive(val, value ?? undefined)
             } catch (err: unknown) {
                 // ElMessageBox.prompt 取消/关闭会 reject: 'cancel' | 'close'
                 if (err === 'cancel' || err === 'close') {
@@ -115,10 +65,11 @@ onMounted(async () => {
                 await ElMessageBox.alert(msg, '解压失败')
             }
         } else {
-            await loadArchive(val, mode)
+            await loadArchive(val)
         }
-    } catch {
-        // 其他错误静默处理
+    } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err)
+        await ElMessageBox.alert(msg, '压缩文件读取失败')
     } finally {
         loading.value = false
     }
@@ -142,11 +93,11 @@ const treeProps = {
                     :icon="ArrowRight"
                     :indent="12"
                 >
-                    <template #default="{ node, data }">
+                    <template #default="{ data }">
                         <div class="custom-row">
-                            <span class="custom-row-1">{{ node.label }}</span>
-                            <span class="custom-row-2">{{ data.isDir ? '' : formatBytes(data.size) }}</span>
-                            <span class="custom-row-3">{{ data.isDir ? '' : data.last_modified }}</span>
+                            <span class="custom-row-1">{{ displayName(data.name) }}</span>
+                            <span class="custom-row-2">{{ data.dir ? '' : formatBytes(data.size) }}</span>
+                            <span class="custom-row-3">{{ data.dir ? '' : data.last_modified }}</span>
                         </div>
                     </template>
                 </el-tree>

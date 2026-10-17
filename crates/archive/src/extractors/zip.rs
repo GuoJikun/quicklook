@@ -1,4 +1,4 @@
-use crate::{ArchiveError, Extract};
+use crate::{ArchiveError, Extract, normalize_entry_name};
 use std::{fs::File, path::Path};
 use zip::ZipArchive;
 
@@ -27,7 +27,7 @@ pub fn list_zip_entries<P: AsRef<Path>>(
             None => archive.by_index_raw(i)?,
         };
         let is_dir = file.is_dir();
-        let name = decode_entry_name(file.name_raw());
+        let name = normalize_entry_name(&decode_entry_name(file.name_raw()));
         let size = file.size();
         let last_modified = file.last_modified().unwrap_or_default().to_string();
 

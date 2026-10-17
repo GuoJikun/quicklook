@@ -1,4 +1,4 @@
-use crate::{ArchiveError, Extract};
+use crate::{ArchiveError, Extract, normalize_entry_name};
 use ruzstd::decoding::StreamingDecoder;
 use std::{
     fs::File,
@@ -15,7 +15,7 @@ fn parse_tar_zst_entries<R: std::io::Read>(reader: R) -> Result<Vec<Extract>, Ar
     for entry_result in archive.entries()? {
         let entry = entry_result?;
         let header = entry.header();
-        let name = entry.path()?.to_string_lossy().into_owned();
+        let name = normalize_entry_name(&entry.path()?.to_string_lossy());
         let size = header.size()?;
         let mtime = header.mtime()?;
         let is_dir = header.entry_type().is_dir();

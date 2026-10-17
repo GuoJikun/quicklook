@@ -1,4 +1,4 @@
-use crate::{ArchiveError, Extract};
+use crate::{ArchiveError, Extract, normalize_entry_name};
 use std::{
     fs::File,
     path::Path,
@@ -14,9 +14,11 @@ pub fn list_ar_entries<P: AsRef<Path>>(path: P) -> Result<Vec<Extract>, ArchiveE
     while let Some(entry_result) = archive.next_entry() {
         let mut entry = entry_result?;
         let identifier = entry.header().identifier();
-        let name = std::str::from_utf8(identifier)
-            .map(str::to_string)
-            .unwrap_or_else(|_| String::from_utf8_lossy(identifier).into_owned());
+        let name = normalize_entry_name(
+            &std::str::from_utf8(identifier)
+                .map(str::to_string)
+                .unwrap_or_else(|_| String::from_utf8_lossy(identifier).into_owned()),
+        );
         let size = entry.header().size();
         let is_dir = name.ends_with('/');
 

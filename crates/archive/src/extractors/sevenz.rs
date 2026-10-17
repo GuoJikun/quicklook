@@ -1,4 +1,4 @@
-use crate::{ArchiveError, Extract};
+use crate::{ArchiveError, Extract, normalize_entry_name};
 use sevenz_rust::Password;
 use std::{fs::File, io::BufReader, path::Path};
 
@@ -50,7 +50,7 @@ pub fn list_7z_entries<P: AsRef<Path>>(
         .files
         .iter()
         .map(|entry| {
-            let name = entry.name.clone();
+            let name = normalize_entry_name(&entry.name);
             let size = if entry.has_stream { entry.size } else { 0 };
             let is_dir = entry.is_directory;
             let last_modified = if entry.has_last_modified_date {

@@ -5,6 +5,24 @@ use std::path::Path;
 pub mod error;
 pub mod extractors;
 
+/// 统一条目路径：Windows 分隔符 `\` 归一为 `/`，去掉重复斜杠
+pub fn normalize_entry_name(name: &str) -> String {
+    let mut out = String::with_capacity(name.len());
+    let mut prev_slash = false;
+    for ch in name.chars() {
+        if ch == '\\' || ch == '/' {
+            if !prev_slash {
+                out.push('/');
+            }
+            prev_slash = true;
+        } else {
+            out.push(ch);
+            prev_slash = false;
+        }
+    }
+    out
+}
+
 pub use error::ArchiveError;
 pub use extractors::ar::list_ar_entries;
 pub use extractors::cpio::list_cpio_entries;
@@ -19,7 +37,7 @@ pub use extractors::zst::list_tar_zst_entries;
 /// 压缩文件条目信息
 #[derive(Debug, Clone, Serialize)]
 pub struct Extract {
-    /// 文件名
+    /// 文件名（树节点为归一化完整路径）
     pub name: String,
     /// 文件大小
     pub size: u64,
@@ -28,6 +46,7 @@ pub struct Extract {
     /// 是否是目录
     pub dir: bool,
     /// 子目录/文件（用于构建树状结构）
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub children: Option<Vec<Extract>>,
 }
 
@@ -97,41 +116,113 @@ impl Extract {
         Ok(tree)
     }
 
-    /// 将扁平的条目列表构建为嵌套的目录树
-    pub fn build_tree(mut entries: Vec<Extract>) -> Vec<Extract> {
-        // 按路径排序，确保父目录在子项之前
-        entries.sort_by(|a, b| a.name.cmp(&b.name));
+    /// 将扁平的条目列表构建为嵌套的目录树。
+    ///
+    /// - 自动合成缺失的中间目录（与前端预览语义一致，避免丢条目）
+    /// - 若归档内存在目录条目，保留其 `size` / `last_modified`
+    /// - 节点 `name` 为归一化后的完整路径（不含目录尾部 `/`）
+    pub fn build_tree(entries: Vec<Extract>) -> Vec<Extract> {
+        let mut nodes: Vec<Extract> = Vec::new();
+        let mut children: Vec<Vec<usize>> = Vec::new();
+        let mut path_to_idx: HashMap<String, usize> = HashMap::new();
+        let mut roots: Vec<usize> = Vec::new();
 
-        let mut root_items = Vec::new();
-        let mut dirs_map: HashMap<String, Vec<Extract>> = HashMap::new();
-
-        for entry in entries {
-            let path_parts: Vec<&str> = entry.name.trim_end_matches('/').split('/').collect();
-
-            if path_parts.len() == 1 {
-                root_items.push(entry);
-            } else {
-                let parent_path = path_parts[..path_parts.len() - 1].join("/");
-                dirs_map.entry(parent_path).or_default().push(entry);
+        for mut entry in entries {
+            entry.name = normalize_entry_name(&entry.name);
+            let trimmed = entry.name.trim_end_matches('/').trim_matches('/');
+            if trimmed.is_empty() {
+                continue;
             }
-        }
 
-        // 递归构建目录树
-        Self::build_tree_recursive(&mut root_items, &dirs_map);
-        root_items
-    }
+            let segments: Vec<&str> = trimmed.split('/').filter(|s| !s.is_empty()).collect();
+            if segments.is_empty() {
+                continue;
+            }
 
-    fn build_tree_recursive(items: &mut Vec<Extract>, dirs_map: &HashMap<String, Vec<Extract>>) {
-        for item in items.iter_mut() {
-            if item.dir {
-                let key = item.name.trim_end_matches('/');
-                if let Some(children) = dirs_map.get(key) {
-                    let mut child_items = children.clone();
-                    Self::build_tree_recursive(&mut child_items, dirs_map);
-                    item.children = Some(child_items);
+            let mut parent: Option<usize> = None;
+            let mut path_so_far = String::new();
+
+            for (i, seg) in segments.iter().enumerate() {
+                if !path_so_far.is_empty() {
+                    path_so_far.push('/');
+                }
+                path_so_far.push_str(seg);
+                let is_last = i + 1 == segments.len();
+                let path_key = path_so_far.clone();
+
+                if is_last && !entry.dir {
+                    // 文件节点：直接挂到父目录
+                    let mut node = entry.clone();
+                    node.name = path_key.clone();
+                    node.children = None;
+                    let idx = nodes.len();
+                    nodes.push(node);
+                    children.push(Vec::new());
+                    path_to_idx.insert(path_key, idx);
+                    match parent {
+                        Some(p) => children[p].push(idx),
+                        None => roots.push(idx),
+                    }
+                } else {
+                    // 目录节点（中间目录或显式目录条目）
+                    let idx = if let Some(&idx) = path_to_idx.get(&path_key) {
+                        idx
+                    } else {
+                        let node = Extract::new(path_key.clone(), 0, String::new(), true);
+                        let idx = nodes.len();
+                        nodes.push(node);
+                        children.push(Vec::new());
+                        path_to_idx.insert(path_key.clone(), idx);
+                        match parent {
+                            Some(p) => children[p].push(idx),
+                            None => roots.push(idx),
+                        }
+                        idx
+                    };
+
+                    // 显式目录条目：合并元数据
+                    if is_last && entry.dir {
+                        nodes[idx].size = entry.size;
+                        if !entry.last_modified.is_empty() {
+                            nodes[idx].last_modified = entry.last_modified.clone();
+                        }
+                        nodes[idx].dir = true;
+                    }
+                    parent = Some(idx);
                 }
             }
         }
+
+        // 组装为嵌套结构，子节点按名称排序保证展示稳定
+        fn assemble(
+            nodes: &mut Vec<Extract>,
+            children: &mut Vec<Vec<usize>>,
+            idx: usize,
+        ) -> Extract {
+            let mut node = Extract::new(
+                std::mem::take(&mut nodes[idx].name),
+                nodes[idx].size,
+                std::mem::take(&mut nodes[idx].last_modified),
+                nodes[idx].dir,
+            );
+            let kids = std::mem::take(&mut children[idx]);
+            if kids.is_empty() {
+                return node;
+            }
+            let mut child_items: Vec<Extract> = kids
+                .into_iter()
+                .map(|c| assemble(nodes, children, c))
+                .collect();
+            child_items.sort_by(|a, b| a.name.cmp(&b.name));
+            node.children = Some(child_items);
+            node
+        }
+
+        roots.sort_by(|&a, &b| nodes[a].name.cmp(&nodes[b].name));
+        roots
+            .into_iter()
+            .map(|idx| assemble(&mut nodes, &mut children, idx))
+            .collect()
     }
 }
 
@@ -214,5 +305,114 @@ pub extern "C" fn archive_is_password_protected(path: *const std::os::raw::c_cha
         Ok(true) => 1,
         Ok(false) => 0,
         Err(_) => -1,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn entry(name: &str, size: u64, mtime: &str, dir: bool) -> Extract {
+        Extract::new(name.to_string(), size, mtime.to_string(), dir)
+    }
+
+    fn find<'a>(nodes: &'a [Extract], path: &str) -> Option<&'a Extract> {
+        nodes.iter().find(|n| n.name == path)
+    }
+
+    fn find_in_children<'a>(parent: &'a Extract, path: &str) -> Option<&'a Extract> {
+        parent
+            .children
+            .as_ref()
+            .and_then(|kids| kids.iter().find(|n| n.name == path))
+    }
+
+    #[test]
+    fn normalize_backslashes_and_duplicate_slashes() {
+        assert_eq!(normalize_entry_name("a\\b\\c.txt"), "a/b/c.txt");
+        assert_eq!(normalize_entry_name("a//b///c.txt"), "a/b/c.txt");
+        assert_eq!(normalize_entry_name("a/b/c.txt"), "a/b/c.txt");
+    }
+
+    #[test]
+    fn build_tree_synthesizes_missing_intermediate_dirs() {
+        // 仅有深层文件、无任何目录条目（常见于 JAR/部分 ZIP）
+        let tree = Extract::build_tree(vec![entry("a/b/c.txt", 10, "2024-01-01 00:00:00", false)]);
+
+        assert_eq!(tree.len(), 1);
+        let a = &tree[0];
+        assert_eq!(a.name, "a");
+        assert!(a.dir);
+        assert!(a.last_modified.is_empty());
+
+        let b = find_in_children(a, "a/b").expect("should synthesize a/b");
+        assert!(b.dir);
+
+        let c = find_in_children(b, "a/b/c.txt").expect("should keep file");
+        assert_eq!(c.size, 10);
+        assert!(!c.dir);
+    }
+
+    #[test]
+    fn build_tree_keeps_explicit_dir_metadata() {
+        let tree = Extract::build_tree(vec![
+            entry("a/", 0, "2020-06-15 12:00:00", true),
+            entry("a/b.txt", 3, "2021-01-01 00:00:00", false),
+        ]);
+
+        let a = find(&tree, "a").expect("dir a");
+        assert!(a.dir);
+        assert_eq!(a.last_modified, "2020-06-15 12:00:00");
+        let _ = find_in_children(a, "a/b.txt").expect("child file");
+    }
+
+    #[test]
+    fn build_tree_merges_dir_metadata_after_synthesis() {
+        // 先出现子文件、后出现目录条目时，目录元数据仍应保留
+        let tree = Extract::build_tree(vec![
+            entry("a/b/c.txt", 1, "", false),
+            entry("a/b/", 0, "2022-03-04 05:06:07", true),
+        ]);
+
+        let a = find(&tree, "a").expect("a");
+        let b = find_in_children(a, "a/b").expect("a/b");
+        assert_eq!(b.last_modified, "2022-03-04 05:06:07");
+    }
+
+    #[test]
+    fn build_tree_normalizes_backslash_paths() {
+        let tree = Extract::build_tree(vec![entry("dir\\sub\\file.bin", 5, "", false)]);
+        assert_eq!(tree[0].name, "dir");
+        let sub = find_in_children(&tree[0], "dir/sub").expect("dir/sub");
+        let _ = find_in_children(sub, "dir/sub/file.bin").expect("file");
+    }
+
+    #[test]
+    fn build_tree_root_files() {
+        let tree = Extract::build_tree(vec![
+            entry("readme.txt", 1, "", false),
+            entry("z.txt", 2, "", false),
+        ]);
+        assert_eq!(tree.len(), 2);
+        assert_eq!(tree[0].name, "readme.txt");
+        assert_eq!(tree[1].name, "z.txt");
+    }
+
+    #[test]
+    fn build_tree_children_sorted_by_name() {
+        let tree = Extract::build_tree(vec![
+            entry("a/z.txt", 1, "", false),
+            entry("a/a.txt", 1, "", false),
+            entry("a/m/", 0, "", true),
+        ]);
+        let a = find(&tree, "a").expect("a");
+        let names: Vec<_> = a
+            .children
+            .as_ref()
+            .unwrap()
+            .iter()
+            .map(|c| c.name.as_str())
+            .collect();
+        assert_eq!(names, vec!["a/a.txt", "a/m", "a/z.txt"]);
     }
 }
