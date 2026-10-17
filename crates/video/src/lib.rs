@@ -1,9 +1,18 @@
+use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{LazyLock, Mutex};
 
 use quicklook_error::QuickLookError;
 use serde::Serialize;
+
+/// CREATE_NO_WINDOW：启动控制台子进程时不弹出终端窗口。
+fn silent_command(program: &str) -> Command {
+    let mut cmd = Command::new(program);
+    cmd.creation_flags(0x0800_0000);
+    cmd
+}
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -18,7 +27,7 @@ static FFMPEG_CANCELLED: AtomicBool = AtomicBool::new(false);
 
 /// 检测本机是否安装了 ffmpeg
 pub fn check_ffmpeg() -> bool {
-    std::process::Command::new("ffmpeg")
+    silent_command("ffmpeg")
         .arg("-version")
         .output()
         .map(|o| o.status.success())
@@ -75,9 +84,15 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, QuickLookError> {
         return Err(QuickLookError::FfmpegNotFound);
     }
 
-    // 根据文件路径生成唯一临时目录（同一文件复用缓存）
+    // 缓存 key：路径 + size + mtime，文件被覆盖修改后不会误命中旧 HLS
     let mut hasher = DefaultHasher::new();
     path.hash(&mut hasher);
+    if let Ok(meta) = std::fs::metadata(path) {
+        meta.len().hash(&mut hasher);
+        if let Ok(modified) = meta.modified() {
+            modified.hash(&mut hasher);
+        }
+    }
     let hash = hasher.finish();
 
     let mut videos_dir = std::env::temp_dir();
@@ -160,7 +175,7 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, QuickLookError> {
         hls_base_url.push('/');
     }
 
-    let mut ffmpeg = std::process::Command::new("ffmpeg");
+    let mut ffmpeg = silent_command("ffmpeg");
     ffmpeg
         .current_dir(&temp_dir)
         .arg("-i")
@@ -268,7 +283,7 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, QuickLookError> {
 }
 
 fn probe_video_codec(path: &Path) -> Result<String, QuickLookError> {
-    let output = match std::process::Command::new("ffprobe")
+    let output = match silent_command("ffprobe")
         .args([
             "-v",
             "error",
@@ -327,7 +342,7 @@ fn kill_ffmpeg_process() {
     if let Some((pid, temp_dir)) = entry {
         log::info!("正在终止 ffmpeg 进程 (PID: {})", pid);
         // 使用 taskkill 强制结束进程（Windows 平台）
-        let result = std::process::Command::new("taskkill")
+        let result = silent_command("taskkill")
             .args(["/F", "/PID", &pid.to_string()])
             .output();
         match result {
