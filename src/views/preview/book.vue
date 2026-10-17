@@ -216,7 +216,7 @@ function updateIframeSrcdoc() {
                 body {
                     margin: 0;
                     padding: 24px 32px;
-                    font-family: "Source Han Serif", "Noto Serif CJK", "SimSun", "Times New Roman", serif;
+                    font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
                     line-height: 1.9;
                     color: #2c2c2c;
                     max-width: 720px;
@@ -285,7 +285,7 @@ function updateIframeSrcdoc() {
 
                 /* 代码 */
                 code {
-                    font-family: "Consolas", "Source Code Pro", monospace;
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", "Courier New", monospace;
                     background: #f5f5f5;
                     padding: 0.15em 0.4em;
                     border-radius: 3px;
