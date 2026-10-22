@@ -3,7 +3,7 @@ use tauri::command;
 use crate::error::QuickLookError;
 use quicklook_docs::pdf as pdf_helper;
 
-/// 渲染 PDF 单页为 PNG。
+/// 渲染 PDF 单页为 webp。
 #[command(async)]
 pub async fn render_pdf_page(
     path: String,
