@@ -72,7 +72,7 @@ E:/private/Rust/quicklook/
 │       │   ├── document.rs        # document()
 │       │   ├── image.rs           # convert_to_png(), clear_image_cache()
 │       │   ├── audio.rs           # read_audio_info(), parse_lrc()
-│       │   ├── pdf.rs             # render_pdf_page(), get_pdf_page_count(), get_pdf_outline(), clear_pdf_cache()
+│       │   ├── pdf.rs             # render_pdf_page(), get_pdf_page_sizes(), get_pdf_outline(), clear_pdf_cache()
 │       │   ├── video.rs           # check_ffmpeg(), prepare_video_for_preview(), convert_video_to_hls(), cancel_video_conversion()
 │       │   └── system.rs          # set_log_level(), restart_app(), show_open_with_dialog(),
 │       │                          #   get_monitor_info(), get_default_program_name(), clear_cache()
@@ -185,9 +185,9 @@ error.rs (统一错误类型: QuickLookError)
 | `convert_video_to_hls` | FE → BE | video.vue | `commands/video.rs` | helper/ffmp (ffmpeg 转码) |
 | `cancel_video_conversion` | FE → BE | video.vue | `commands/video.rs` | helper/ffmp (taskkill) |
 | `render_pdf_page` | FE → BE | pdf-viewer.vue | `commands/pdf.rs` | quicklook-docs::pdf (pdfium) |
-| `get_pdf_page_count` | FE → BE | pdf-viewer.vue | `commands/pdf.rs` | quicklook-docs::pdf |
+| `get_pdf_page_sizes` | FE → BE | pdf-viewer.vue | `commands/pdf.rs` | quicklook-docs::pdf |
 | `get_pdf_outline` | FE → BE | pdf-viewer.vue | `commands/pdf.rs` | quicklook-docs::pdf |
-| `clear_pdf_cache` | FE → BE | settings.vue | `commands/pdf.rs` | 删除 %TEMP%/quicklook_pdf/ |
+| `clear_pdf_cache` | FE → BE | settings.vue | `commands/pdf.rs` | 删除 %TEMP%/quicklook_pdf/ + 释放内存文档 |
 | `clear_cache` | FE → BE | settings.vue | `commands/system.rs` | quicklook-{video,image,docs} 缓存汇总 |
 | `show_open_with_dialog` | FE → BE | header.vue | `commands/system.rs` | helper/win (SHOpenWithDialog) |
 | `get_default_program_name` | FE → BE | header.vue | `commands/system.rs` | helper/win (AssocQueryStringW) |
@@ -252,7 +252,7 @@ window.rs: PreviewFile::preview_file()
         ├── Book 视图:   epub → IPC 获取章节 HTML → iframe/内联渲染
         ├── Archive:    invoke('archive') → el-tree（加密包先 invoke('archive_is_password_protected')）
         └── Document:
-              ├── PDF:    invoke('render_pdf_page' / 'get_pdf_page_count' / 'get_pdf_outline') → pdf-viewer
+              ├── PDF:    invoke('render_pdf_page' / 'get_pdf_page_sizes' / 'get_pdf_outline') → pdf-viewer
               ├── Excel: invoke('document') → Handsontable
               └── DOCX:  readFile(path) → docx-preview.renderAsync()
 ```
@@ -438,6 +438,7 @@ Cargo workspace (resolver = "2")
 │   ├── csv (CSV 解析)
 │   ├── quicklook-cache (workspace, PDF 页缓存)
 │   └── pdfium-render (PDF 渲染为 WebP，运行时加载 pdfium.dll)
+│       └── 内存文档缓存: file_key + LRU(2)；Pdfium 非线程安全，调用全局串行
 │
 └── quicklook-book (crates/book/)
     └── epub (EPUB 解析: 章节/目录/HTML)

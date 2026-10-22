@@ -1,9 +1,12 @@
 use pdfium_render::prelude::{PdfPageRenderRotation, *};
 use quicklook_cache::{CacheDir, file_key};
 use quicklook_error::QuickLookError;
+use std::collections::{HashMap, VecDeque};
+use std::hash::Hash;
 use std::sync::{Mutex, OnceLock};
 
 const CACHE_DIR: &str = "quicklook_pdf";
+const MAX_CACHED_DOCS: usize = 2;
 
 fn normalize_rotation(rotation: u32) -> u32 {
     match rotation % 360 {
@@ -80,67 +83,124 @@ struct DocCache {
     doc: PdfDocument<'static>,
 }
 
-type DocMutex = Mutex<Option<DocCache>>;
-
-fn doc_mutex() -> &'static DocMutex {
-    static CACHE: OnceLock<DocMutex> = OnceLock::new();
-    CACHE.get_or_init(|| Mutex::new(None))
+/// 简单 LRU：`order` 尾部为最近使用，头部为最久未使用。
+#[derive(Debug)]
+struct Lru<K, V> {
+    entries: HashMap<K, V>,
+    order: VecDeque<K>,
 }
 
-fn ensure_doc(
+impl<K: Eq + Hash + Copy, V> Lru<K, V> {
+    fn new() -> Self {
+        Self {
+            entries: HashMap::new(),
+            order: VecDeque::new(),
+        }
+    }
+
+    fn contains(&self, key: K) -> bool {
+        self.entries.contains_key(&key)
+    }
+
+    fn get_mut(&mut self, key: K) -> Option<&mut V> {
+        if !self.entries.contains_key(&key) {
+            return None;
+        }
+        self.touch(key);
+        self.entries.get_mut(&key)
+    }
+
+    fn insert(&mut self, key: K, value: V) -> Option<V> {
+        self.touch(key);
+        self.entries.insert(key, value)
+    }
+
+    /// 条目数超过 `max` 时淘汰最久未使用的一条。
+    fn evict_if_over(&mut self, max: usize) -> Option<V> {
+        if self.entries.len() <= max {
+            return None;
+        }
+        let oldest = self.order.pop_front()?;
+        self.entries.remove(&oldest)
+    }
+
+    fn touch(&mut self, key: K) {
+        self.order.retain(|k| *k != key);
+        self.order.push_back(key);
+    }
+
+    fn clear(&mut self) {
+        self.entries.clear();
+        self.order.clear();
+    }
+}
+
+fn doc_cache() -> &'static Mutex<Lru<u64, DocCache>> {
+    static CACHE: OnceLock<Mutex<Lru<u64, DocCache>>> = OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(Lru::new()))
+}
+
+/// 在全局锁内访问文档并调用 Pdfium。
+///
+/// Pdfium 本身不保证线程安全，`thread_safe` feature 仅提供 `Send`/`Sync` 标记，
+/// 因此所有 Pdfium 调用必须串行。调用方只应在闭包内完成栅格化，
+/// 编码/写盘等耗时操作放到锁外。
+fn with_doc<T>(
     path: &str,
-) -> Result<std::sync::MutexGuard<'static, Option<DocCache>>, QuickLookError> {
-    let mutex = doc_mutex();
-    let mut guard = mutex
+    f: impl FnOnce(&PdfDocument<'static>) -> Result<T, QuickLookError>,
+) -> Result<T, QuickLookError> {
+    let mut cache = doc_cache()
         .lock()
         .map_err(|e| QuickLookError::PdfRendering(format!("锁竞争失败: {}", e)))?;
+    let key = file_key(path);
 
-    if guard.as_ref().map_or(true, |c| c.path != path) {
+    if !cache.contains(key) {
         let pdfium = get_pdfium()?;
         let doc = pdfium
             .load_pdf_from_file(path, None)
             .map_err(|e| QuickLookError::PdfRendering(format!("打开 PDF 失败: {}", e)))?;
-        *guard = Some(DocCache { path: path.to_string(), doc });
+
+        cache.insert(key, DocCache { path: path.to_string(), doc });
+        if let Some(evicted) = cache.evict_if_over(MAX_CACHED_DOCS) {
+            log::info!("[pdf] 淘汰文档: {}", evicted.path);
+            drop(evicted);
+        }
         log::info!("[pdf] 已缓存文档: {}", path);
     }
 
-    Ok(guard)
+    let entry = cache
+        .get_mut(key)
+        .ok_or_else(|| QuickLookError::PdfRendering("文档未加载".into()))?;
+    f(&entry.doc)
 }
 
 /// 读取各页逻辑尺寸（MediaBox，已含页面自身 /Rotate），无需渲染
 pub fn get_pdf_page_sizes(path: &str) -> Result<Vec<PageSize>, QuickLookError> {
     log::info!("[pdf] get_pdf_page_sizes path={}", path);
-    let guard = ensure_doc(path)?;
-    let cache = guard
-        .as_ref()
-        .ok_or_else(|| QuickLookError::PdfRendering("文档未加载".into()))?;
-    let pages = cache.doc.pages();
-    let count = pages.len();
-    let mut sizes = Vec::with_capacity(count as usize);
-    for i in 0..count {
-        match pages.page_size(i as i32) {
-            Ok(rect) => sizes.push(PageSize {
-                width: rect.width().value.max(1.0),
-                height: rect.height().value.max(1.0),
-            }),
-            Err(e) => {
-                log::warn!("[pdf] page {} size 失败: {}，回退 Letter", i + 1, e);
-                sizes.push(PageSize { width: 612.0, height: 792.0 });
-            },
+    let sizes = with_doc(path, |doc| {
+        let pages = doc.pages();
+        let count = pages.len();
+        let mut sizes = Vec::with_capacity(count as usize);
+        for i in 0..count {
+            match pages.page_size(i) {
+                Ok(rect) => sizes.push(PageSize {
+                    width: rect.width().value.max(1.0),
+                    height: rect.height().value.max(1.0),
+                }),
+                Err(e) => {
+                    log::warn!("[pdf] page {} size 失败: {}，回退 Letter", i + 1, e);
+                    sizes.push(PageSize { width: 612.0, height: 792.0 });
+                },
+            }
         }
-    }
+        Ok(sizes)
+    })?;
     log::info!("[pdf] page_sizes={} 页", sizes.len());
     Ok(sizes)
 }
 
 pub fn get_pdf_outline(path: &str) -> Result<Vec<OutlineItem>, QuickLookError> {
     log::info!("[pdf] get_pdf_outline path={}", path);
-    let guard = ensure_doc(path)?;
-    let cache = guard
-        .as_ref()
-        .ok_or_else(|| QuickLookError::PdfRendering("文档未加载".into()))?;
-
-    let bookmarks = cache.doc.bookmarks();
 
     fn collect_children(bookmark: &pdfium_render::prelude::PdfBookmark<'_>) -> Vec<OutlineItem> {
         let mut items = Vec::new();
@@ -161,23 +221,25 @@ pub fn get_pdf_outline(path: &str) -> Result<Vec<OutlineItem>, QuickLookError> {
         items
     }
 
-    let mut items = Vec::new();
-    let mut current = bookmarks.root();
-    while let Some(bm) = current {
-        let title = bm.title().unwrap_or_default();
-        let page = bm
-            .destination()
-            .and_then(|dest| dest.page_index().ok())
-            .map(|idx| idx as u32 + 1)
-            .unwrap_or(0);
-        let sub_items = collect_children(&bm);
-        if !title.is_empty() {
-            items.push(OutlineItem { title, page, items: sub_items });
+    with_doc(path, |doc| {
+        let bookmarks = doc.bookmarks();
+        let mut items = Vec::new();
+        let mut current = bookmarks.root();
+        while let Some(bm) = current {
+            let title = bm.title().unwrap_or_default();
+            let page = bm
+                .destination()
+                .and_then(|dest| dest.page_index().ok())
+                .map(|idx| idx as u32 + 1)
+                .unwrap_or(0);
+            let sub_items = collect_children(&bm);
+            if !title.is_empty() {
+                items.push(OutlineItem { title, page, items: sub_items });
+            }
+            current = bm.next_sibling();
         }
-        current = bm.next_sibling();
-    }
-
-    Ok(items)
+        Ok(items)
+    })
 }
 
 pub fn render_pdf_page(
@@ -208,28 +270,23 @@ pub fn render_pdf_page(
         normalized_rotation
     ));
 
-    if cache_path.exists() {
-        if let Ok(img) = image::ImageReader::open(&cache_path) {
-            if let Ok((w, h)) = img.into_dimensions() {
-                log::info!("[pdf] page {} 命中缓存", page_index + 1);
-                return Ok(RenderedPage {
-                    page_num: page_index + 1,
-                    path: cache_path.to_string_lossy().to_string(),
-                    width: w,
-                    height: h,
-                });
-            }
-        }
+    if cache_path.exists()
+        && let Ok(img) = image::ImageReader::open(&cache_path)
+        && let Ok((w, h)) = img.into_dimensions()
+    {
+        log::info!("[pdf] page {} 命中缓存", page_index + 1);
+        return Ok(RenderedPage {
+            page_num: page_index + 1,
+            path: cache_path.to_string_lossy().to_string(),
+            width: w,
+            height: h,
+        });
     }
 
     // 只在栅格化阶段持锁；DynamicImage 已持有像素数据，编码/写盘放到锁外，
     // 避免 WebP 编码期间阻塞其它页渲染请求。
-    let (dynamic_image, width, height) = {
-        let guard = ensure_doc(path)?;
-        let cache = guard
-            .as_ref()
-            .ok_or_else(|| QuickLookError::PdfRendering("文档未加载".into()))?;
-        let pages = cache.doc.pages();
+    let (dynamic_image, width, height) = with_doc(path, |doc| {
+        let pages = doc.pages();
         let page_count = pages.len();
         if page_index >= page_count as u32 {
             return Err(QuickLookError::PdfRendering(format!(
@@ -263,8 +320,8 @@ pub fn render_pdf_page(
         let dynamic_image = bitmap
             .as_image()
             .map_err(|e| QuickLookError::PdfRendering(format!("转换图像失败: {}", e)))?;
-        (dynamic_image, width, height)
-    };
+        Ok((dynamic_image, width, height))
+    })?;
 
     // WebP 无损：相对 PNG 显著减小体积且保持文字清晰（image 0.25 仅有损需额外 libwebp）
     let mut file = std::fs::File::create(&cache_path)
@@ -288,5 +345,51 @@ pub fn render_pdf_page(
 }
 
 pub fn clear_pdf_cache() -> Result<u32, QuickLookError> {
+    let mut cache = doc_cache()
+        .lock()
+        .map_err(|e| QuickLookError::PdfRendering(format!("锁竞争失败: {}", e)))?;
+    cache.clear();
+    drop(cache);
+
     CacheDir::new(CACHE_DIR).clear()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Lru;
+
+    #[test]
+    fn hit_moves_entry_to_back() {
+        let mut lru = Lru::new();
+        lru.insert(1u64, "a");
+        lru.insert(2u64, "b");
+        assert!(lru.get_mut(1).is_some());
+        assert_eq!(lru.evict_if_over(2), None);
+
+        lru.insert(3u64, "c");
+        assert_eq!(lru.evict_if_over(2), Some("b"));
+    }
+
+    #[test]
+    fn evicts_oldest_when_over_capacity() {
+        let mut lru = Lru::new();
+        lru.insert(1u64, 10);
+        lru.insert(2u64, 20);
+        lru.insert(3u64, 30);
+
+        assert_eq!(lru.evict_if_over(2), Some(10));
+        assert_eq!(lru.evict_if_over(2), None);
+    }
+
+    #[test]
+    fn clear_removes_all_entries() {
+        let mut lru = Lru::new();
+        lru.insert(1u64, 10);
+        lru.insert(2u64, 20);
+
+        lru.clear();
+
+        assert!(!lru.contains(1));
+        assert!(!lru.contains(2));
+    }
 }
