@@ -18,6 +18,7 @@ serde = { workspace = true }
 calamine = "0.36.0"
 csv = "1.4.0"
 log = { workspace = true }
+quicklook-cache = { workspace = true }
 quicklook-error = { workspace = true }
 # PDF rendering
 pdfium-render = "0.9"

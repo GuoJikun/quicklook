@@ -20,4 +20,5 @@ image = { workspace = true, features = ["png", "webp", "jpeg", "gif", "bmp", "ic
 jxl-oxide = { version = "0.12", features = ["image"] }
 heic-rs = "0.1"
 log = { workspace = true }
+quicklook-cache = { workspace = true }
 quicklook-error = { workspace = true }

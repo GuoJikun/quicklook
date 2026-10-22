@@ -1,7 +1,9 @@
 use crate::error::QuickLookError;
-use crate::helper::{ffmp, monitor, win};
+use crate::helper::{monitor, win};
 use log::LevelFilter;
 use quicklook_docs::pdf as pdf_helper;
+use quicklook_image::clear_image_cache;
+use quicklook_video::clear_ffmpeg_cache;
 use std::sync::atomic::{AtomicU8, Ordering};
 use tauri::{AppHandle, Manager, command};
 use windows::Win32::Foundation::HWND;
@@ -63,8 +65,8 @@ pub async fn get_default_program_name(path: String) -> Result<String, QuickLookE
 pub async fn clear_cache() -> Result<u32, QuickLookError> {
     tokio::task::spawn_blocking(|| {
         let mut total = 0u32;
-        total += ffmp::clear_ffmpeg_cache()?;
-        total += crate::commands::image::clear_image_cache_sync()?;
+        total += clear_ffmpeg_cache()?;
+        total += clear_image_cache()?;
         total += pdf_helper::clear_pdf_cache()?;
         log::info!("缓存清理完成，共删除 {} 个目录/文件", total);
         Ok(total)

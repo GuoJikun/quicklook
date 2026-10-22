@@ -4,8 +4,11 @@ use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{LazyLock, Mutex};
 
+use quicklook_cache::{CacheDir, file_key};
 use quicklook_error::QuickLookError;
 use serde::Serialize;
+
+const CACHE_DIR: &str = "quicklook_videos";
 
 /// CREATE_NO_WINDOW：启动控制台子进程时不弹出终端窗口。
 fn silent_command(program: &str) -> Command {
@@ -103,31 +106,17 @@ pub fn prepare_video_for_preview(path: &str) -> Result<VideoPreviewDecision, Qui
 pub fn convert_video_to_hls(path: &str) -> Result<String, QuickLookError> {
     FFMPEG_CANCELLED.store(false, Ordering::Relaxed);
 
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
-
     // 确认 ffmpeg 可用
     if !check_ffmpeg() {
         return Err(QuickLookError::FfmpegNotFound);
     }
 
     // 缓存 key：路径 + size + mtime，文件被覆盖修改后不会误命中旧 HLS
-    let mut hasher = DefaultHasher::new();
-    path.hash(&mut hasher);
-    if let Ok(meta) = std::fs::metadata(path) {
-        meta.len().hash(&mut hasher);
-        if let Ok(modified) = meta.modified() {
-            modified.hash(&mut hasher);
-        }
-    }
-    let hash = hasher.finish();
-
-    let mut videos_dir = std::env::temp_dir();
-    videos_dir.push("quicklook_videos");
-    std::fs::create_dir_all(&videos_dir)?;
-
-    let mut temp_dir = videos_dir;
-    temp_dir.push(format!("quicklook_hls_{:x}", hash));
+    let cache = CacheDir::new(CACHE_DIR);
+    cache.ensure()?;
+    let temp_dir = cache
+        .path()
+        .join(format!("quicklook_hls_{:x}", file_key(path)));
 
     let m3u8_path = temp_dir.join("index.m3u8");
     let m3u8_result = m3u8_path.to_string_lossy().to_string();
@@ -616,29 +605,7 @@ pub fn cancel_video_conversion() {
 /// 清理所有由 quicklook 生成的 ffmpeg HLS 转码缓存目录。
 /// 返回被删除的目录数量。
 pub fn clear_ffmpeg_cache() -> Result<u32, QuickLookError> {
-    let videos_dir = std::env::temp_dir().join("quicklook_videos");
-    if !videos_dir.exists() {
-        log::info!("quicklook_videos 目录不存在，无需清理");
-        return Ok(0);
-    }
-    let entries = std::fs::read_dir(&videos_dir)?;
-
-    let mut removed = 0u32;
-    for entry in entries.flatten() {
-        let name = entry.file_name();
-        let name_str = name.to_string_lossy();
-        if name_str.starts_with("quicklook_hls_") && entry.path().is_dir() {
-            match std::fs::remove_dir_all(entry.path()) {
-                Ok(_) => {
-                    removed += 1;
-                    log::info!("已清理缓存目录: {}", entry.path().display());
-                },
-                Err(e) => {
-                    log::warn!("清理缓存目录失败: {}, 错误: {}", entry.path().display(), e);
-                },
-            }
-        }
-    }
+    let removed = CacheDir::new(CACHE_DIR).clear_dirs_with_prefix("quicklook_hls_")?;
     log::info!("共清理 {} 个 ffmpeg 缓存目录", removed);
     Ok(removed)
 }

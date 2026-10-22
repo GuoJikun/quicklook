@@ -149,7 +149,7 @@ const handleClearCache = async () => {
     clearingCache.value = true
     try {
         const removed = await invoke<number>('clear_cache')
-        ElMessage.success(`已清理 ${removed} 个缓存目录`)
+        ElMessage.success(`已清理 ${removed} 项缓存`)
     } catch (e) {
         ElMessage.error(`清理缓存失败：${e}`)
     } finally {

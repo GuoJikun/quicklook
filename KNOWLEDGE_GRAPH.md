@@ -15,6 +15,7 @@ QuickLook (Windows 文件快速预览工具, macOS Quick Look 风格)
     ├── crates/book/    → quicklook-book (epub 电子书解析)
     ├── crates/docs/    → quicklook-docs (文档解析)
     ├── crates/error/    → quicklook-error (统一错误类型)
+    ├── crates/cache/    → quicklook-cache (临时缓存目录/hash/清理)
     ├── crates/audio/    → quicklook-audio (音频元数据 + LRC)
     ├── crates/image/    → quicklook-image (图片格式转换)
     └── crates/video/    → quicklook-video (FFmpeg 视频转换)
@@ -94,6 +95,8 @@ E:/private/Rust/quicklook/
 ├── crates/
 │   ├── error/                     # quicklook-error
 │   │   └── src/lib.rs             # QuickLookError 统一错误类型
+│   ├── cache/                     # quicklook-cache
+│   │   └── src/lib.rs             # CacheDir / file_key / 缓存清理
 │   ├── audio/                     # quicklook-audio
 │   │   └── src/lib.rs             # MusicInfo, read_music_info(), Lrc, parse_lrc()
 │   ├── image/                     # quicklook-image
@@ -185,7 +188,7 @@ error.rs (统一错误类型: QuickLookError)
 | `get_pdf_page_count` | FE → BE | pdf-viewer.vue | `commands/pdf.rs` | quicklook-docs::pdf |
 | `get_pdf_outline` | FE → BE | pdf-viewer.vue | `commands/pdf.rs` | quicklook-docs::pdf |
 | `clear_pdf_cache` | FE → BE | settings.vue | `commands/pdf.rs` | 删除 %TEMP%/quicklook_pdf/ |
-| `clear_cache` | FE → BE | settings.vue | `commands/system.rs` | helper/ffmp + image + pdf 缓存汇总 |
+| `clear_cache` | FE → BE | settings.vue | `commands/system.rs` | quicklook-{video,image,docs} 缓存汇总 |
 | `show_open_with_dialog` | FE → BE | header.vue | `commands/system.rs` | helper/win (SHOpenWithDialog) |
 | `get_default_program_name` | FE → BE | header.vue | `commands/system.rs` | helper/win (AssocQueryStringW) |
 | `set_log_level` | FE → BE | settings.vue | `commands/system.rs` | log::set_max_level |
@@ -378,7 +381,7 @@ resources/config.json (编译时内嵌，扁平 key：preview.<类型>[.checked]
 
 ```
 [workspace.dependencies] (根 Cargo.toml)
-├── 内部 crate: quicklook-{archive,docs,error,audio,image,video}
+├── 内部 crate: quicklook-{archive,book,docs,error,cache,audio,image,video}
 └── 共有第三方: serde (derive), serde_json, log, chrono (serde), image 0.25
 ```
 
@@ -399,6 +402,10 @@ Cargo workspace (resolver = "2")
 │   ├── thiserror
 │   └── serde (workspace)
 │
+├── quicklook-cache (crates/cache/)
+│   ├── quicklook-error (workspace)
+│   └── log (workspace)
+│
 ├── quicklook-audio (crates/audio/)
 │   ├── lofty (音频元数据)
 │   ├── serde + log (workspace)
@@ -410,10 +417,12 @@ Cargo workspace (resolver = "2")
 │   ├── heic-rs (HEIC/HEIF 纯 Rust 解码，无 C 依赖)
 │   ├── jxl-oxide (JPEG XL 解码)
 │   ├── log (workspace)
+│   ├── quicklook-cache (workspace)
 │   └── quicklook-error (workspace)
 │
 ├── quicklook-video (crates/video/)
 │   ├── log (workspace, ffmpeg 进程管理)
+│   ├── quicklook-cache (workspace, HLS 目录)
 │   └── quicklook-error (workspace)
 │
 ├── quicklook-archive (crates/archive/)
@@ -427,7 +436,8 @@ Cargo workspace (resolver = "2")
 │   ├── serde + log + image (workspace)
 │   ├── calamine (Excel: .xls/.xlsx/.xlsb/.ods)
 │   ├── csv (CSV 解析)
-│   └── pdfium-render (PDF 渲染为 PNG，运行时加载 pdfium.dll)
+│   ├── quicklook-cache (workspace, PDF 页缓存)
+│   └── pdfium-render (PDF 渲染为 WebP，运行时加载 pdfium.dll)
 │
 └── quicklook-book (crates/book/)
     └── epub (EPUB 解析: 章节/目录/HTML)

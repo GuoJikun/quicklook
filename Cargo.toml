@@ -5,6 +5,7 @@ members = [
     "crates/book",
     "crates/docs",
     "crates/error",
+    "crates/cache",
     "crates/audio",
     "crates/image",
     "crates/video",
@@ -16,6 +17,7 @@ resolver = "2"
 quicklook-archive = { path = "crates/archive" }
 quicklook-docs = { path = "crates/docs" }
 quicklook-error = { path = "crates/error" }
+quicklook-cache = { path = "crates/cache" }
 quicklook-audio = { path = "crates/audio" }
 quicklook-image = { path = "crates/image" }
 quicklook-video = { path = "crates/video" }

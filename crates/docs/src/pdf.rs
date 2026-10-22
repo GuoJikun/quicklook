@@ -1,6 +1,9 @@
 use pdfium_render::prelude::{PdfPageRenderRotation, *};
+use quicklook_cache::{CacheDir, file_key};
 use quicklook_error::QuickLookError;
 use std::sync::{Mutex, OnceLock};
+
+const CACHE_DIR: &str = "quicklook_pdf";
 
 fn normalize_rotation(rotation: u32) -> u32 {
     match rotation % 360 {
@@ -191,27 +194,18 @@ pub fn render_pdf_page(
         rotation
     );
 
-    let cache_dir = std::env::temp_dir().join("quicklook_pdf");
-    std::fs::create_dir_all(&cache_dir)
+    let cache = CacheDir::new(CACHE_DIR);
+    cache
+        .ensure()
         .map_err(|e| QuickLookError::PdfRendering(format!("创建缓存目录失败: {}", e)))?;
 
-    let file_hash = {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
-        let mut hasher = DefaultHasher::new();
-        path.hash(&mut hasher);
-        if let Ok(meta) = std::fs::metadata(path) {
-            if let Ok(modified) = meta.modified() {
-                modified.hash(&mut hasher);
-            }
-        }
-        hasher.finish()
-    };
-
     let normalized_rotation = normalize_rotation(rotation);
-    let cache_path = cache_dir.join(format!(
+    let cache_path = cache.file_path(format!(
         "pdf_{:x}_{}_{}_{}.webp",
-        file_hash, page_index, dpi, normalized_rotation
+        file_key(path),
+        page_index,
+        dpi,
+        normalized_rotation
     ));
 
     if cache_path.exists() {
@@ -294,20 +288,5 @@ pub fn render_pdf_page(
 }
 
 pub fn clear_pdf_cache() -> Result<u32, QuickLookError> {
-    let cache_dir = std::env::temp_dir().join("quicklook_pdf");
-    if !cache_dir.exists() {
-        return Ok(0);
-    }
-
-    let mut removed = 0u32;
-    if let Ok(entries) = std::fs::read_dir(&cache_dir) {
-        for entry in entries.flatten() {
-            if entry.path().is_file() {
-                if std::fs::remove_file(entry.path()).is_ok() {
-                    removed += 1;
-                }
-            }
-        }
-    }
-    Ok(removed)
+    CacheDir::new(CACHE_DIR).clear()
 }

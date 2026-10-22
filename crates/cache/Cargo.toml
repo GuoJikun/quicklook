@@ -1,0 +1,18 @@
+[package]
+name = "quicklook-cache"
+version = "0.1.0"
+description = "Shared temporary cache utilities for QuickLook"
+authors = ["GuoJikun <guojikun486546@163.com>"]
+license = ""
+repository = "https://github.com/GuoJikun/quicklook.git"
+homepage = "https://github.com/GuoJikun/quicklook"
+edition = "2024"
+rust-version = "1.90"
+
+[lib]
+name = "quicklook_cache"
+crate-type = ["rlib"]
+
+[dependencies]
+log = { workspace = true }
+quicklook-error = { workspace = true }
