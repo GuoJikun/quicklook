@@ -5,7 +5,7 @@ use crate::error::QuickLookError;
 
 #[command]
 pub async fn document(path: String, mode: String) -> Result<docs::Docs, QuickLookError> {
-    tokio::task::spawn_blocking(move || match mode.as_str() {
+    tauri::async_runtime::spawn_blocking(move || match mode.as_str() {
         "csv" => docs::Docs::csv(&path),
         "xlsx" | "xls" | "xlsm" | "xlsb" | "xla" | "xlam" | "ods" => docs::Docs::excel(&path),
         "docx" => docs::Docs::docx(&path),

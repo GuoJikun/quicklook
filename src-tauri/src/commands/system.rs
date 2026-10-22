@@ -54,7 +54,7 @@ pub fn get_monitor_info() -> monitor::MonitorInfo {
 
 #[command]
 pub async fn get_default_program_name(path: String) -> Result<String, QuickLookError> {
-    tokio::task::spawn_blocking(move || win::get_default_program_name(&path))
+    tauri::async_runtime::spawn_blocking(move || win::get_default_program_name(&path))
         .await
         .map_err(|e| QuickLookError::WindowsApi(format!("获取默认程序任务执行失败: {}", e)))?
 }
@@ -63,7 +63,7 @@ pub async fn get_default_program_name(path: String) -> Result<String, QuickLookE
 /// 返回被删除的目录/文件总数量。
 #[command]
 pub async fn clear_cache() -> Result<u32, QuickLookError> {
-    tokio::task::spawn_blocking(|| {
+    tauri::async_runtime::spawn_blocking(|| {
         let mut total = 0u32;
         total += clear_ffmpeg_cache()?;
         total += clear_image_cache()?;

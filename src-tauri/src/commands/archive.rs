@@ -5,7 +5,7 @@ use crate::error::QuickLookError;
 
 #[command]
 pub async fn archive_is_password_protected(path: String) -> Result<bool, QuickLookError> {
-    tokio::task::spawn_blocking(move || {
+    tauri::async_runtime::spawn_blocking(move || {
         let needed = Extract::is_password_protected(&path)
             .map_err(|e| QuickLookError::ArchiveParse(e.to_string()))?;
         log::info!("检测压缩文件路径: {}, 是否需要密码: {}", path, needed);
@@ -20,7 +20,7 @@ pub async fn archive(
     path: String,
     password: Option<String>,
 ) -> Result<Vec<Extract>, QuickLookError> {
-    tokio::task::spawn_blocking(move || {
+    tauri::async_runtime::spawn_blocking(move || {
         log::info!("开始处理压缩文件: {}", path);
         let result = Extract::list_archive_tree(&path, password.as_deref())
             .map_err(|e| QuickLookError::ArchiveParse(e.to_string()));

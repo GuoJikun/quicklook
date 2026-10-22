@@ -18,7 +18,7 @@ pub async fn render_pdf_page(
         dpi,
         rotation
     );
-    let result = tokio::task::spawn_blocking(move || {
+    let result = tauri::async_runtime::spawn_blocking(move || {
         pdf_helper::render_pdf_page(&path, page_index, dpi, rotation)
     })
     .await
@@ -34,9 +34,10 @@ pub async fn render_pdf_page(
 #[command(async)]
 pub async fn get_pdf_page_sizes(path: String) -> Result<Vec<pdf_helper::PageSize>, QuickLookError> {
     log::info!("[cmd] get_pdf_page_sizes path={}", path);
-    let result = tokio::task::spawn_blocking(move || pdf_helper::get_pdf_page_sizes(&path))
-        .await
-        .map_err(|e| QuickLookError::PdfRendering(format!("任务执行失败: {}", e)))?;
+    let result =
+        tauri::async_runtime::spawn_blocking(move || pdf_helper::get_pdf_page_sizes(&path))
+            .await
+            .map_err(|e| QuickLookError::PdfRendering(format!("任务执行失败: {}", e)))?;
     match &result {
         Ok(sizes) => log::info!("[cmd] get_pdf_page_sizes={} 页", sizes.len()),
         Err(e) => log::error!("[cmd] get_pdf_page_sizes 失败: {}", e),
@@ -48,7 +49,7 @@ pub async fn get_pdf_page_sizes(path: String) -> Result<Vec<pdf_helper::PageSize
 #[command(async)]
 pub async fn get_pdf_outline(path: String) -> Result<Vec<pdf_helper::OutlineItem>, QuickLookError> {
     log::info!("[cmd] get_pdf_outline path={}", path);
-    let result = tokio::task::spawn_blocking(move || pdf_helper::get_pdf_outline(&path))
+    let result = tauri::async_runtime::spawn_blocking(move || pdf_helper::get_pdf_outline(&path))
         .await
         .map_err(|e| QuickLookError::PdfRendering(format!("任务执行失败: {}", e)))?;
     match &result {
@@ -62,7 +63,7 @@ pub async fn get_pdf_outline(path: String) -> Result<Vec<pdf_helper::OutlineItem
 #[command(async)]
 pub async fn clear_pdf_cache() -> Result<u32, QuickLookError> {
     log::info!("[cmd] clear_pdf_cache");
-    let result = tokio::task::spawn_blocking(|| pdf_helper::clear_pdf_cache())
+    let result = tauri::async_runtime::spawn_blocking(|| pdf_helper::clear_pdf_cache())
         .await
         .map_err(|e| QuickLookError::PdfRendering(format!("任务执行失败: {}", e)))?;
     match &result {

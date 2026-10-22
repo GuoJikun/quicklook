@@ -9,7 +9,7 @@ use quicklook_book::epub as epub_helper;
 #[command(async)]
 pub async fn get_epub_info(path: String) -> Result<epub_helper::EpubInfo, QuickLookError> {
     log::info!("[cmd] get_epub_info path={}", path);
-    let result = tokio::task::spawn_blocking(move || epub_helper::get_epub_info(&path))
+    let result = tauri::async_runtime::spawn_blocking(move || epub_helper::get_epub_info(&path))
         .await
         .map_err(|e| QuickLookError::DocumentParse(format!("任务执行失败: {}", e)))?;
     match &result {
@@ -34,10 +34,11 @@ pub async fn get_epub_chapter(
         path,
         chapter_index
     );
-    let result =
-        tokio::task::spawn_blocking(move || epub_helper::get_epub_chapter(&path, chapter_index))
-            .await
-            .map_err(|e| QuickLookError::DocumentParse(format!("任务执行失败: {}", e)))?;
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        epub_helper::get_epub_chapter(&path, chapter_index)
+    })
+    .await
+    .map_err(|e| QuickLookError::DocumentParse(format!("任务执行失败: {}", e)))?;
     match &result {
         Ok(_) => log::info!("[cmd] get_epub_chapter 成功"),
         Err(e) => log::error!("[cmd] get_epub_chapter 失败: {}", e),
@@ -58,7 +59,7 @@ pub async fn resolve_epub_link(
         current_chapter_index,
         href
     );
-    let result = tokio::task::spawn_blocking(move || {
+    let result = tauri::async_runtime::spawn_blocking(move || {
         epub_helper::resolve_epub_link(&path, current_chapter_index, &href)
     })
     .await

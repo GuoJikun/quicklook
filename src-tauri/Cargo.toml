@@ -67,5 +67,3 @@ quicklook-image = { workspace = true }
 quicklook-video = { workspace = true }
 # Book format parsing (epub)
 quicklook-book = { workspace = true }
-# PDF rendering (now in quicklook-docs)
-tokio = { version = "1", features = ["rt"] }

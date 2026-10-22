@@ -95,6 +95,9 @@ export default defineConfig(({ mode, command }) => {
         server: {
             host: true,
             port: 6688,
+            watch: {
+                ignored: ['**/target/**'],
+            },
         },
     }
 })
