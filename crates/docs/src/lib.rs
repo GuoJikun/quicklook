@@ -1,6 +1,7 @@
 pub mod pdf;
 
 use calamine::Reader;
+use quicklook_error::{QuickLookError, Result};
 use serde::Serialize;
 use std::fs::File;
 
@@ -11,17 +12,17 @@ pub enum Docs {
 }
 
 impl Docs {
-    pub fn excel(file_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn excel(file_path: &str) -> Result<Self> {
         let target = excel(file_path)?;
         Ok(Docs::Excel(target))
     }
 
-    pub fn csv(file_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn csv(file_path: &str) -> Result<Self> {
         let target = csv(file_path)?;
         Ok(Docs::Excel(target))
     }
 
-    pub fn docx(file_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn docx(file_path: &str) -> Result<Self> {
         // TODO: 解析工作目前由 web 端解析
         Ok(Docs::Docx(file_path.to_string()))
     }
@@ -33,14 +34,17 @@ pub struct DSheet {
     rows: Vec<Vec<String>>,
 }
 
-fn excel(file_path: &str) -> Result<Vec<DSheet>, Box<dyn std::error::Error>> {
-    let mut workbook = calamine::open_workbook_auto(file_path)?;
+fn excel(file_path: &str) -> Result<Vec<DSheet>> {
+    let mut workbook = calamine::open_workbook_auto(file_path)
+        .map_err(|e| QuickLookError::DocumentParse(e.to_string()))?;
     let sheets = workbook.sheet_names().to_owned();
 
     sheets
         .into_iter()
         .map(|sheet| {
-            let range = workbook.worksheet_range(&sheet)?;
+            let range = workbook
+                .worksheet_range(&sheet)
+                .map_err(|e| QuickLookError::DocumentParse(e.to_string()))?;
             let rows = range
                 .rows()
                 .map(|row| row.iter().map(|cell| cell.to_string()).collect())
@@ -50,18 +54,18 @@ fn excel(file_path: &str) -> Result<Vec<DSheet>, Box<dyn std::error::Error>> {
         .collect()
 }
 
-fn csv(file_path: &str) -> Result<Vec<DSheet>, Box<dyn std::error::Error>> {
+fn csv(file_path: &str) -> Result<Vec<DSheet>> {
     let file = File::open(file_path)?;
     let mut rdr = csv::ReaderBuilder::new()
         .has_headers(true)
         .from_reader(file);
 
-    let rows: Result<Vec<Vec<String>>, _> = rdr
+    let rows: Result<Vec<Vec<String>>> = rdr
         .records()
         .map(|result| {
             result
                 .map(|record| record.iter().map(|s| s.to_string()).collect())
-                .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
+                .map_err(|e| QuickLookError::DocumentParse(e.to_string()))
         })
         .collect();
 
