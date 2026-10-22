@@ -1,4 +1,5 @@
-use crate::{ArchiveError, Extract, normalize_entry_name};
+use crate::{Extract, normalize_entry_name};
+use quicklook_error::Result;
 use std::{
     fs::File,
     path::Path,
@@ -6,7 +7,7 @@ use std::{
 };
 
 /// 列举 AR 文件条目（`.deb` 内层格式、`.a` 静态库等）
-pub fn list_ar_entries<P: AsRef<Path>>(path: P) -> Result<Vec<Extract>, ArchiveError> {
+pub fn list_ar_entries<P: AsRef<Path>>(path: P) -> Result<Vec<Extract>> {
     let file = File::open(path)?;
     let mut archive = ar::Archive::new(file);
     let mut entries = Vec::new();

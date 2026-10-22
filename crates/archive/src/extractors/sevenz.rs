@@ -1,4 +1,5 @@
-use crate::{ArchiveError, Extract, normalize_entry_name};
+use crate::{Extract, normalize_entry_name};
+use quicklook_error::{QuickLookError, Result};
 use sevenz_rust::Password;
 use std::{fs::File, io::BufReader, path::Path};
 
@@ -20,10 +21,7 @@ fn filetime_to_string(raw: u64) -> String {
 }
 
 /// 列举 7Z 文件条目
-pub fn list_7z_entries<P: AsRef<Path>>(
-    path: P,
-    password: Option<&str>,
-) -> Result<Vec<Extract>, ArchiveError> {
+pub fn list_7z_entries<P: AsRef<Path>>(path: P, password: Option<&str>) -> Result<Vec<Extract>> {
     let file = File::open(path)?;
     let len = file.metadata()?.len();
     let mut reader = BufReader::new(file);
@@ -34,15 +32,12 @@ pub fn list_7z_entries<P: AsRef<Path>>(
         Ok(archive) => archive,
         Err(sevenz_rust::Error::PasswordRequired)
         | Err(sevenz_rust::Error::MaybeBadPassword(_)) => {
-            return Err(ArchiveError::Other(
-                "Password required to decrypt 7z archive".into(),
+            return Err(QuickLookError::ArchiveParse(
+                "7z 压缩文件需要密码才能解密".to_string(),
             ));
         },
         Err(e) => {
-            return Err(ArchiveError::Other(format!(
-                "Failed to read 7z archive: {}",
-                e
-            )));
+            return Err(QuickLookError::with_source("读取 7z 压缩文件失败", e));
         },
     };
 
@@ -66,17 +61,14 @@ pub fn list_7z_entries<P: AsRef<Path>>(
 }
 
 /// 检测 7Z 文件是否需要密码
-pub fn is_7z_password_protected<P: AsRef<Path>>(path: P) -> Result<bool, ArchiveError> {
+pub fn is_7z_password_protected<P: AsRef<Path>>(path: P) -> Result<bool> {
     match sevenz_rust::Archive::open(path.as_ref()) {
         Ok(_) => Ok(false),
         Err(sevenz_rust::Error::PasswordRequired)
         | Err(sevenz_rust::Error::MaybeBadPassword(_)) => Ok(true),
         Err(e) => {
             log::error!("Failed to open 7z archive: {}", e);
-            Err(ArchiveError::Other(format!(
-                "Failed to open 7z archive: {}",
-                e
-            )))
+            Err(QuickLookError::with_source("打开 7z 压缩文件失败", e))
         },
     }
 }

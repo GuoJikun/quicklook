@@ -1,6 +1,7 @@
-use crate::{ArchiveError, Extract, normalize_entry_name};
+use crate::{Extract, normalize_entry_name};
 use hadris_cpio::mode::FileType;
 use hadris_cpio::sync::CpioArchiveReader;
+use quicklook_error::{QuickLookError, Result};
 use std::{
     fs::File,
     io::BufReader,
@@ -9,7 +10,7 @@ use std::{
 };
 
 /// 列举 CPIO 文件条目
-pub fn list_cpio_entries<P: AsRef<Path>>(path: P) -> Result<Vec<Extract>, ArchiveError> {
+pub fn list_cpio_entries<P: AsRef<Path>>(path: P) -> Result<Vec<Extract>> {
     let file = File::open(path)?;
     let mut reader = CpioArchiveReader::new(BufReader::new(file));
     let mut entries = Vec::new();
@@ -18,7 +19,9 @@ pub fn list_cpio_entries<P: AsRef<Path>>(path: P) -> Result<Vec<Extract>, Archiv
         let entry = match reader.next_entry_alloc() {
             Ok(Some(entry)) => entry,
             Ok(None) => break,
-            Err(e) => return Err(ArchiveError::CpioError(e)),
+            Err(e) => {
+                return Err(QuickLookError::with_source("解析 CPIO 压缩文件失败", e));
+            },
         };
 
         let header = entry.header();
@@ -39,7 +42,9 @@ pub fn list_cpio_entries<P: AsRef<Path>>(path: P) -> Result<Vec<Extract>, Archiv
 
         entries.push(Extract::new(name, size, last_modified, is_dir));
 
-        reader.skip_entry_data_owned(&entry)?;
+        reader
+            .skip_entry_data_owned(&entry)
+            .map_err(|e| QuickLookError::with_source("读取 CPIO 条目数据失败", e))?;
     }
 
     Ok(entries)

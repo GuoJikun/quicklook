@@ -1,12 +1,10 @@
-use crate::{ArchiveError, Extract, normalize_entry_name};
+use crate::{Extract, normalize_entry_name};
 use chrono::NaiveDate;
+use quicklook_error::{QuickLookError, Result};
 use std::path::Path;
 
 /// 列举 RAR 文件条目
-pub fn list_rar_entries<P: AsRef<Path>>(
-    path: P,
-    password: Option<&str>,
-) -> Result<Vec<Extract>, ArchiveError> {
+pub fn list_rar_entries<P: AsRef<Path>>(path: P, password: Option<&str>) -> Result<Vec<Extract>> {
     let path = path.as_ref();
     let path_str = path.to_string_lossy().to_string();
 
@@ -16,7 +14,7 @@ pub fn list_rar_entries<P: AsRef<Path>>(
     };
     let archive = archive
         .open_for_listing()
-        .map_err(|e| ArchiveError::Other(format!("Failed to open RAR archive: {}", e)))?;
+        .map_err(|e| QuickLookError::with_source("打开 RAR 压缩文件失败", e))?;
 
     let mut entries = Vec::new();
 
@@ -51,7 +49,7 @@ pub fn list_rar_entries<P: AsRef<Path>>(
 }
 
 /// 检测 RAR 文件是否需要密码（仅头部加密时才需要密码才能列出文件）
-pub fn is_rar_password_protected<P: AsRef<Path>>(path: P) -> Result<bool, ArchiveError> {
+pub fn is_rar_password_protected<P: AsRef<Path>>(path: P) -> Result<bool> {
     let path = path.as_ref();
     let path_str = path.to_string_lossy().to_string();
 
@@ -60,10 +58,7 @@ pub fn is_rar_password_protected<P: AsRef<Path>>(path: P) -> Result<bool, Archiv
         Err(e) if e.code == unrar::error::Code::MissingPassword => Ok(true),
         Err(e) => {
             log::error!("Failed to open RAR archive: {}", e);
-            Err(ArchiveError::Other(format!(
-                "Failed to open RAR archive: {}",
-                e
-            )))
+            Err(QuickLookError::with_source("打开 RAR 压缩文件失败", e))
         },
         Ok(open_archive) => Ok(open_archive.has_encrypted_headers()),
     }

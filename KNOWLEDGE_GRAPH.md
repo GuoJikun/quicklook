@@ -426,6 +426,7 @@ Cargo workspace (resolver = "2")
 │   └── quicklook-error (workspace)
 │
 ├── quicklook-archive (crates/archive/)
+│   ├── quicklook-error (workspace, 统一错误类型)
 │   ├── serde + serde_json + chrono + log (workspace)
 │   ├── zip, tar, flate2, bzip2, lzma-rust2
 │   ├── sevenz-rust, ruzstd, hadris-cpio, ar

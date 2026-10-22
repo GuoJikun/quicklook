@@ -71,11 +71,31 @@ pub enum QuickLookError {
     PdfOutline(String),
 
     // ── 通用 ──────────────────────────────────────
+    #[error("{context}: {source}")]
+    Source {
+        context: String,
+        #[source]
+        source: Box<dyn std::error::Error + Send + Sync>,
+    },
+
     #[error("UTF-8 解码错误: {0}")]
     Utf8(String),
 
     #[error("{0}")]
     Other(String),
+}
+
+impl QuickLookError {
+    /// 以统一错误类型包装第三方错误，同时保留 `source()` 错误链。
+    pub fn with_source(
+        context: impl Into<String>,
+        source: impl std::error::Error + Send + Sync + 'static,
+    ) -> Self {
+        Self::Source {
+            context: context.into(),
+            source: Box::new(source),
+        }
+    }
 }
 
 impl serde::Serialize for QuickLookError {
@@ -113,5 +133,32 @@ impl From<std::io::Error> for QuickLookError {
 impl From<FromUtf8Error> for QuickLookError {
     fn from(e: FromUtf8Error) -> Self {
         QuickLookError::Utf8(e.to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Debug)]
+    struct RootCause;
+
+    impl std::fmt::Display for RootCause {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "root cause")
+        }
+    }
+
+    impl std::error::Error for RootCause {}
+
+    #[test]
+    fn with_source_preserves_error_chain() {
+        let err = QuickLookError::with_source("压缩文件解析失败", RootCause);
+
+        assert_eq!(err.to_string(), "压缩文件解析失败: root cause");
+        assert_eq!(
+            std::error::Error::source(&err).unwrap().to_string(),
+            "root cause"
+        );
     }
 }

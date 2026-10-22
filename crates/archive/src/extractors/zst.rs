@@ -1,4 +1,5 @@
-use crate::{ArchiveError, Extract, normalize_entry_name};
+use crate::{Extract, normalize_entry_name};
+use quicklook_error::{QuickLookError, Result};
 use ruzstd::decoding::StreamingDecoder;
 use std::{
     fs::File,
@@ -6,9 +7,9 @@ use std::{
     time::{Duration, UNIX_EPOCH},
 };
 
-fn parse_tar_zst_entries<R: std::io::Read>(reader: R) -> Result<Vec<Extract>, ArchiveError> {
+fn parse_tar_zst_entries<R: std::io::Read>(reader: R) -> Result<Vec<Extract>> {
     let decoder = StreamingDecoder::new(reader)
-        .map_err(|e| ArchiveError::Other(format!("Zstd 解码失败: {e}")))?;
+        .map_err(|e| QuickLookError::with_source("Zstd 解码失败", e))?;
     let mut archive = tar::Archive::new(decoder);
     let mut entries = Vec::new();
 
@@ -32,6 +33,6 @@ fn parse_tar_zst_entries<R: std::io::Read>(reader: R) -> Result<Vec<Extract>, Ar
 }
 
 /// 列举 TAR.ZST / TZST 文件条目
-pub fn list_tar_zst_entries<P: AsRef<Path>>(path: P) -> Result<Vec<Extract>, ArchiveError> {
+pub fn list_tar_zst_entries<P: AsRef<Path>>(path: P) -> Result<Vec<Extract>> {
     parse_tar_zst_entries(File::open(path)?)
 }

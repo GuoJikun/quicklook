@@ -1,8 +1,8 @@
+use quicklook_error::{QuickLookError, Result};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::Path;
 
-pub mod error;
 pub mod extractors;
 
 /// 统一条目路径：Windows 分隔符 `\` 归一为 `/`，去掉重复斜杠
@@ -23,7 +23,6 @@ pub fn normalize_entry_name(name: &str) -> String {
     out
 }
 
-pub use error::ArchiveError;
 pub use extractors::ar::list_ar_entries;
 pub use extractors::cpio::list_cpio_entries;
 pub use extractors::rar::{is_rar_password_protected, list_rar_entries};
@@ -63,7 +62,7 @@ impl Extract {
     }
 
     /// 检测归档文件是否需要密码
-    pub fn is_password_protected<P: AsRef<Path>>(archive_path: P) -> Result<bool, ArchiveError> {
+    pub fn is_password_protected<P: AsRef<Path>>(archive_path: P) -> Result<bool> {
         let path = archive_path.as_ref();
         let extension = path
             .extension()
@@ -86,7 +85,7 @@ impl Extract {
     pub fn list_archive_tree<P: AsRef<Path>>(
         archive_path: P,
         password: Option<&str>,
-    ) -> Result<Vec<Extract>, ArchiveError> {
+    ) -> Result<Vec<Extract>> {
         let path = archive_path.as_ref();
         let extension = path
             .extension()
@@ -109,7 +108,7 @@ impl Extract {
             "jar" | "war" | "ear" | "apk" | "aar" | "whl" | "vsix" | "nupkg" | "crx" | "xpi"
             | "egg" | "kra" | "xps" | "oxps" => extractors::zip::list_zip_entries(path, password)?,
             // 对于其他格式，返回错误
-            _ => return Err(ArchiveError::UnsupportedFormat(extension)),
+            _ => return Err(QuickLookError::UnsupportedArchiveFormat(extension)),
         };
 
         let tree = Self::build_tree(entries);

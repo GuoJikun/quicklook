@@ -1,4 +1,5 @@
-use crate::{ArchiveError, Extract, normalize_entry_name};
+use crate::{Extract, normalize_entry_name};
+use quicklook_error::{QuickLookError, Result};
 use std::{fs::File, path::Path};
 use zip::ZipArchive;
 
@@ -13,18 +14,20 @@ fn decode_entry_name(raw: &[u8]) -> String {
 }
 
 /// 列举 ZIP 文件条目
-pub fn list_zip_entries<P: AsRef<Path>>(
-    path: P,
-    password: Option<&str>,
-) -> Result<Vec<Extract>, ArchiveError> {
+pub fn list_zip_entries<P: AsRef<Path>>(path: P, password: Option<&str>) -> Result<Vec<Extract>> {
     let file = File::open(path)?;
-    let mut archive = ZipArchive::new(file)?;
+    let mut archive = ZipArchive::new(file)
+        .map_err(|e| QuickLookError::with_source("解析 ZIP 压缩文件失败", e))?;
     let mut entries = Vec::with_capacity(archive.len());
 
     for i in 0..archive.len() {
         let file = match password {
-            Some(pw) => archive.by_index_decrypt(i, pw.as_bytes())?,
-            None => archive.by_index_raw(i)?,
+            Some(pw) => archive
+                .by_index_decrypt(i, pw.as_bytes())
+                .map_err(|e| QuickLookError::with_source("读取 ZIP 压缩条目失败", e))?,
+            None => archive
+                .by_index_raw(i)
+                .map_err(|e| QuickLookError::with_source("读取 ZIP 压缩条目失败", e))?,
         };
         let is_dir = file.is_dir();
         let name = normalize_entry_name(&decode_entry_name(file.name_raw()));
@@ -38,13 +41,13 @@ pub fn list_zip_entries<P: AsRef<Path>>(
 }
 
 /// 处理 zip 格式的压缩文件（兼容旧接口）
-pub fn zip_extract(zip_path: &str, password: Option<&str>) -> Result<Vec<Extract>, ArchiveError> {
+pub fn zip_extract(zip_path: &str, password: Option<&str>) -> Result<Vec<Extract>> {
     list_zip_entries(zip_path, password)
 }
 
 /// 检测 ZIP 文件是否需要密码
 /// ZIP 的元数据（文件名、大小、时间）始终是明文的，不需要密码即可列出
 /// 此方法始终返回 false
-pub fn is_zip_password_protected<P: AsRef<Path>>(_path: P) -> Result<bool, ArchiveError> {
+pub fn is_zip_password_protected<P: AsRef<Path>>(_path: P) -> Result<bool> {
     Ok(false)
 }
