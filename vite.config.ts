@@ -96,7 +96,7 @@ export default defineConfig(({ mode, command }) => {
             host: true,
             port: 6688,
             watch: {
-                ignored: ['**/target/**'],
+                ignored: ['**/target/**', 'src-tauri/**'],
             },
         },
     }

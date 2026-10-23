@@ -16,13 +16,13 @@ name = "app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2.7.3", features = [] }
+tauri-build = { version = "2.7.4", features = [] }
 
 [dependencies]
 serde_json = { workspace = true }
 serde = { workspace = true }
 log = { workspace = true }
-tauri = { version = "2.12.4", features = [
+tauri = { version = "2.12.5", features = [
     "protocol-asset",
     "unstable",
     "tray-icon",
