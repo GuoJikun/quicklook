@@ -159,12 +159,11 @@ pub fn run() {
         .expect("error while running tauri application");
 
     // 阻止因窗口全部关闭而退出应用
-    app.run(|_app_handle, event| match event {
-        tauri::RunEvent::ExitRequested { api, code, .. } => {
-            if code.is_none() {
-                api.prevent_exit();
-            }
-        },
-        _ => {},
+    app.run(|_app_handle, event| {
+        if let tauri::RunEvent::ExitRequested { api, code, .. } = event
+            && code.is_none()
+        {
+            api.prevent_exit();
+        }
     });
 }

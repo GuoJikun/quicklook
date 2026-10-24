@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   cargo-check:
-    name: cargo check
+    name: fmt / clippy / check / test
     runs-on: windows-latest
     timeout-minutes: 40
 
@@ -21,6 +21,8 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
@@ -42,8 +44,19 @@ jobs:
           Write-Host "[copy-pdfium-dll] $srcFile -> $targetDir/pdfium.dll"
         shell: pwsh
 
+      - name: Cargo fmt --check
+        run: |
+          cargo fmt --version
+          cargo fmt --check
+
       - name: Cargo check
         run: |
           cargo --version
           cargo check --locked --all-targets
+
+      - name: Cargo clippy
+        run: cargo clippy --locked --all-targets -- -D warnings
+
+      - name: Cargo test
+        run: cargo test --locked
 

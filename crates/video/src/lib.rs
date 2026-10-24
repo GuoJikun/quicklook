@@ -124,27 +124,27 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, QuickLookError> {
     // 同一文件若已在转换中，直接等待播放列表就绪并返回，避免重复启动 ffmpeg。
     {
         let guard = FFMPEG_PROCESS.lock().unwrap_or_else(|e| e.into_inner());
-        if let Some((pid, running_dir)) = guard.as_ref() {
-            if *running_dir == temp_dir {
-                log::info!(
-                    "检测到同一路径已有 ffmpeg 正在运行 (PID: {})，等待 m3u8 就绪后复用",
-                    pid
-                );
-                drop(guard);
+        if let Some((pid, running_dir)) = guard.as_ref()
+            && *running_dir == temp_dir
+        {
+            log::info!(
+                "检测到同一路径已有 ffmpeg 正在运行 (PID: {})，等待 m3u8 就绪后复用",
+                pid
+            );
+            drop(guard);
 
-                for _ in 0..120 {
-                    if FFMPEG_CANCELLED.load(Ordering::Relaxed) {
-                        return Err(QuickLookError::VideoConversionCancelled);
-                    }
-                    if m3u8_path.exists() {
-                        return Ok(m3u8_result);
-                    }
-                    std::thread::sleep(std::time::Duration::from_millis(100));
+            for _ in 0..120 {
+                if FFMPEG_CANCELLED.load(Ordering::Relaxed) {
+                    return Err(QuickLookError::VideoConversionCancelled);
                 }
-                return Err(QuickLookError::VideoConversion(
-                    "ffmpeg 正在运行，但 m3u8 尚未就绪，请稍后重试".to_string(),
-                ));
+                if m3u8_path.exists() {
+                    return Ok(m3u8_result);
+                }
+                std::thread::sleep(std::time::Duration::from_millis(100));
             }
+            return Err(QuickLookError::VideoConversion(
+                "ffmpeg 正在运行，但 m3u8 尚未就绪，请稍后重试".to_string(),
+            ));
         }
     }
 
@@ -190,7 +190,7 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, QuickLookError> {
         Some(select_encoder())
     };
 
-    let mut hls_base_url = format!("{}", temp_dir.to_string_lossy().replace('\\', "/"));
+    let mut hls_base_url = temp_dir.to_string_lossy().replace('\\', "/").to_string();
     if !hls_base_url.ends_with('/') {
         hls_base_url.push('/');
     }
@@ -233,17 +233,17 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, QuickLookError> {
         Ok(child) => child,
         Err(e) => {
             // 硬件编码器启动失败时回退软编再试一次
-            if let Some(encoder) = video_encoder {
-                if encoder.is_hardware() {
-                    log::warn!(
-                        "硬件编码器 {} 启动失败: {}，回退 libx264 重试",
-                        encoder.codec_name(),
-                        e
-                    );
-                    set_selected_encoder(VideoEncoder::Libx264);
-                    let _ = std::fs::remove_dir_all(&temp_dir);
-                    return convert_video_to_hls(path);
-                }
+            if let Some(encoder) = video_encoder
+                && encoder.is_hardware()
+            {
+                log::warn!(
+                    "硬件编码器 {} 启动失败: {}，回退 libx264 重试",
+                    encoder.codec_name(),
+                    e
+                );
+                set_selected_encoder(VideoEncoder::Libx264);
+                let _ = std::fs::remove_dir_all(&temp_dir);
+                return convert_video_to_hls(path);
             }
             return Err(QuickLookError::VideoConversion(format!(
                 "启动 ffmpeg 失败: {}",
@@ -265,10 +265,10 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, QuickLookError> {
 
         {
             let mut guard = FFMPEG_PROCESS.lock().unwrap_or_else(|e| e.into_inner());
-            if let Some((pid, _)) = guard.as_ref() {
-                if *pid == child_pid {
-                    *guard = None;
-                }
+            if let Some((pid, _)) = guard.as_ref()
+                && *pid == child_pid
+            {
+                *guard = None;
             }
         }
 
@@ -307,15 +307,16 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, QuickLookError> {
     kill_ffmpeg_process();
     let _ = std::fs::remove_dir_all(&temp_dir);
 
-    if let Some(encoder) = video_encoder {
-        if encoder.is_hardware() && !FFMPEG_CANCELLED.load(Ordering::Relaxed) {
-            log::warn!(
-                "硬件编码器 {} 未产出 m3u8，回退 libx264 重试",
-                encoder.codec_name()
-            );
-            set_selected_encoder(VideoEncoder::Libx264);
-            return convert_video_to_hls(path);
-        }
+    if let Some(encoder) = video_encoder
+        && encoder.is_hardware()
+        && !FFMPEG_CANCELLED.load(Ordering::Relaxed)
+    {
+        log::warn!(
+            "硬件编码器 {} 未产出 m3u8，回退 libx264 重试",
+            encoder.codec_name()
+        );
+        set_selected_encoder(VideoEncoder::Libx264);
+        return convert_video_to_hls(path);
     }
 
     Err(QuickLookError::VideoConversion(

@@ -146,8 +146,10 @@ pub fn is_rename_mode() -> bool {
 pub fn is_cursor_activated(hwnd: HWND) -> bool {
     let t_id = unsafe { WindowsAndMessaging::GetWindowThreadProcessId(hwnd, None) };
 
-    let mut gti = WindowsAndMessaging::GUITHREADINFO::default();
-    gti.cbSize = std::mem::size_of::<WindowsAndMessaging::GUITHREADINFO>() as u32;
+    let mut gti = WindowsAndMessaging::GUITHREADINFO {
+        cbSize: std::mem::size_of::<WindowsAndMessaging::GUITHREADINFO>() as u32,
+        ..Default::default()
+    };
 
     unsafe { WindowsAndMessaging::GetGUIThreadInfo(t_id, &mut gti) };
 

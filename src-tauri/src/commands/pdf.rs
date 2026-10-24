@@ -63,7 +63,7 @@ pub async fn get_pdf_outline(path: String) -> Result<Vec<pdf_helper::OutlineItem
 #[command(async)]
 pub async fn clear_pdf_cache() -> Result<u32, QuickLookError> {
     log::info!("[cmd] clear_pdf_cache");
-    let result = tauri::async_runtime::spawn_blocking(|| pdf_helper::clear_pdf_cache())
+    let result = tauri::async_runtime::spawn_blocking(pdf_helper::clear_pdf_cache)
         .await
         .map_err(|e| QuickLookError::PdfRendering(format!("任务执行失败: {}", e)))?;
     match &result {

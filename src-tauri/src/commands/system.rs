@@ -42,7 +42,7 @@ pub fn restart_app(app: AppHandle) {
 #[command]
 pub fn show_open_with_dialog(app: AppHandle, path: &str) {
     if let Some(preview_window) = app.get_webview_window("preview") {
-        let hwnd = preview_window.hwnd().map_or(HWND::default(), |hwnd| hwnd);
+        let hwnd = preview_window.hwnd().unwrap_or(HWND::default());
         let _ = win::show_open_with_dialog(path, hwnd);
     }
 }

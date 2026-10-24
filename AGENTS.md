@@ -9,12 +9,15 @@ Windows 文件快速预览工具（Tauri v2：Rust 后端 + Vue 3 前端）。
 ## 编码前必须执行的检查
 
 - **Rust 检查**：`cargo check --locked --all-targets`
+- **Rust 格式**：`cargo fmt --check`
+- **Rust Lint**：`cargo clippy --locked --all-targets -- -D warnings`（CI 门禁，warning 即失败）
+- **Rust 测试**：`cargo test --locked`
 - **类型检查**：`pnpm type-check`（vue-tsc --build --force）
 - **代码规范**：`pnpm lint`（eslint --fix）
 - **单元测试**：`pnpm test:unit`（vitest）
 - **完整构建**：`pnpm tauri build`
 
-推荐验证顺序：TS 侧 `lint → type-check → test:unit`，Rust 侧 `cargo check`。
+推荐验证顺序：TS 侧 `lint → type-check → test:unit`，Rust 侧 `fmt → check → clippy → test`（与 CI `check-rust.yml` 门禁一致）。
 
 ## 核心架构
 

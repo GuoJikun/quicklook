@@ -50,14 +50,14 @@ fn get_or_load_spine(path: &str) -> Result<Arc<Vec<String>>, QuickLookError> {
     }
     let mtime = file_mtime(path);
 
-    if let Ok(mut cache) = EPUB_SPINE_CACHE.lock() {
-        if let Some(entry) = cache.get_mut(path) {
-            if entry.mtime == mtime {
-                entry.last_used = Instant::now();
-                return Ok(Arc::clone(&entry.file_names));
-            }
-            cache.remove(path);
+    if let Ok(mut cache) = EPUB_SPINE_CACHE.lock()
+        && let Some(entry) = cache.get_mut(path)
+    {
+        if entry.mtime == mtime {
+            entry.last_used = Instant::now();
+            return Ok(Arc::clone(&entry.file_names));
         }
+        cache.remove(path);
     }
 
     log::debug!("[epub] spine 缓存未命中，加载文件列表 path={}", path);
@@ -252,9 +252,7 @@ fn find_next_resource_tag(
             i = name_end;
             continue;
         };
-        let Some(gt_rel) = html[name_end..].find('>') else {
-            return None;
-        };
+        let gt_rel = html[name_end..].find('>')?;
         let tag_end = name_end + gt_rel + 1; // '>' 后一位
         return Some((i, name_end, tag_end, kind));
     }
@@ -300,17 +298,16 @@ fn inline_resource_tags(html: &str, chapter_dir: &str, resources: &ResourceMap) 
 
         match kind {
             ResourceTagKind::Img => {
-                if let Some(src) = extract_attr_value(body, "src") {
-                    if let Some(new_body) =
+                if let Some(src) = extract_attr_value(body, "src")
+                    && let Some(new_body) =
                         try_inline_attr(body, "src", &src, chapter_dir, resources)
-                    {
-                        out.push_str(open_tag);
-                        out.push_str(&new_body);
-                        out.push('>');
-                        inlined += 1;
-                        pos = tag_end;
-                        continue;
-                    }
+                {
+                    out.push_str(open_tag);
+                    out.push_str(&new_body);
+                    out.push('>');
+                    inlined += 1;
+                    pos = tag_end;
+                    continue;
                 }
                 out.push_str(&html[tag_start..tag_end]);
                 pos = tag_end;
@@ -422,16 +419,15 @@ fn inline_css_urls(css: &str, chapter_dir: &str, resources: &ResourceMap) -> Str
                     continue;
                 }
                 let resolved = resolve_path(chapter_dir, path);
-                if let Some((mime, data)) = resources.get(&resolved) {
-                    if !mime.is_empty()
-                        && !data.is_empty()
-                        && !mime.starts_with("application/octet")
-                    {
-                        let data_uri = to_data_uri(mime, data);
-                        out.push_str(&format!("url(\"{}\")", data_uri));
-                        pos = abs + 4 + expr_len;
-                        continue;
-                    }
+                if let Some((mime, data)) = resources.get(&resolved)
+                    && !mime.is_empty()
+                    && !data.is_empty()
+                    && !mime.starts_with("application/octet")
+                {
+                    let data_uri = to_data_uri(mime, data);
+                    out.push_str(&format!("url(\"{}\")", data_uri));
+                    pos = abs + 4 + expr_len;
+                    continue;
                 }
                 // 未命中：保留原样
                 out.push_str(&css[abs..abs + 4 + expr_len]);
@@ -598,112 +594,6 @@ fn resolve_path(base_dir: &str, relative: &str) -> String {
     components.join("/")
 }
 
-#[cfg(test)]
-mod tests {
-    use super::{extract_attr_value, match_spine_href, parse_css_url_expr, resolve_path};
-
-    #[test]
-    fn resolves_relative_paths_against_current_chapter_dir() {
-        assert_eq!(
-            resolve_path("Text", "chapter1.xhtml"),
-            "Text/chapter1.xhtml"
-        );
-        assert_eq!(
-            resolve_path("Text", "./chapter1.xhtml"),
-            "Text/chapter1.xhtml"
-        );
-        assert_eq!(
-            resolve_path("Text", "../Images/cover.png"),
-            "Images/cover.png"
-        );
-        assert_eq!(
-            resolve_path("Text/Section", "../Images/cover.png"),
-            "Text/Images/cover.png"
-        );
-    }
-
-    #[test]
-    fn preserves_external_and_root_paths() {
-        assert_eq!(
-            resolve_path("Text", "https://example.com/a.png"),
-            "https://example.com/a.png"
-        );
-        assert_eq!(
-            resolve_path("Text", "/Images/cover.png"),
-            "Images/cover.png"
-        );
-        assert_eq!(
-            resolve_path("Text", "data:image/png;base64,abc"),
-            "data:image/png;base64,abc"
-        );
-    }
-
-    #[test]
-    fn extracts_attr_value_with_quote_styles() {
-        assert_eq!(
-            extract_attr_value(r#" src="a.png""#, "src").as_deref(),
-            Some("a.png")
-        );
-        assert_eq!(
-            extract_attr_value(" src='a.png'", "src").as_deref(),
-            Some("a.png")
-        );
-        assert_eq!(
-            extract_attr_value(" src=a.png ", "src").as_deref(),
-            Some("a.png")
-        );
-    }
-
-    #[test]
-    fn does_not_match_partial_attr_names() {
-        assert_eq!(extract_attr_value(r#" data-src="a.png""#, "src"), None);
-        assert_eq!(extract_attr_value(r#" xlink:href="a.png""#, "href"), None);
-        assert_eq!(extract_attr_value(r#" data-href="a.png""#, "href"), None);
-    }
-
-    #[test]
-    fn finds_attr_after_other_attributes() {
-        assert_eq!(
-            extract_attr_value(r#" class="x" src="a.png" alt="t""#, "src").as_deref(),
-            Some("a.png")
-        );
-        assert_eq!(
-            extract_attr_value(r#" xlink:href="a.png" href="b.png""#, "href").as_deref(),
-            Some("b.png")
-        );
-    }
-
-    #[test]
-    fn matches_spine_href_relative_and_fragment() {
-        let spine = vec![
-            "Text/ch1.xhtml".to_string(),
-            "Text/ch2.xhtml".to_string(),
-            "OEBPS/appendix.xhtml".to_string(),
-        ];
-        assert_eq!(match_spine_href(&spine, 0, "ch2.xhtml"), Some((1, None)));
-        assert_eq!(
-            match_spine_href(&spine, 0, "ch2.xhtml#sec"),
-            Some((1, Some("sec".to_string())))
-        );
-        assert_eq!(
-            match_spine_href(&spine, 1, "appendix.xhtml"),
-            Some((2, None))
-        );
-        assert_eq!(
-            match_spine_href(&spine, 0, "/OEBPS/appendix.xhtml"),
-            Some((2, None))
-        );
-    }
-
-    #[test]
-    fn parse_css_url_handles_quoted_and_unquoted() {
-        // `"a.png")` 长度 8；`'a.png')` 长度 8；`a.png)` 长度 6
-        assert_eq!(parse_css_url_expr(r#""a.png") rest"#), Some(("a.png", 8)));
-        assert_eq!(parse_css_url_expr("'a.png') rest"), Some(("a.png", 8)));
-        assert_eq!(parse_css_url_expr("a.png) rest"), Some(("a.png", 6)));
-    }
-}
-
 /// 将 iepub 错误映射为 QuickLookError
 fn map_iepub_error(_path: &str, context: &str, e: IError) -> QuickLookError {
     let msg = match &e {
@@ -824,11 +714,11 @@ fn extract_cover(book: &mut EpubBook) -> Option<String> {
     // 策略 1: 从 meta 中查找 cover-id
     let mut cover_id = None;
     for meta in book.meta() {
-        if let Some(id) = meta.get_attr("name") {
-            if id.eq_ignore_ascii_case("cover") {
-                cover_id = meta.get_attr("content").map(|s| s.to_string());
-                break;
-            }
+        if let Some(id) = meta.get_attr("name")
+            && id.eq_ignore_ascii_case("cover")
+        {
+            cover_id = meta.get_attr("content").map(|s| s.to_string());
+            break;
         }
     }
 
@@ -837,10 +727,10 @@ fn extract_cover(book: &mut EpubBook) -> Option<String> {
             if asset.id() == content {
                 let file_name = asset.file_name().to_string();
                 let mime = guess_mime_type(&file_name);
-                if let Some(data) = asset.data_mut() {
-                    if !mime.starts_with("application/octet") {
-                        return Some(to_data_uri(mime, data));
-                    }
+                if let Some(data) = asset.data_mut()
+                    && !mime.starts_with("application/octet")
+                {
+                    return Some(to_data_uri(mime, data));
                 }
             }
         }
@@ -852,10 +742,11 @@ fn extract_cover(book: &mut EpubBook) -> Option<String> {
         let lower = file_name.to_lowercase();
         if lower.starts_with("cover") {
             let mime = guess_mime_type(&file_name);
-            if let Some(data) = asset.data_mut() {
-                if !mime.starts_with("application/octet") && data.len() > 100 {
-                    return Some(to_data_uri(mime, data));
-                }
+            if let Some(data) = asset.data_mut()
+                && !mime.starts_with("application/octet")
+                && data.len() > 100
+            {
+                return Some(to_data_uri(mime, data));
             }
         }
     }
@@ -871,10 +762,11 @@ fn extract_cover(book: &mut EpubBook) -> Option<String> {
             || lower.ends_with(".webp")
         {
             let mime = guess_mime_type(&file_name);
-            if let Some(data) = asset.data_mut() {
-                if !mime.starts_with("application/octet") && data.len() > 1000 {
-                    return Some(to_data_uri(mime, data));
-                }
+            if let Some(data) = asset.data_mut()
+                && !mime.starts_with("application/octet")
+                && data.len() > 1000
+            {
+                return Some(to_data_uri(mime, data));
             }
         }
     }
@@ -1219,4 +1111,110 @@ fn match_spine_href(
 
     log::debug!("[epub] resolve_epub_link: no match found for href={}", href);
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{extract_attr_value, match_spine_href, parse_css_url_expr, resolve_path};
+
+    #[test]
+    fn resolves_relative_paths_against_current_chapter_dir() {
+        assert_eq!(
+            resolve_path("Text", "chapter1.xhtml"),
+            "Text/chapter1.xhtml"
+        );
+        assert_eq!(
+            resolve_path("Text", "./chapter1.xhtml"),
+            "Text/chapter1.xhtml"
+        );
+        assert_eq!(
+            resolve_path("Text", "../Images/cover.png"),
+            "Images/cover.png"
+        );
+        assert_eq!(
+            resolve_path("Text/Section", "../Images/cover.png"),
+            "Text/Images/cover.png"
+        );
+    }
+
+    #[test]
+    fn preserves_external_and_root_paths() {
+        assert_eq!(
+            resolve_path("Text", "https://example.com/a.png"),
+            "https://example.com/a.png"
+        );
+        assert_eq!(
+            resolve_path("Text", "/Images/cover.png"),
+            "Images/cover.png"
+        );
+        assert_eq!(
+            resolve_path("Text", "data:image/png;base64,abc"),
+            "data:image/png;base64,abc"
+        );
+    }
+
+    #[test]
+    fn extracts_attr_value_with_quote_styles() {
+        assert_eq!(
+            extract_attr_value(r#" src="a.png""#, "src").as_deref(),
+            Some("a.png")
+        );
+        assert_eq!(
+            extract_attr_value(" src='a.png'", "src").as_deref(),
+            Some("a.png")
+        );
+        assert_eq!(
+            extract_attr_value(" src=a.png ", "src").as_deref(),
+            Some("a.png")
+        );
+    }
+
+    #[test]
+    fn does_not_match_partial_attr_names() {
+        assert_eq!(extract_attr_value(r#" data-src="a.png""#, "src"), None);
+        assert_eq!(extract_attr_value(r#" xlink:href="a.png""#, "href"), None);
+        assert_eq!(extract_attr_value(r#" data-href="a.png""#, "href"), None);
+    }
+
+    #[test]
+    fn finds_attr_after_other_attributes() {
+        assert_eq!(
+            extract_attr_value(r#" class="x" src="a.png" alt="t""#, "src").as_deref(),
+            Some("a.png")
+        );
+        assert_eq!(
+            extract_attr_value(r#" xlink:href="a.png" href="b.png""#, "href").as_deref(),
+            Some("b.png")
+        );
+    }
+
+    #[test]
+    fn matches_spine_href_relative_and_fragment() {
+        let spine = vec![
+            "Text/ch1.xhtml".to_string(),
+            "Text/ch2.xhtml".to_string(),
+            "OEBPS/appendix.xhtml".to_string(),
+        ];
+        assert_eq!(match_spine_href(&spine, 0, "ch2.xhtml"), Some((1, None)));
+        assert_eq!(
+            match_spine_href(&spine, 0, "ch2.xhtml#sec"),
+            Some((1, Some("sec".to_string())))
+        );
+        assert_eq!(
+            match_spine_href(&spine, 1, "appendix.xhtml"),
+            Some((2, None))
+        );
+        assert_eq!(
+            match_spine_href(&spine, 0, "/OEBPS/appendix.xhtml"),
+            Some((2, None))
+        );
+    }
+
+    #[test]
+    fn parse_css_url_handles_quoted_and_unquoted() {
+        // `"a.png")` 长度 8；`'a.png')` 长度 8；`a.png)` 长度 6
+        assert_eq!(parse_css_url_expr(r#""a.png") rest"#), Some(("a.png", 8)));
+        assert_eq!(parse_css_url_expr("'a.png') rest"), Some(("a.png", 8)));
+        assert_eq!(parse_css_url_expr("a.png) rest"), Some(("a.png", 6)));
+    }
 }

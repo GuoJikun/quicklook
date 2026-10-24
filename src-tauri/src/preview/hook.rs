@@ -49,11 +49,11 @@ pub fn set_keyboard_hook() {
 }
 
 pub fn remove_keyboard_hook() {
-    if let Ok(mut guard) = HOOK_HANDLE.lock() {
-        if let Some(hook) = guard.0.take() {
-            unsafe {
-                let _ = WindowsAndMessaging::UnhookWindowsHookEx(hook);
-            }
+    if let Ok(mut guard) = HOOK_HANDLE.lock()
+        && let Some(hook) = guard.0.take()
+    {
+        unsafe {
+            let _ = WindowsAndMessaging::UnhookWindowsHookEx(hook);
         }
     }
 }

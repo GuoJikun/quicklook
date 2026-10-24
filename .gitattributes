@@ -1,0 +1,29 @@
+# 统一使用 LF 换行，保证 cargo fmt --check（rustfmt.toml newline_style = "Unix"）
+# 在 Windows/macOS/Linux 各平台 checkout 后结果一致。
+* text=auto eol=lf
+
+# 显式声明文本类型（覆盖 autocrlf=true 的本地转换）
+*.rs text eol=lf
+*.toml text eol=lf
+*.ts text eol=lf
+*.vue text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+*.css text eol=lf
+*.scss text eol=lf
+*.html text eol=lf
+
+# 二进制文件
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.dll binary
+*.heic binary
+*.heif binary
+*.pdf binary
+*.webp binary
+*.gif binary

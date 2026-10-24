@@ -86,7 +86,7 @@ pub struct Selected;
 
 #[allow(dead_code)]
 impl Selected {
-    pub fn new() -> Result<String, WError> {
+    pub fn get_selected() -> Result<String, WError> {
         match Self::get_selected_file() {
             Ok(path) => Ok(path),
             Err(e) => {
@@ -394,11 +394,11 @@ impl Selected {
             {
                 return None;
             }
-            let shell_browser = service_provider
+
+            service_provider
                 .unwrap()
                 .QueryService::<IShellBrowser>(&IShellBrowser::IID)
-                .ok();
-            shell_browser
+                .ok()
         }
     }
 

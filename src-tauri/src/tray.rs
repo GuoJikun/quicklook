@@ -10,7 +10,7 @@ use tauri_plugin_updater::UpdaterExt;
 
 async fn updater_check(app: AppHandle) -> tauri_plugin_updater::Result<()> {
     let checked = app.updater()?.check().await;
-    if let Err(_) = checked {
+    if checked.is_err() {
         let _ = app
             .dialog()
             .message("检查更新失败")
@@ -75,7 +75,7 @@ pub fn create_tray(app: &mut App) -> tauri::Result<()> {
     let version = pkg_info.version.clone();
     let tooltip_text = format!(
         "{} v{}.{}.{}",
-        &name, &version.major, &version.minor, &version.patch
+        name, version.major, version.minor, version.patch
     );
 
     let mut tray = TrayIconBuilder::with_id("tray")

@@ -8,7 +8,7 @@ use crate::helper::monitor;
 use crate::preview::route::WebRoute;
 use crate::utils::get_file_info;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct PreviewFile {
     pub app_handle: Option<AppHandle>,
 }
@@ -65,7 +65,7 @@ impl PreviewFile {
     }
 
     pub fn preview_file(app: AppHandle) -> Result<(), TauriError> {
-        let file_path = match crate::helper::selected_file::Selected::new() {
+        let file_path = match crate::helper::selected_file::Selected::get_selected() {
             Ok(path) => path,
             Err(e) => {
                 log::error!("获取选中文件失败: {:?}", e);
@@ -132,16 +132,12 @@ impl PreviewFile {
                         .min_inner_size(300.0, 200.0)
                         .on_page_load(move |window, payload| {
                             let cur_path = payload.url().path();
-                            if cur_path == "/preview" {
-                                match payload.event() {
-                                    PageLoadEvent::Finished => {
-                                        navigate_to(&window, &route.to_url());
+                            if cur_path == "/preview" && payload.event() == PageLoadEvent::Finished
+                            {
+                                navigate_to(&window, &route.to_url());
 
-                                        let _ = window.show();
-                                        let _ = window.set_focus();
-                                    },
-                                    _ => {},
-                                }
+                                let _ = window.show();
+                                let _ = window.set_focus();
                             }
                         })
                         .focused(true)
@@ -161,11 +157,5 @@ impl Drop for PreviewFile {
     fn drop(&mut self) {
         log::debug!("Dropping PreviewFile instance");
         super::hook::remove_keyboard_hook();
-    }
-}
-
-impl Default for PreviewFile {
-    fn default() -> Self {
-        PreviewFile { app_handle: None }
     }
 }
