@@ -41,7 +41,7 @@ E:/private/Rust/quicklook/
 │       ├── home/index.vue         # 占位首页
 │       ├── settings.vue           # 设置页
 │       ├── upgrade.vue            # 更新页
-│       └── preview/               # 11 个预览视图
+│       └── preview/               # 外壳 index.vue + 11 个预览视图
 │           ├── index.vue          # 预览外壳 (Escape 关闭)
 │           ├── code.vue           # Shiki 高亮
 │           ├── md.vue             # Markdown 渲染
@@ -49,12 +49,14 @@ E:/private/Rust/quicklook/
 │           ├── video.vue          # 视频播放 (xgplayer + HLS)
 │           ├── audio.vue          # 音频播放 + LRC 歌词
 │           ├── font.vue           # 字体预览
-    │           ├── book.vue           # epub 电子书阅读
+│           ├── book.vue           # epub 电子书阅读
 │           ├── archive.vue        # 压缩包目录树
 │           ├── model.vue          # 3D 模型预览 (Three.js)
-│           ├── document.vue       # Excel/DOCX 渲染
+│           ├── document.vue       # Excel/CSV/DOCX/PDF 渲染
 │           ├── not-support.vue    # 不支持提示
-│           └── components/preview-image.vue
+│           └── components/
+│               ├── preview-image.vue
+│               └── pdf-viewer.vue
 ├── src-tauri/                     # Rust 后端
 │   ├── Cargo.toml                 # 依赖配置
 │   ├── tauri.conf.json            # Tauri 应用配置
@@ -63,7 +65,7 @@ E:/private/Rust/quicklook/
 │   └── src/
 │       ├── main.rs                # 入口: app_lib::run()
 │       ├── lib.rs                 # Tauri Builder + setup hook + command 注册
-│       ├── error.rs               # QuickLookError 统一错误类型
+│       ├── error.rs               # 重导出 quicklook-error (统一错误类型)
 │       ├── tray.rs                # 系统托盘
 │       ├── commands/              # IPC 命令入口
 │       │   ├── mod.rs             # 重导出
@@ -81,9 +83,9 @@ E:/private/Rust/quicklook/
 │       │   ├── config.rs          # 读取 resources/config.json
 │       │   ├── selected_file.rs   # COM 获取前台窗口选中文件路径
 │       │   ├── win.rs             # Win32 API 封装
-│       │   ├── audio.rs           # 音乐元数据 (lofty) + LRC 歌词
-│       │   ├── image.rs           # PSD/HEIC/JXL → PNG 转换
-│       │   ├── ffmp.rs            # ffmpeg 检测 + 视频 → HLS
+│       │   ├── audio.rs           # 重导出 quicklook-audio
+│       │   ├── image.rs           # 重导出 quicklook-image
+│       │   ├── ffmp.rs            # 重导出 quicklook-video
 │       │   └── monitor.rs         # 屏幕信息 (GDI)
 │       ├── preview/               # 预览激活
 │       │   ├── mod.rs             # 全局状态 + init_preview_file()
@@ -91,7 +93,7 @@ E:/private/Rust/quicklook/
 │       │   ├── route.rs           # 文件类型 → 前端路由
 │       │   └── window.rs          # 创建/导航预览窗口
 │       └── utils/
-│           └── mod.rs             # File 结构体 + FILE_TYPE_MAPPING (120+扩展名)
+│           └── mod.rs             # File 结构体 + FILE_TYPE_MAPPING (145 个生效扩展名)
 ├── crates/
 │   ├── error/                     # quicklook-error
 │   │   └── src/lib.rs             # QuickLookError 统一错误类型
@@ -107,13 +109,13 @@ E:/private/Rust/quicklook/
 │   │   ├── src/lib.rs             # Extract, build_tree(), list_archive_tree()
 │   │   └── src/extractors/        # zip, tar, gz, bz2, xz, zst, 7z, rar, cpio, ar
 │   ├── docs/                      # quicklook-docs
-│   │   ├── src/lib.rs             # Docs enum (Excel, CSV, DOCX)
+│   │   ├── src/lib.rs             # Docs enum (Excel/Docx 两个 variant，CSV 解析归入 Excel)
 │   │   └── src/pdf.rs             # pdfium 渲染 (render_pdf_page 等)
 │   └── book/                      # quicklook-book
 │       └── src/epub.rs            # epub 解析 (章节/目录/HTML)
 ├── .github/workflows/
 │   ├── build.yml                  # 发布构建 (NSIS 安装包)
-│   ├── check-rust.yml             # cargo check CI
+│   ├── check-rust.yml             # Rust 质量门禁 CI (fmt/clippy/check/test)
 │   ├── check-ts-type.yml          # TypeScript 类型检查 CI
 │   └── winget.yml                 # WinGet 发布
 └── KNOWLEDGE_GRAPH.md             # 本文件
@@ -176,14 +178,14 @@ error.rs (统一错误类型: QuickLookError)
 | `get_epub_info` | FE → BE | book.vue | `commands/book.rs` | quicklook-book::epub |
 | `get_epub_chapter` | FE → BE | book.vue | `commands/book.rs` | quicklook-book::epub |
 | `resolve_epub_link` | FE → BE | book.vue | `commands/book.rs` | quicklook-book::epub |
-| `convert_to_png` | FE → BE | image.vue | `commands/image.rs` | helper/image (psd/heic/jxl) |
+| `convert_to_png` | FE → BE | image.vue | `commands/image.rs` | quicklook-image (psd/heic/jxl) |
 | `clear_image_cache` | FE → BE | settings.vue | `commands/image.rs` | 删除 %TEMP%/quicklook_images/ |
-| `read_audio_info` | FE → BE | audio.vue | `commands/audio.rs` | helper/audio (lofty crate) |
-| `parse_lrc` | FE → BE | audio.vue | `commands/audio.rs` | helper/audio (LRC 解析) |
-| `check_ffmpeg` | FE → BE | settings.vue | `commands/video.rs` | helper/ffmp (store 缓存 + which ffmpeg) |
-| `prepare_video_for_preview` | FE → BE | video.vue | `commands/video.rs` | helper/ffmp (ffprobe 兼容性预检) |
-| `convert_video_to_hls` | FE → BE | video.vue | `commands/video.rs` | helper/ffmp (ffmpeg 转码) |
-| `cancel_video_conversion` | FE → BE | video.vue | `commands/video.rs` | helper/ffmp (taskkill) |
+| `read_audio_info` | FE → BE | audio.vue | `commands/audio.rs` | quicklook-audio (lofty crate) |
+| `parse_lrc` | FE → BE | audio.vue | `commands/audio.rs` | quicklook-audio (LRC 解析) |
+| `check_ffmpeg` | FE → BE | settings.vue | `commands/video.rs` | quicklook-video (store 缓存 + which ffmpeg) |
+| `prepare_video_for_preview` | FE → BE | video.vue | `commands/video.rs` | quicklook-video (ffprobe 兼容性预检) |
+| `convert_video_to_hls` | FE → BE | video.vue | `commands/video.rs` | quicklook-video (ffmpeg 转码) |
+| `cancel_video_conversion` | FE → BE | video.vue | `commands/video.rs` | quicklook-video (taskkill) |
 | `render_pdf_page` | FE → BE | pdf-viewer.vue | `commands/pdf.rs` | quicklook-docs::pdf (pdfium) |
 | `get_pdf_page_sizes` | FE → BE | pdf-viewer.vue | `commands/pdf.rs` | quicklook-docs::pdf |
 | `get_pdf_outline` | FE → BE | pdf-viewer.vue | `commands/pdf.rs` | quicklook-docs::pdf |
@@ -214,7 +216,7 @@ window.rs: PreviewFile::preview_file()
         │     └── 或 IUIAutomation (对话框)
         │
         │  2. get_file_info(path, customExts)
-        │     └── FILE_TYPE_MAPPING (120+ 扩展名)
+        │     └── FILE_TYPE_MAPPING (145 个生效扩展名)
         │     └── detect_language_no_ext() (无扩展名文件)
         │     └── 返回 File { file_type, path, extension, size, last_modified, name }
         │
@@ -260,7 +262,7 @@ window.rs: PreviewFile::preview_file()
 ## 文件分类映射 (utils/mod.rs)
 
 ```
-FILE_TYPE_MAPPING（约 145 个生效扩展名；doc/ppt/pptx 已注释）
+FILE_TYPE_MAPPING（145 个生效扩展名；doc/ppt/pptx 与 exe/dmg/deb/rpm/apk/appimage 共 9 项已注释）
 
 Markdown  : md, markdown
 Doc       : docx, xls, xlsx, xlsm, xlsb, xla, xlam, ods, csv, pdf
@@ -324,8 +326,9 @@ App.vue
     │       │   ├── Font:   <div style="font-family: MyFont"> 示例
     │       │   ├── Book:   epub 阅读 (章节 HTML 渲染) + 侧栏目录
     │       │   ├── Archive: <el-tree> (Element Plus)
-        │       │   ├── Model:   Three.js WebGL (直接加载，无后端依赖)
+    │       │   ├── Model:   Three.js WebGL (直接加载，无后端依赖)
     │       │   └── Document:
+    │       │       ├── PDF:   PdfViewer (后端 pdfium 渲染 → canvas)
     │       │       ├── Excel: ExcelView (Handsontable + 多 sheet 标签页)
     │       │       └── DOCX:  <div ref="docxContainer">
     │       └── Footer (文件类型, 扩展名, 格式化大小)
@@ -391,7 +394,7 @@ Cargo workspace (resolver = "2")
 ├── app (src-tauri/)
 │   ├── tauri 2.x (protocol-asset, unstable, tray-icon)
 │   ├── tauri-plugins x 9
-│   ├── windows 0.61 (Win32/COM/UI Automation)
+│   ├── windows 0.62 (Win32/COM/UI Automation)
 │   ├── serde + serde_json (workspace)
 │   ├── chrono (workspace)
 │   ├── log (workspace)
@@ -416,11 +419,13 @@ Cargo workspace (resolver = "2")
 │   ├── psd (Photoshop 解析)
 │   ├── heic-rs (HEIC/HEIF 纯 Rust 解码，无 C 依赖)
 │   ├── jxl-oxide (JPEG XL 解码)
+│   ├── memmap2 (PSD 按需分页)
 │   ├── log (workspace)
 │   ├── quicklook-cache (workspace)
 │   └── quicklook-error (workspace)
 │
 ├── quicklook-video (crates/video/)
+│   ├── serde (workspace)
 │   ├── log (workspace, ffmpeg 进程管理)
 │   ├── quicklook-cache (workspace, HLS 目录)
 │   └── quicklook-error (workspace)
@@ -431,6 +436,7 @@ Cargo workspace (resolver = "2")
 │   ├── zip, tar, flate2, bzip2, lzma-rust2
 │   ├── sevenz-rust, ruzstd, hadris-cpio, ar
 │   ├── unrar-ng (RAR 支持)
+│   ├── encoding_rs (压缩包文件名编码)
 │   └── 条件 feature gate (每个格式独立)
 │
 │── quicklook-docs (crates/docs/)
@@ -442,7 +448,9 @@ Cargo workspace (resolver = "2")
 │       └── 内存文档缓存: file_key + LRU(2)；Pdfium 非线程安全，调用全局串行
 │
 └── quicklook-book (crates/book/)
-    └── epub (EPUB 解析: 章节/目录/HTML)
+    ├── iepub 1.3.6 (EPUB 解析: 章节/目录/HTML)
+    ├── base64 0.22
+    ├── serde + log (workspace)
     └── quicklook-error (workspace)
 ```
 
@@ -462,7 +470,7 @@ Cargo workspace (resolver = "2")
 ├── xgplayer 3.x + xgplayer-hls (视频播放)
 ├── three (3D 模型)
 ├── @sentry/vue (错误监控)
-└── @tauri-apps/api + 插件绑定 (autostart/dialog/fs/log/opener/shell/store/updater)
+└── @tauri-apps/api + 插件绑定 (fs/log/opener/shell/store/updater；autostart/dialog 仅 Rust 侧注册，无前端绑定)
 
 开发依赖:
 ├── Vite 6 + TypeScript 6

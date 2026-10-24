@@ -29,8 +29,8 @@ Vite 默认端口 6688（`vite.config.ts`）。Tauri 开发模式连接 `http://
 
 ## 工具链版本锁定（Volta）
 
-- Node 24.15.0
-- pnpm 11.0.9
+- Node 24.21.0
+- pnpm 11.28.5
 
 ## Rust 格式化
 
@@ -38,7 +38,7 @@ Vite 默认端口 6688（`vite.config.ts`）。Tauri 开发模式连接 `http://
 
 ## ESLint
 
-忽略目录：`dist/`、`coverage/`、`target/`、`src-tauri/`。自定义规则：`vue/multi-word-component-names` 关闭。
+忽略目录：`dist/`、`dist-ssr/`、`coverage/`、`target/`、`src-tauri/`。自定义规则：`vue/multi-word-component-names` 关闭。
 
 ## Code Review 约定
 
