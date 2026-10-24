@@ -34,7 +34,7 @@ E:/private/Rust/quicklook/
 │   ├── router/index.ts            # 15 个路由
 │   ├── stores/index.ts            # Pinia store (音视频配置列表)
 │   ├── hooks/                     # theme.ts (useTheme, 实际使用), use-window.ts
-│   ├── utils/                     # index.ts, typescript.ts, theme.ts (死代码), sentry.ts
+│   ├── utils/                     # index.ts, typescript.ts, sentry.ts
 │   │   └── markdown/              # markdown-it 工厂 + 插件
 │   ├── components/                # layout-preview, header, footer, setting-item, md-viewer, excel
 │   └── views/
