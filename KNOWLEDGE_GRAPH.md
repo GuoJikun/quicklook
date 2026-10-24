@@ -76,8 +76,8 @@ E:/private/Rust/quicklook/
 │       │   ├── audio.rs           # read_audio_info(), parse_lrc()
 │       │   ├── pdf.rs             # render_pdf_page(), get_pdf_page_sizes(), get_pdf_outline(), clear_pdf_cache()
 │       │   ├── video.rs           # check_ffmpeg(), prepare_video_for_preview(), convert_video_to_hls(), cancel_video_conversion()
-│       │   └── system.rs          # set_log_level(), restart_app(), show_open_with_dialog(),
-│       │                          #   get_monitor_info(), get_default_program_name(), clear_cache()
+│       │   └── system.rs          # set_log_level(), show_open_with_dialog(),
+│       │                          #   get_default_program_name(), clear_cache()
 │       ├── helper/                # 内部业务逻辑
 │       │   ├── mod.rs             # get_webview_window(), get_scaled_size()
 │       │   ├── config.rs          # 读取 resources/config.json
@@ -134,7 +134,7 @@ lib.rs (Tauri Builder)
   │   ├── app.listen("config_update")   → 热更新配置
   │   ├── preview::init_preview_file()  → 安装键盘钩子
   │   └── tray::create_tray()           → 系统托盘
-  └── invoke_handler (注册 24 个 command)
+  └── invoke_handler (注册 22 个 command)
 
 commands/ (IPC 入口)     helper/ (业务逻辑)     crates/ (工作空间)
 ┌──────────┐            ┌────────────┐        ┌──────────────────┐
@@ -168,7 +168,7 @@ error.rs (统一错误类型: QuickLookError)
 
 ```
 
-## IPC 命令清单 (24 个)
+## IPC 命令清单 (22 个)
 
 | 命令 | 方向 | 前端模块 | 后端入口 | 后端实现 |
 |------|------|----------|----------|----------|
@@ -194,8 +194,6 @@ error.rs (统一错误类型: QuickLookError)
 | `show_open_with_dialog` | FE → BE | header.vue | `commands/system.rs` | helper/win (SHOpenWithDialog) |
 | `get_default_program_name` | FE → BE | header.vue | `commands/system.rs` | helper/win (AssocQueryStringW) |
 | `set_log_level` | FE → BE | settings.vue | `commands/system.rs` | log::set_max_level |
-| `get_monitor_info` | FE → BE | （暂无前端调用） | `commands/system.rs` | helper/monitor (GDI) |
-| `restart_app` | FE → BE | （暂无前端调用） | `commands/system.rs` | app.restart() |
 
 ## 空格键预览完整流程
 

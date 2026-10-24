@@ -15,9 +15,9 @@ use tauri_plugin_store::StoreExt;
 use commands::{
     archive, archive_is_password_protected, cancel_video_conversion, check_ffmpeg, clear_cache,
     clear_image_cache, clear_pdf_cache, convert_to_png, convert_video_to_hls, document,
-    get_default_program_name, get_epub_chapter, get_epub_info, get_monitor_info, get_pdf_outline,
-    get_pdf_page_sizes, parse_lrc, prepare_video_for_preview, read_audio_info, render_pdf_page,
-    resolve_epub_link, restart_app, set_log_level, show_open_with_dialog,
+    get_default_program_name, get_epub_chapter, get_epub_info, get_pdf_outline, get_pdf_page_sizes,
+    parse_lrc, prepare_video_for_preview, read_audio_info, render_pdf_page, resolve_epub_link,
+    set_log_level, show_open_with_dialog,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -134,10 +134,8 @@ pub fn run() {
             archive,
             archive_is_password_protected,
             document,
-            get_monitor_info,
             get_default_program_name,
             set_log_level,
-            restart_app,
             convert_to_png,
             read_audio_info,
             parse_lrc,

@@ -1,5 +1,5 @@
 use crate::error::QuickLookError;
-use crate::helper::{monitor, win};
+use crate::helper::win;
 use log::LevelFilter;
 use quicklook_docs::pdf as pdf_helper;
 use quicklook_image::clear_image_cache;
@@ -33,23 +33,12 @@ pub fn set_log_level(level: usize) -> Result<(), QuickLookError> {
     Ok(())
 }
 
-/// 重启应用（tauri_plugin_log 不支持运行时变更日志级别，需重启后按配置生效）
-#[command]
-pub fn restart_app(app: AppHandle) {
-    app.restart();
-}
-
 #[command]
 pub fn show_open_with_dialog(app: AppHandle, path: &str) {
     if let Some(preview_window) = app.get_webview_window("preview") {
         let hwnd = preview_window.hwnd().unwrap_or(HWND::default());
         let _ = win::show_open_with_dialog(path, hwnd);
     }
-}
-
-#[command]
-pub fn get_monitor_info() -> monitor::MonitorInfo {
-    monitor::get_monitor_info()
 }
 
 #[command]
