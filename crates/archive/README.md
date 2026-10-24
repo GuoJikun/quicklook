@@ -1,58 +1,49 @@
 # quicklook-archive
 
-这是 QuickLook 项目的独立压缩文件处理动态库。
+QuickLook 项目的压缩文件解析 crate（工作空间内部库）。
 
 ## 功能特性
 
-- **多格式支持**: 支持 ZIP、TAR、TAR.GZ、TAR.BZ2、TAR.XZ、7Z 等多种压缩格式
-- **动态库**: 可以作为独立的动态库被其他项目使用
-- **C ABI**: 提供 C 兼容的 ABI，可以被其他语言调用（需启用 `capi` feature，默认关闭）
+- **多格式支持**: ZIP、TAR、GZIP、BZIP2、XZ、ZSTD、7Z、RAR、CPIO、AR 等
 - **树状结构**: 自动构建目录树状结构
-- **高性能**: 基于 Rust 实现，性能优异
+- **密码检测**: 可检测归档是否需要密码（zip/7z/rar）
+- **高性能**: 基于 Rust 实现，按格式 feature 门控按需编译
 
 ## 支持的格式
 
-- **ZIP**: 标准 ZIP 压缩文件
-- **TAR**: 标准 TAR 归档文件
-- **TAR.GZ/TGZ**: GZIP 压缩的 TAR 文件
-- **TAR.BZ2/TBZ2**: BZIP2 压缩的 TAR 文件  
-- **TAR.XZ/TXZ**: XZ 压缩的 TAR 文件
-- **7Z**: 7-Zip 压缩文件
+| 格式 | 扩展名 | 依赖 |
+|------|--------|------|
+| ZIP | zip, jar, war, ... | zip |
+| TAR | tar | tar |
+| GZIP | gz, tgz | flate2 |
+| BZIP2 | bz2, tbz2 | bzip2 |
+| XZ | xz, txz | lzma-rust2 |
+| ZSTD | zst, tzst | ruzstd |
+| 7Z | 7z | sevenz-rust |
+| RAR | rar | unrar-ng |
+| CPIO | cpio | hadris-cpio |
+| AR | ar, deb, a | ar |
 
 ## 构建
 
-### 作为 Rust 库
+作为工作空间成员由主应用静态链接，也可单独构建：
 
 ```bash
 cargo build --release
 ```
-
-### 作为动态库
-
-需要启用 `capi` feature 才会编译 C ABI 导出函数：
-
-```bash
-cargo build --release --lib --features capi
-```
-
-生成的动态库文件位于 `target/release/` 目录下:
-
-- Windows: `quicklook_archive.dll`
-- Linux: `libquicklook_archive.so`
-- macOS: `libquicklook_archive.dylib`
 
 ## 使用方式
 
 ### Rust 中使用
 
 ```rust
-use quicklook_archive::{Extract, ArchiveError};
+use quicklook_archive::Extract;
 
-// 列举压缩文件内容
-match Extract::list_archive_tree("example.zip") {
+// 列举压缩文件内容（password 传 None 表示无密码）
+match Extract::list_archive_tree("example.zip", None) {
     Ok(entries) => {
         for entry in entries {
-            println!("Name: {}, Size: {}, Dir: {}", 
+            println!("Name: {}, Size: {}, Dir: {}",
                 entry.name, entry.size, entry.dir);
         }
     }
@@ -60,71 +51,13 @@ match Extract::list_archive_tree("example.zip") {
 }
 ```
 
-### C/C++ 中使用
-
-```c
-#include <stdio.h>
-
-// 函数声明
-extern int archive_list_entries(const char* path, char** result);
-extern void archive_free_string(char* s);
-
-int main() {
-    char* result = NULL;
-    int ret = archive_list_entries("example.zip", &result);
-    
-    if (ret == 0 && result) {
-        printf("Archive contents: %s\n", result);
-        archive_free_string(result);
-    } else {
-        printf("Error processing archive\n");
-    }
-    
-    return 0;
-}
-```
-
-### Python 中使用
-
-```python
-import ctypes
-import json
-
-# 加载动态库
-lib = ctypes.CDLL('./libquicklook_archive.so')
-
-# 设置函数签名
-lib.archive_list_entries.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p)]
-lib.archive_list_entries.restype = ctypes.c_int
-lib.archive_free_string.argtypes = [ctypes.c_char_p]
-
-def list_archive_entries(path):
-    result = ctypes.c_char_p()
-    ret = lib.archive_list_entries(path.encode('utf-8'), ctypes.byref(result))
-    
-    if ret == 0 and result.value:
-        json_str = result.value.decode('utf-8')
-        lib.archive_free_string(result)
-        return json.loads(json_str)
-    else:
-        return None
-
-# 使用示例
-entries = list_archive_entries("example.zip")
-if entries:
-    for entry in entries:
-        print(f"Name: {entry['name']}, Size: {entry['size']}")
-```
-
 ## API 参考
 
-### Rust API
-
-#### `Extract` 结构体
+### `Extract` 结构体
 
 ```rust
 pub struct Extract {
-    pub name: String,           // 文件/目录名
+    pub name: String,           // 文件/目录名（树节点为归一化完整路径）
     pub size: u64,             // 文件大小
     pub last_modified: String, // 最后修改时间
     pub dir: bool,             // 是否为目录
@@ -132,28 +65,15 @@ pub struct Extract {
 }
 ```
 
-#### 主要方法
+### 主要方法
 
-- `Extract::list_archive_tree(path)` - 列举压缩文件内容并构建目录树
+- `Extract::list_archive_tree(path, password)` - 列举压缩文件内容并构建目录树
+- `Extract::is_password_protected(path)` - 检测归档是否需要密码
 - `Extract::build_tree(entries)` - 将扁平列表构建为目录树
-
-### C API
-
-> 以下 C ABI 函数仅在启用 `capi` feature 时导出（`cargo build --release --lib --features capi`）。
-
-- `int archive_list_entries(const char* path, char** result)` - 列举压缩文件内容
-- `void archive_free_string(char* s)` - 释放字符串内存
 
 ## 依赖
 
-- `serde` - 序列化支持
-- `zip` - ZIP 格式支持  
-- `tar` - TAR 格式支持
-- `flate2` - GZIP 压缩支持
-- `bzip2` - BZIP2 压缩支持
-- `lzma-rust2` - XZ 压缩支持
-- `sevenz-rust` - 7Z 格式支持
-- `chrono` - 时间处理
+详见 `Cargo.toml`。核心解析依赖：zip / tar / flate2 / bzip2 / lzma-rust2 / ruzstd / sevenz-rust / unrar-ng / hadris-cpio / ar / encoding_rs。
 
 ## 许可证
 

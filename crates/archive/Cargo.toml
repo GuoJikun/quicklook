@@ -11,7 +11,7 @@ rust-version = "1.90"
 
 [lib]
 name = "quicklook_archive"
-crate-type = ["cdylib", "rlib"]
+crate-type = ["rlib"]
 
 [dependencies]
 quicklook-error = { workspace = true }
@@ -43,5 +43,3 @@ cpio = []
 ar = []
 rar = []
 libarchive = []
-# 启用 C ABI 导出（独立动态库用途），默认关闭
-capi = []
