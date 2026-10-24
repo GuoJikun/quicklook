@@ -8,7 +8,7 @@ use std::sync::{Mutex, OnceLock};
 const CACHE_DIR: &str = "quicklook_pdf";
 const MAX_CACHED_DOCS: usize = 2;
 
-fn normalize_rotation(rotation: u32) -> u32 {
+pub fn normalize_rotation(rotation: u32) -> u32 {
     match rotation % 360 {
         90 => 90,
         180 => 180,
@@ -85,24 +85,30 @@ struct DocCache {
 
 /// 简单 LRU：`order` 尾部为最近使用，头部为最久未使用。
 #[derive(Debug)]
-struct Lru<K, V> {
+pub struct Lru<K, V> {
     entries: HashMap<K, V>,
     order: VecDeque<K>,
 }
 
+impl<K: Eq + Hash + Copy, V> Default for Lru<K, V> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<K: Eq + Hash + Copy, V> Lru<K, V> {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             entries: HashMap::new(),
             order: VecDeque::new(),
         }
     }
 
-    fn contains(&self, key: K) -> bool {
+    pub fn contains(&self, key: K) -> bool {
         self.entries.contains_key(&key)
     }
 
-    fn get_mut(&mut self, key: K) -> Option<&mut V> {
+    pub fn get_mut(&mut self, key: K) -> Option<&mut V> {
         if !self.entries.contains_key(&key) {
             return None;
         }
@@ -110,13 +116,13 @@ impl<K: Eq + Hash + Copy, V> Lru<K, V> {
         self.entries.get_mut(&key)
     }
 
-    fn insert(&mut self, key: K, value: V) -> Option<V> {
+    pub fn insert(&mut self, key: K, value: V) -> Option<V> {
         self.touch(key);
         self.entries.insert(key, value)
     }
 
     /// 条目数超过 `max` 时淘汰最久未使用的一条。
-    fn evict_if_over(&mut self, max: usize) -> Option<V> {
+    pub fn evict_if_over(&mut self, max: usize) -> Option<V> {
         if self.entries.len() <= max {
             return None;
         }
@@ -129,7 +135,7 @@ impl<K: Eq + Hash + Copy, V> Lru<K, V> {
         self.order.push_back(key);
     }
 
-    fn clear(&mut self) {
+    pub fn clear(&mut self) {
         self.entries.clear();
         self.order.clear();
     }
@@ -352,44 +358,4 @@ pub fn clear_pdf_cache() -> Result<u32, QuickLookError> {
     drop(cache);
 
     CacheDir::new(CACHE_DIR).clear()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::Lru;
-
-    #[test]
-    fn hit_moves_entry_to_back() {
-        let mut lru = Lru::new();
-        lru.insert(1u64, "a");
-        lru.insert(2u64, "b");
-        assert!(lru.get_mut(1).is_some());
-        assert_eq!(lru.evict_if_over(2), None);
-
-        lru.insert(3u64, "c");
-        assert_eq!(lru.evict_if_over(2), Some("b"));
-    }
-
-    #[test]
-    fn evicts_oldest_when_over_capacity() {
-        let mut lru = Lru::new();
-        lru.insert(1u64, 10);
-        lru.insert(2u64, 20);
-        lru.insert(3u64, 30);
-
-        assert_eq!(lru.evict_if_over(2), Some(10));
-        assert_eq!(lru.evict_if_over(2), None);
-    }
-
-    #[test]
-    fn clear_removes_all_entries() {
-        let mut lru = Lru::new();
-        lru.insert(1u64, 10);
-        lru.insert(2u64, 20);
-
-        lru.clear();
-
-        assert!(!lru.contains(1));
-        assert!(!lru.contains(2));
-    }
 }

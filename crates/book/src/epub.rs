@@ -151,10 +151,10 @@ pub struct EpubInfo {
 }
 
 /// epub 资源条目：路径 → (MIME 类型, 原始数据)
-type ResourceMap = HashMap<String, (String, Vec<u8>)>;
+pub type ResourceMap = HashMap<String, (String, Vec<u8>)>;
 
 /// 根据文件扩展名推断 MIME 类型
-fn guess_mime_type(file_name: &str) -> &'static str {
+pub fn guess_mime_type(file_name: &str) -> &'static str {
     let lower = file_name.to_lowercase();
     if lower.ends_with(".png") {
         "image/png"
@@ -400,7 +400,7 @@ fn inline_resources(html: &str, chapter_file: &str, resources: &ResourceMap) -> 
 }
 
 /// 内联 CSS 中的 url('...') / url("...") 引用（单遍缓冲，避免整段反复复制）
-fn inline_css_urls(css: &str, chapter_dir: &str, resources: &ResourceMap) -> String {
+pub fn inline_css_urls(css: &str, chapter_dir: &str, resources: &ResourceMap) -> String {
     let mut out = String::with_capacity(css.len() * 2);
     let mut pos = 0;
 
@@ -445,7 +445,7 @@ fn inline_css_urls(css: &str, chapter_dir: &str, resources: &ResourceMap) -> Str
 }
 
 /// 解析 `url(` 之后的表达式，返回 (路径, 表达式长度（不含 `url(`，含 `)`）
-fn parse_css_url_expr(after_url: &str) -> Option<(&str, usize)> {
+pub fn parse_css_url_expr(after_url: &str) -> Option<(&str, usize)> {
     let (quote, path_start) = if after_url.starts_with('"') {
         (Some('"'), 1)
     } else if after_url.starts_with('\'') {
@@ -473,7 +473,7 @@ fn parse_css_url_expr(after_url: &str) -> Option<(&str, usize)> {
 ///
 /// 属性名前必须是空白、`>` 或 `/`，避免 `data-src=` 误匹配 `src=`、
 /// `xlink:href=` 误匹配 `href=`。
-fn is_attr_boundary(lower: &str, attr_pos: usize) -> bool {
+pub fn is_attr_boundary(lower: &str, attr_pos: usize) -> bool {
     if attr_pos == 0 {
         return true;
     }
@@ -484,7 +484,7 @@ fn is_attr_boundary(lower: &str, attr_pos: usize) -> bool {
 /// 从 HTML 标签内容中提取指定属性的值
 ///
 /// 支持 `attr="value"`、`attr='value'` 和无引号 `attr=value`
-fn extract_attr_value(tag_body: &str, attr_name: &str) -> Option<String> {
+pub fn extract_attr_value(tag_body: &str, attr_name: &str) -> Option<String> {
     let lower = tag_body.to_lowercase();
     let attr_lower = attr_name.to_lowercase();
     let search_key = format!("{}=", attr_lower);
@@ -522,7 +522,12 @@ fn extract_attr_value(tag_body: &str, attr_name: &str) -> Option<String> {
 }
 
 /// 替换 HTML 标签中指定属性的值
-fn replace_attr_value(tag_body: &str, attr_name: &str, old_value: &str, new_value: &str) -> String {
+pub fn replace_attr_value(
+    tag_body: &str,
+    attr_name: &str,
+    old_value: &str,
+    new_value: &str,
+) -> String {
     // 尝试双引号形式
     let double_quoted = format!("{}=\"{}\"", attr_name, old_value);
     if tag_body.contains(&double_quoted) {
@@ -541,7 +546,7 @@ fn replace_attr_value(tag_body: &str, attr_name: &str, old_value: &str, new_valu
 }
 
 /// 将 MIME 类型和数据转换为 data URI
-fn to_data_uri(mime: &str, data: &[u8]) -> String {
+pub fn to_data_uri(mime: &str, data: &[u8]) -> String {
     let b64 = base64::engine::general_purpose::STANDARD.encode(data);
     format!("data:{};base64,{}", mime, b64)
 }
@@ -555,7 +560,7 @@ fn to_data_uri(mime: &str, data: &[u8]) -> String {
 ///
 /// 例如：`resolve_path("Text", "../Images/cover.png")` → `"Images/cover.png"`
 ///       `resolve_path("Text", "Images/cover.png")` → `"Text/Images/cover.png"`
-fn resolve_path(base_dir: &str, relative: &str) -> String {
+pub fn resolve_path(base_dir: &str, relative: &str) -> String {
     let trimmed = relative.trim();
     if trimmed.is_empty() {
         return base_dir.to_string();
@@ -891,7 +896,7 @@ fn flatten_navpoints(np: &EpubNav, level: u32, book: &EpubBook, out: &mut Vec<Ep
 /// 例如：`"Text/ch10.xhtml".ends_with("ch1.xhtml")` → false（`ch` 后面紧跟数字 `10`，不是边界）
 ///       `"Text/ch1.xhtml".ends_with("ch1.xhtml")` → true（`ch` 后面是路径分隔符 `/`）
 ///       `"OEBPS/ch1.xhtml".ends_with("ch1.xhtml")` → true（`ch` 前面是 `/`，后面是文件结束）
-fn has_suffix_boundary(haystack: &str, needle: &str) -> bool {
+pub fn has_suffix_boundary(haystack: &str, needle: &str) -> bool {
     if !haystack.ends_with(needle) {
         return false;
     }
@@ -914,7 +919,7 @@ fn has_suffix_boundary(haystack: &str, needle: &str) -> bool {
 /// 例如：`"ch10.xhtml".starts_with("ch1")` → false（`ch1` 后面紧跟数字 `0`，不是边界）
 ///       `"ch1.xhtml".starts_with("ch1")` → true（`ch1` 后面是 `.`，或 needle 就是 haystack）
 ///       `"OEBPS/ch1.xhtml".starts_with("ch1")` → false
-fn has_prefix_boundary(haystack: &str, needle: &str) -> bool {
+pub fn has_prefix_boundary(haystack: &str, needle: &str) -> bool {
     if !haystack.starts_with(needle) {
         return false;
     }
@@ -1041,7 +1046,7 @@ pub fn resolve_epub_link(
 }
 
 /// 在 spine 文件名列表中匹配 href，返回 (章节索引, 锚点)
-fn match_spine_href(
+pub fn match_spine_href(
     spine: &[String],
     current_chapter_index: usize,
     href: &str,
@@ -1111,110 +1116,4 @@ fn match_spine_href(
 
     log::debug!("[epub] resolve_epub_link: no match found for href={}", href);
     None
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{extract_attr_value, match_spine_href, parse_css_url_expr, resolve_path};
-
-    #[test]
-    fn resolves_relative_paths_against_current_chapter_dir() {
-        assert_eq!(
-            resolve_path("Text", "chapter1.xhtml"),
-            "Text/chapter1.xhtml"
-        );
-        assert_eq!(
-            resolve_path("Text", "./chapter1.xhtml"),
-            "Text/chapter1.xhtml"
-        );
-        assert_eq!(
-            resolve_path("Text", "../Images/cover.png"),
-            "Images/cover.png"
-        );
-        assert_eq!(
-            resolve_path("Text/Section", "../Images/cover.png"),
-            "Text/Images/cover.png"
-        );
-    }
-
-    #[test]
-    fn preserves_external_and_root_paths() {
-        assert_eq!(
-            resolve_path("Text", "https://example.com/a.png"),
-            "https://example.com/a.png"
-        );
-        assert_eq!(
-            resolve_path("Text", "/Images/cover.png"),
-            "Images/cover.png"
-        );
-        assert_eq!(
-            resolve_path("Text", "data:image/png;base64,abc"),
-            "data:image/png;base64,abc"
-        );
-    }
-
-    #[test]
-    fn extracts_attr_value_with_quote_styles() {
-        assert_eq!(
-            extract_attr_value(r#" src="a.png""#, "src").as_deref(),
-            Some("a.png")
-        );
-        assert_eq!(
-            extract_attr_value(" src='a.png'", "src").as_deref(),
-            Some("a.png")
-        );
-        assert_eq!(
-            extract_attr_value(" src=a.png ", "src").as_deref(),
-            Some("a.png")
-        );
-    }
-
-    #[test]
-    fn does_not_match_partial_attr_names() {
-        assert_eq!(extract_attr_value(r#" data-src="a.png""#, "src"), None);
-        assert_eq!(extract_attr_value(r#" xlink:href="a.png""#, "href"), None);
-        assert_eq!(extract_attr_value(r#" data-href="a.png""#, "href"), None);
-    }
-
-    #[test]
-    fn finds_attr_after_other_attributes() {
-        assert_eq!(
-            extract_attr_value(r#" class="x" src="a.png" alt="t""#, "src").as_deref(),
-            Some("a.png")
-        );
-        assert_eq!(
-            extract_attr_value(r#" xlink:href="a.png" href="b.png""#, "href").as_deref(),
-            Some("b.png")
-        );
-    }
-
-    #[test]
-    fn matches_spine_href_relative_and_fragment() {
-        let spine = vec![
-            "Text/ch1.xhtml".to_string(),
-            "Text/ch2.xhtml".to_string(),
-            "OEBPS/appendix.xhtml".to_string(),
-        ];
-        assert_eq!(match_spine_href(&spine, 0, "ch2.xhtml"), Some((1, None)));
-        assert_eq!(
-            match_spine_href(&spine, 0, "ch2.xhtml#sec"),
-            Some((1, Some("sec".to_string())))
-        );
-        assert_eq!(
-            match_spine_href(&spine, 1, "appendix.xhtml"),
-            Some((2, None))
-        );
-        assert_eq!(
-            match_spine_href(&spine, 0, "/OEBPS/appendix.xhtml"),
-            Some((2, None))
-        );
-    }
-
-    #[test]
-    fn parse_css_url_handles_quoted_and_unquoted() {
-        // `"a.png")` 长度 8；`'a.png')` 长度 8；`a.png)` 长度 6
-        assert_eq!(parse_css_url_expr(r#""a.png") rest"#), Some(("a.png", 8)));
-        assert_eq!(parse_css_url_expr("'a.png') rest"), Some(("a.png", 8)));
-        assert_eq!(parse_css_url_expr("a.png) rest"), Some(("a.png", 6)));
-    }
 }

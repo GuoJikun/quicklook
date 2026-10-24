@@ -19,7 +19,7 @@ fn silent_command(program: &str) -> Command {
 
 /// 视频编码器：独显硬件编码优先，其次核显，最后 CPU 软编。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum VideoEncoder {
+pub enum VideoEncoder {
     Nvenc,
     Amf,
     Qsv,
@@ -27,7 +27,7 @@ enum VideoEncoder {
 }
 
 impl VideoEncoder {
-    fn codec_name(self) -> &'static str {
+    pub fn codec_name(self) -> &'static str {
         match self {
             Self::Nvenc => "h264_nvenc",
             Self::Amf => "h264_amf",
@@ -36,7 +36,7 @@ impl VideoEncoder {
         }
     }
 
-    fn is_hardware(self) -> bool {
+    pub fn is_hardware(self) -> bool {
         !matches!(self, Self::Libx264)
     }
 }
@@ -415,7 +415,7 @@ fn detect_gpu_names() -> Vec<String> {
         .collect()
 }
 
-fn gpu_name_contains(names: &[String], keyword: &str) -> bool {
+pub fn gpu_name_contains(names: &[String], keyword: &str) -> bool {
     let key = keyword.to_ascii_uppercase();
     names.iter().any(|n| n.to_ascii_uppercase().contains(&key))
 }
@@ -556,7 +556,7 @@ fn apply_video_encode_args(ffmpeg: &mut Command, encoder: VideoEncoder) {
     }
 }
 
-fn is_compatible_video(_path: &Path, extension: &str, codec: &str) -> bool {
+pub fn is_compatible_video(_path: &Path, extension: &str, codec: &str) -> bool {
     if extension.is_empty() || codec.is_empty() {
         return false;
     }

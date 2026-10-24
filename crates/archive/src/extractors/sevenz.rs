@@ -7,7 +7,7 @@ use std::{fs::File, io::BufReader, path::Path};
 const FILETIME_UNIX_EPOCH_DIFF: u64 = 116_444_736_000_000_000;
 const FILETIMES_PER_SEC: u64 = 10_000_000;
 
-fn filetime_to_string(raw: u64) -> String {
+pub fn filetime_to_string(raw: u64) -> String {
     if raw == 0 || raw < FILETIME_UNIX_EPOCH_DIFF {
         return "1970-01-01 00:00:00".to_string();
     }

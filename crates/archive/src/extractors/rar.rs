@@ -66,7 +66,7 @@ pub fn is_rar_password_protected<P: AsRef<Path>>(path: P) -> Result<bool> {
 /// RAR header.file_time 是 DOS date/time 打包格式:
 ///   高 16 位: 日期 (bit 15-9: 年-1980, bit 8-5: 月, bit 4-0: 日)
 ///   低 16 位: 时间 (bit 15-11: 时, bit 10-5: 分, bit 4-0: 秒/2)
-fn rar_time_to_string(file_time: u32) -> String {
+pub fn rar_time_to_string(file_time: u32) -> String {
     if file_time == 0 {
         return "1970-01-01 00:00:00".to_string();
     }

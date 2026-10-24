@@ -3,7 +3,7 @@ use quicklook_error::{QuickLookError, Result};
 use std::{fs::File, path::Path};
 use zip::ZipArchive;
 
-fn decode_entry_name(raw: &[u8]) -> String {
+pub fn decode_entry_name(raw: &[u8]) -> String {
     match std::str::from_utf8(raw) {
         Ok(s) => s.to_owned(),
         Err(_) => {
