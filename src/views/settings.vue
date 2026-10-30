@@ -253,12 +253,12 @@ const handleClearPdfCache = async () => {
                 <SettingItem
                     id="video"
                     title="视频"
-                    description="启用本机 ffmpeg 后，将优先直接播放兼容格式/编码的视频，并对不兼容内容自动转码。"
+                    description="启用 ffmpeg 解析后，将优先直接播放兼容格式/编码的视频，并对不兼容内容自动转码。"
                     :icon="VideoCamera"
                 >
                     <div class="field-row">
                         <div class="field-row-label">
-                            <span class="field-row-title">使用本机 ffmpeg 解析视频</span>
+                            <span class="field-row-title">使用 ffmpeg 解析视频</span>
                             <span class="field-row-desc">兼容格式/编码的视频将直接播放，不兼容时才自动转码。</span>
                         </div>
                         <el-switch
@@ -275,15 +275,15 @@ const handleClearPdfCache = async () => {
                             ffmpegAvailable === null
                                 ? '正在检测 ffmpeg…'
                                 : ffmpegAvailable
-                                  ? '已检测到本机 ffmpeg'
-                                  : '未检测到 ffmpeg'
+                                  ? 'ffmpeg 可用'
+                                  : 'ffmpeg 不可用'
                         "
                         :description="
                             ffmpegAvailable === false
-                                ? '请安装 ffmpeg 并将其加入系统 PATH 后重启应用。'
+                                ? '应用内置的 ffmpeg 缺失。可安装 ffmpeg 并加入系统 PATH 作为后备，或重新安装应用。'
                                 : ffmpegAvailable
-                                  ? '所有视频转码都将通过本机 ffmpeg 完成。'
-                                  : '正在检测本机 ffmpeg 是否可用…'
+                                  ? '所有视频转码都将通过内置 ffmpeg 完成。'
+                                  : '正在检测 ffmpeg 是否可用…'
                         "
                         :closable="false"
                         show-icon

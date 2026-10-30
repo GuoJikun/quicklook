@@ -49,6 +49,22 @@ pnpm tauri dev
 # 运行项目
 ```
 
+### 构建 ffmpeg 二进制（首次打包前必须执行）
+
+视频预览依赖随包分发的精简版 ffmpeg（LGPL 构建，不含 GPL 组件）：
+
+```bash
+./scripts/build-ffmpeg.sh                  # x64
+TARGET_ARCH=arm64 ./scripts/build-ffmpeg.sh # arm64
+```
+
+脚本产出 `src-tauri/binaries/{ffmpeg,ffprobe}-<triple>.exe`（已加入 `.gitignore`），
+Tauri 打包时按 target triple 自动选取对应架构。
+
+> 注意：`bundle.externalBin` 在编译期校验文件是否存在，**未构建 ffmpeg 时 `cargo check` /
+> `pnpm tauri dev` 会直接报 `resource path ... doesn't exist`**。因此 CI 与本地首次构建
+> 都必须先执行上面的脚本，或从 Release 下载对应架构的二进制放入该目录。
+
 ### 打包
 
 ```bash

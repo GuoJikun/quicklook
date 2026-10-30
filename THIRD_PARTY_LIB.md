@@ -90,6 +90,18 @@
 
 - [handsontable](https://github.com/handsontable/handsontable) — Excel 风格表格组件（含 Vue 3 集成）
 
+## 随包分发的二进制
+
+**FFmpeg（精简自构建）**
+
+- [ffmpeg](https://ffmpeg.org/) — 视频解码、HLS 转码与流探测（ffmpeg / ffprobe）
+- 许可证：**LGPL v2.1+**。构建时使用 `--disable-gpl`，不含 libx264 / libx265 等 GPL 组件
+- 构建脚本：`scripts/build-ffmpeg.sh`（即 Corresponding Source 的构建配置，源码版本见脚本内 `FFMPEG_VERSION`）
+- 源码获取：https://ffmpeg.org/releases/
+- H.264 编码通过系统自带的 Media Foundation 编码器（`h264_mf`）实现，不依赖第三方 GPL 库
+
+## 前端依赖
+
 **视频播放**
 
 - [xgplayer](https://github.com/bytedance/xgplayer) — 字节跳动视频播放器（含 HLS 支持）
