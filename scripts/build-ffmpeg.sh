@@ -234,15 +234,18 @@ install_bin() {
 install_bin "$SRC_DIR/ffmpeg.exe" ffmpeg
 
 # ── 阶段二：极简 ffprobe ───────────────────────────────────────
-# ffprobe 只用来读取容器元数据（codec_type / codec_name / width / height），
-# 不解码任何帧，因此不需要解码器、滤镜、缩放、重采样，也不需要编码器。
-# 用独立的源码树做一次 --disable-everything 的构建：18 MB → 2.6 MB。
+# ffprobe 只用来读取容器元数据（codec_type / codec_name / width / height /
+# 音频的 sample_rate、channels），不输出任何帧，因此不需要滤镜、缩放、重采样，
+# 也不需要编码器。用独立的源码树做一次 --disable-everything 的构建：18 MB → 4.25 MB。
 #
-# 已知限制：ts 容器内以 ADTS 封装的 AAC，其 sample_rate / channels 需要 aac 解码器
-# 参与 avformat_find_stream_info 才能填充，本产物对这类流会报 0；mp4/mkv 里的 AAC
-# 由容器的 AudioSpecificConfig 直接给出，不受影响。
-# probe_codecs() 只读 codec_type / codec_name / width / height，不受此限制影响，
-# 因此不为此引入约 300 KB 的 aac 解码器。若将来要用音频参数，需加 --enable-decoder=aac。
+# 唯一保留的解码器是 aac，原因是 FFmpeg 8.x 的 aac parser 只负责切帧：
+# libavcodec/aac_ac3_parser.c 的 AAC 分支只写 profile / bit_rate，不把 ADTS 头里的
+# 采样率和声道数写回 avctx（源码注释说明这两个字段在 HE-AAC 下不可靠，因为 SBR/PS
+# 会让实际输出翻倍或改变声道数）。于是 ts / m2ts / 裸 ADTS 里封装的 AAC，
+# avformat_find_stream_info 只能靠解码器纠正参数；没有解码器时 sample_rate 和
+# channels 恒为 0（mp4/mkv 走容器的 AudioSpecificConfig，不受影响）。
+# 代价实测：2.59 MiB → 4.25 MiB（+1.66 MiB，aacdec 及其 DCT/FFT 依赖），
+# 换来与完整版 ffprobe 一致的音频参数，也避免将来读音频信息时踩这个坑。
 #
 # 之所以另开一棵树而不是复用上面那棵：FFmpeg 不允许在已配置过的源码目录里
 # 换一套参数重新配置，而两者的白名单差异极大，互相牵连只会让维护变难。
@@ -284,8 +287,16 @@ log "配置极简 ffprobe（arch=$TARGET_ARCH）"
   --enable-protocol=file,pipe \
   --enable-demuxer=mov,matroska,mpegts,mpegps,avi,flv,asf,ogg,wav,mp3,aac,flac,h264,hevc,image2,hls,rm \
   --enable-parser=h264,hevc,vp9,av1,mpeg4video,mpegvideo,aac,ac3,dts,flac,opus,vorbis,mpegaudio \
+  --enable-decoder=aac \
   --extra-cflags="-Os -ffunction-sections -fdata-sections" \
   --extra-ldflags="-static -Wl,--gc-sections"
+
+# aac 解码器是 ts 内 AAC 参数的唯一来源，缺了它 ffprobe 会静默输出 0，不会报错，
+# 属于那种构建成功、运行也不报错、只在读音频参数时才暴露的缺陷，因此显式校验。
+if ! grep -qE '^#define CONFIG_AAC_DECODER 1' config_components.h; then
+  echo "ffprobe 缺少 aac 解码器，ts 内 AAC 的采样率/声道数将无法探测" >&2
+  exit 1
+fi
 
 if grep -qE '^#define CONFIG_GPL 1' config.h; then
   echo "ffprobe 构建配置包含 GPL 组件，请检查 configure 参数" >&2
