@@ -32,3 +32,7 @@ coverage
 target/
 test_files/
 .workbuddy/
+
+# 随包分发的 ffmpeg 二进制（由 scripts/build-ffmpeg.sh 生成，不入库）
+src-tauri/binaries/*.exe
+.ffmpeg-build/

@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use quicklook_video::{VideoEncoder, gpu_name_contains, is_compatible_video};
+use quicklook_video::{VideoEncoder, gpu_name_contains, is_compatible_video, target_bitrate};
 
 // ---------- is_compatible_video ----------
 
@@ -75,20 +75,42 @@ fn codec_name_maps_all_variants() {
     assert_eq!(VideoEncoder::Nvenc.codec_name(), "h264_nvenc");
     assert_eq!(VideoEncoder::Amf.codec_name(), "h264_amf");
     assert_eq!(VideoEncoder::Qsv.codec_name(), "h264_qsv");
-    assert_eq!(VideoEncoder::Libx264.codec_name(), "libx264");
+    assert_eq!(VideoEncoder::MediaFoundation.codec_name(), "h264_mf");
 }
 
 #[test]
-fn is_hardware_distinguishes_hw_and_sw() {
-    assert!(VideoEncoder::Nvenc.is_hardware());
-    assert!(VideoEncoder::Amf.is_hardware());
-    assert!(VideoEncoder::Qsv.is_hardware());
-    assert!(!VideoEncoder::Libx264.is_hardware());
+fn hardware_encoders_fall_back_to_media_foundation() {
+    let target = Some(VideoEncoder::MediaFoundation);
+    assert_eq!(VideoEncoder::Nvenc.fallback(), target);
+    assert_eq!(VideoEncoder::Amf.fallback(), target);
+    assert_eq!(VideoEncoder::Qsv.fallback(), target);
+}
+
+#[test]
+fn media_foundation_is_last_resort() {
+    assert_eq!(VideoEncoder::MediaFoundation.fallback(), None);
 }
 
 #[test]
 fn encoder_equality() {
     assert_eq!(VideoEncoder::Nvenc, VideoEncoder::Nvenc);
     assert_ne!(VideoEncoder::Nvenc, VideoEncoder::Amf);
-    assert_ne!(VideoEncoder::Qsv, VideoEncoder::Libx264);
+    assert_ne!(VideoEncoder::Qsv, VideoEncoder::MediaFoundation);
+}
+
+// ---------- target_bitrate ----------
+
+#[test]
+fn target_bitrate_scales_with_resolution() {
+    assert_eq!(target_bitrate(3840, 2160), "16M");
+    assert_eq!(target_bitrate(2560, 1440), "8M");
+    assert_eq!(target_bitrate(1920, 1080), "4M");
+    assert_eq!(target_bitrate(1280, 720), "2M");
+    assert_eq!(target_bitrate(640, 360), "1M");
+}
+
+#[test]
+fn target_bitrate_handles_degenerate_size() {
+    assert_eq!(target_bitrate(0, 0), "1M");
+    assert_eq!(target_bitrate(u32::MAX, u32::MAX), "16M");
 }

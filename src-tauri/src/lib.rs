@@ -5,6 +5,8 @@ pub mod preview;
 pub mod tray;
 pub mod utils;
 
+use std::path::PathBuf;
+
 use tauri::{Listener, Manager};
 use tauri_plugin_autostart::MacosLauncher;
 #[cfg(not(debug_assertions))]
@@ -19,6 +21,32 @@ use commands::{
     parse_lrc, prepare_video_for_preview, read_audio_info, render_pdf_page, resolve_epub_link,
     set_log_level, show_open_with_dialog,
 };
+
+/// 解析随包分发的 ffmpeg / ffprobe 路径。
+///
+/// 打包后两个二进制与主程序同目录；开发模式下查找 `src-tauri/binaries`
+/// 中带 target triple 后缀的文件（即 Tauri externalBin 的源文件）。
+fn resolve_bundled_binaries() -> Option<(PathBuf, Option<PathBuf>)> {
+    let exe_dir = std::env::current_exe().ok()?.parent()?.to_path_buf();
+    let ffmpeg = exe_dir.join("ffmpeg.exe");
+    if ffmpeg.exists() {
+        let ffprobe = exe_dir.join("ffprobe.exe");
+        return Some((ffmpeg, ffprobe.exists().then_some(ffprobe)));
+    }
+
+    #[cfg(debug_assertions)]
+    {
+        let dev_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("binaries");
+        let triple = "x86_64-pc-windows-msvc";
+        let dev_ffmpeg = dev_dir.join(format!("ffmpeg-{triple}.exe"));
+        if dev_ffmpeg.exists() {
+            let dev_ffprobe = dev_dir.join(format!("ffprobe-{triple}.exe"));
+            return Some((dev_ffmpeg, dev_ffprobe.exists().then_some(dev_ffprobe)));
+        }
+    }
+
+    None
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -63,6 +91,15 @@ pub fn run() {
     let app = builder
         .setup(|app| {
             let handle = app.handle();
+
+            // 注入随包分发的 ffmpeg / ffprobe，缺失时自动回退 PATH 查找
+            match resolve_bundled_binaries() {
+                Some((ffmpeg, ffprobe)) => {
+                    log::info!("使用随包分发的 ffmpeg: {:?}", ffmpeg);
+                    quicklook_video::set_bundled_binaries(ffmpeg, ffprobe);
+                },
+                None => log::info!("未找到随包分发的 ffmpeg，回退到 PATH 查找"),
+            }
 
             let config = helper::config::read_config(handle)?;
             app.manage(config);
