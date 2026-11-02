@@ -19,6 +19,10 @@
 #   TARGET_ARCH=arm64 ./scripts/build-ffmpeg.sh            # arm64（需 llvm-mingw 在 PATH）
 #   CROSS_PREFIX=/d/tool/bin/aarch64-w64-mingw32- ./scripts/build-ffmpeg.sh
 #
+# 源码下载：默认取 ffmpeg.org 的发布包，连接失败时自动退回 GitHub 镜像
+# （GitHub Actions runner 访问 ffmpeg.org 会直接超时）。两者都可用
+# FFMPEG_URL_OFFICIAL / FFMPEG_URL_MIRROR 覆盖。
+#
 # 产物：src-tauri/binaries/{ffmpeg,ffprobe}-<triple>.exe
 
 set -euo pipefail
@@ -28,6 +32,14 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="${BUILD_DIR:-$ROOT_DIR/.ffmpeg-build}"
 SRC_DIR="$BUILD_DIR/ffmpeg-$FFMPEG_VERSION"
 ARCHIVE="$BUILD_DIR/ffmpeg-$FFMPEG_VERSION.tar.xz"
+# 备用源：GitHub Actions 的 runner 连 ffmpeg.org 是直接连接超时，重试无用，
+# 因此需要一条与 runner 同侧的下载路径（github.com）。
+ARCHIVE_MIRROR="$BUILD_DIR/ffmpeg-$FFMPEG_VERSION.tar.gz"
+URL_OFFICIAL="${FFMPEG_URL_OFFICIAL:-https://ffmpeg.org/releases/ffmpeg-$FFMPEG_VERSION.tar.xz}"
+# GitHub 镜像两个入口：codeload 是实际出字节的 CDN，archive 是常用页面入口（302 到 codeload）。
+# 某些代理只放行其中一个，所以两个都留着。
+URL_MIRROR="${FFMPEG_URL_MIRROR:-https://codeload.github.com/FFmpeg/FFmpeg/tar.gz/refs/tags/n$FFMPEG_VERSION}"
+URL_MIRROR_ALT="${FFMPEG_URL_MIRROR_ALT:-https://github.com/FFmpeg/FFmpeg/archive/refs/tags/n$FFMPEG_VERSION.tar.gz}"
 # ffprobe 用独立源码树构建：FFmpeg 不允许在已配置过的树里做第二种配置，
 # 而两者的组件白名单差异极大，共用一个树会互相牵连。
 FFPROBE_SRC_DIR="$BUILD_DIR/ffprobe-src/ffmpeg-$FFMPEG_VERSION"
@@ -114,16 +126,105 @@ export TMPDIR=/tmp
 mkdir -p "$TMPDIR"
 
 # ── 获取源码 ───────────────────────────────────────────────────
-if [[ ! -f "$ARCHIVE" ]]; then
-  log "下载 ffmpeg $FFMPEG_VERSION 源码"
-  curl -fL --retry 3 --progress-bar \
-    -o "$ARCHIVE" "https://ffmpeg.org/releases/ffmpeg-$FFMPEG_VERSION.tar.xz"
-fi
+# 已下载的源包，官方优先；两者可能同时存在（官方超时后由镜像补下）。
+# 必须恒返回 0：调用处是 `x="$(cached_archive)"`，非零退出会被 set -e 直接终止脚本。
+cached_archive() {
+  if [[ -f "$ARCHIVE" ]]; then
+    printf '%s\n' "$ARCHIVE"
+  elif [[ -f "$ARCHIVE_MIRROR" ]]; then
+    printf '%s\n' "$ARCHIVE_MIRROR"
+  fi
+  return 0
+}
 
-if [[ ! -d "$SRC_DIR" ]]; then
-  log "解压源码到 $BUILD_DIR"
-  tar -xf "$ARCHIVE" -C "$BUILD_DIR"
-fi
+# 下载源码包：官方源不可达时退回 GitHub 镜像。
+fetch_source() {
+  local archive
+  archive="$(cached_archive)"
+  if [[ -n "$archive" ]]; then
+    log "复用已下载的源码包: $(basename "$archive")"
+    return 0
+  fi
+
+  local url target
+  for url in "$URL_OFFICIAL" "$URL_MIRROR" "$URL_MIRROR_ALT"; do
+    case "$url" in
+      *.tar.xz) target="$ARCHIVE" ;;
+      *) target="$ARCHIVE_MIRROR" ;;
+    esac
+    log "下载 ffmpeg $FFMPEG_VERSION 源码: $url"
+    # 半成品必须删掉：残留文件会被下一次误判为"已下载"，解压时才炸。
+    # --speed-limit/--speed-time：慢但仍在传输（ffmpeg.org 实测 ~70 KB/s）不该被打断，
+    # 但彻底无响应的连接要在 60 秒内放弃，否则会挂到 CI 任务超时。
+    if curl -fL --connect-timeout 15 --retry 2 --retry-delay 2 \
+      --speed-limit 1024 --speed-time 60 --progress-bar \
+      -o "$target.part" "$url"; then
+      mv -f "$target.part" "$target"
+      return 0
+    fi
+    rm -f "$target.part"
+    log "该源不可用，改用下一个"
+  done
+
+  echo "ffmpeg $FFMPEG_VERSION 源码下载失败：官方源与 GitHub 镜像均不可用" >&2
+  exit 1
+}
+
+# 解压到指定源码目录，并抹平两种源包的差异：
+#   官方包  ffmpeg-<ver>/                    带 RELEASE
+#   GitHub  FFmpeg-n<ver>/ 或 FFmpeg-FFmpeg-<sha>/   不带 RELEASE
+# 顶层目录名随下载端点变化（archive / codeload / legacy 三种各不相同），
+# 所以不按名字猜，先解压到临时目录，再把唯一的顶层目录改名成规范目录名。
+# 缺 RELEASE 时 ffbuild/version.sh 判不出真实版本，随包二进制的 -version 会是空串，
+# 这里补齐，保证两种来源产出一致。
+extract_source() {
+  local dst="$1" base archive stage top
+  base="$(dirname "$dst")"
+  if [[ -d "$dst" ]]; then
+    return 0
+  fi
+
+  archive="$(cached_archive)"
+  if [[ -z "$archive" ]]; then
+    echo "源码包缺失，无法解压到 $dst" >&2
+    exit 1
+  fi
+
+  mkdir -p "$base"
+  stage="$base/.extract-$$"
+  rm -rf "$stage"
+  mkdir -p "$stage"
+
+  log "解压源码到 $base（来源 $(basename "$archive")）"
+  if ! tar -xf "$archive" -C "$stage"; then
+    rm -rf "$stage"
+    echo "解压失败: $archive（若怀疑缓存损坏，删除该文件后重试）" >&2
+    exit 1
+  fi
+
+  if [[ "$(find "$stage" -mindepth 1 -maxdepth 1 -type d | wc -l)" -ne 1 ]]; then
+    rm -rf "$stage"
+    echo "源码包顶层应只有一个目录: $archive" >&2
+    exit 1
+  fi
+  top="$(find "$stage" -mindepth 1 -maxdepth 1 -type d)"
+
+  if [[ ! -f "$top/configure" ]]; then
+    rm -rf "$stage"
+    echo "源码不完整（缺少 configure）: $archive" >&2
+    exit 1
+  fi
+
+  mv "$top" "$dst"
+  rm -rf "$stage"
+
+  if [[ ! -f "$dst/RELEASE" ]]; then
+    printf '%s\n' "$FFMPEG_VERSION" >"$dst/RELEASE"
+  fi
+}
+
+fetch_source
+extract_source "$SRC_DIR"
 
 cd "$SRC_DIR"
 
@@ -335,11 +436,7 @@ if [[ "${SKIP_FFPROBE:-0}" = "1" ]]; then
   exit 0
 fi
 
-if [[ ! -d "$FFPROBE_SRC_DIR" ]]; then
-  log "解压第二份源码用于 ffprobe"
-  mkdir -p "$(dirname "$FFPROBE_SRC_DIR")"
-  tar -xf "$ARCHIVE" -C "$(dirname "$FFPROBE_SRC_DIR")"
-fi
+extract_source "$FFPROBE_SRC_DIR"
 
 cd "$FFPROBE_SRC_DIR"
 
