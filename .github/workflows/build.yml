@@ -88,4 +88,4 @@ jobs:
           releaseName: 'v__VERSION__'
           releaseBody: "${{ steps.release_notes.outputs.result }}"
           releaseDraft: false
-          prerelease: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
