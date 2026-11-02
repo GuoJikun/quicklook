@@ -1,5 +1,20 @@
 # 更新日志
 
+## v0.26.0-beta.1 (2026-11-02)
+
+**更新内容**
+
+* feat: 随包分发精简版 ffmpeg/ffprobe，不再依赖系统安装或 PATH 中的 ffmpeg
+* feat: 视频转码改用 Media Foundation（h264_mf）编码，移除 libx264，规避 GPL 分发义务
+* perf: ffmpeg 按白名单裁剪，217 MB → 10.7 MB；ffprobe 改为独立极简构建，18 MB → 4.3 MB
+* fix: ffprobe 补入 aac 解码器，修复 ts/m2ts 内 AAC 的采样率与声道数探测为 0
+* ci: 打包前自动构建随包 ffmpeg，补齐 arm64 交叉编译，并新增 fmt/clippy/test 门禁
+* refactor: 抽取 quicklook-cache 统一缓存逻辑，PDF 文档缓存改为 LRU 多文档
+* refactor: 统一错误类型为 QuickLookError 并保留错误链
+* chore: 移除 capi C FFI 导出、未使用的 IPC 命令与死代码
+* chore: 升级 Tauri 相关依赖
+* test: 补充纯函数单元测试，内联用例迁移到独立测试文件
+
 ## v0.25.0 (2026-10-17)
 
 **更新内容**

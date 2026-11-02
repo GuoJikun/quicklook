@@ -43,8 +43,11 @@ pub enum QuickLookError {
     LrcParse(String),
 
     // ── 视频 / ffmpeg ──────────────────────────────
-    #[error("ffmpeg 未安装或不在 PATH 中")]
+    #[error("ffmpeg 不可用：随包分发的二进制缺失，且 PATH 中未找到 ffmpeg")]
     FfmpegNotFound,
+
+    #[error("没有可用的视频编码器：硬件编码与系统媒体组件均不可用")]
+    VideoEncoderUnavailable,
 
     #[error("视频转换失败: {0}")]
     VideoConversion(String),

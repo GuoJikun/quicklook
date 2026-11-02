@@ -1,0 +1,492 @@
+#!/usr/bin/env bash
+# 构建随包分发的精简版 ffmpeg / ffprobe。
+#
+# 关键取舍：
+#   --disable-gpl             不含 libx264 / libx265，分发包不引入 GPL 组件
+#   --enable-mediafoundation  保留 h264_mf（系统 Media Foundation 编码器）作为软编兜底
+#   白名单裁剪               仅保留 QuickLook 预览转码实际用到的编解码器与封装
+#
+# 前置条件：
+#   x64（MSYS2 MINGW64 原生编译）：
+#     pacman -S --needed base-devel mingw-w64-x86_64-gcc mingw-w64-x86_64-nasm make
+#   arm64（x64 主机上交叉编译）：需要 llvm-mingw
+#     https://github.com/mstorsjo/llvm-mingw/releases（选 *-ucrt-x86_64.zip）
+#     解压后把其中的 bin 目录加进 PATH，它自带 aarch64-w64-mingw32-* 全套工具。
+#     也可以用 CROSS_PREFIX 指向自备的 aarch64-w64-mingw32- 工具链前缀。
+#
+# 用法：
+#   ./scripts/build-ffmpeg.sh                              # x64
+#   TARGET_ARCH=arm64 ./scripts/build-ffmpeg.sh            # arm64（需 llvm-mingw 在 PATH）
+#   CROSS_PREFIX=/d/tool/bin/aarch64-w64-mingw32- ./scripts/build-ffmpeg.sh
+#
+# 源码下载：默认取 ffmpeg.org 的发布包，连接失败时自动退回 GitHub 镜像
+# （GitHub Actions runner 访问 ffmpeg.org 会直接超时）。两者都可用
+# FFMPEG_URL_OFFICIAL / FFMPEG_URL_MIRROR 覆盖。
+#
+# 产物：src-tauri/binaries/{ffmpeg,ffprobe}-<triple>.exe
+
+set -euo pipefail
+
+FFMPEG_VERSION="${FFMPEG_VERSION:-8.1.1}"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+BUILD_DIR="${BUILD_DIR:-$ROOT_DIR/.ffmpeg-build}"
+SRC_DIR="$BUILD_DIR/ffmpeg-$FFMPEG_VERSION"
+ARCHIVE="$BUILD_DIR/ffmpeg-$FFMPEG_VERSION.tar.xz"
+# 备用源：GitHub Actions 的 runner 连 ffmpeg.org 是直接连接超时，重试无用，
+# 因此需要一条与 runner 同侧的下载路径（github.com）。
+ARCHIVE_MIRROR="$BUILD_DIR/ffmpeg-$FFMPEG_VERSION.tar.gz"
+URL_OFFICIAL="${FFMPEG_URL_OFFICIAL:-https://ffmpeg.org/releases/ffmpeg-$FFMPEG_VERSION.tar.xz}"
+# GitHub 镜像两个入口：codeload 是实际出字节的 CDN，archive 是常用页面入口（302 到 codeload）。
+# 某些代理只放行其中一个，所以两个都留着。
+URL_MIRROR="${FFMPEG_URL_MIRROR:-https://codeload.github.com/FFmpeg/FFmpeg/tar.gz/refs/tags/n$FFMPEG_VERSION}"
+URL_MIRROR_ALT="${FFMPEG_URL_MIRROR_ALT:-https://github.com/FFmpeg/FFmpeg/archive/refs/tags/n$FFMPEG_VERSION.tar.gz}"
+# ffprobe 用独立源码树构建：FFmpeg 不允许在已配置过的树里做第二种配置，
+# 而两者的组件白名单差异极大，共用一个树会互相牵连。
+FFPROBE_SRC_DIR="$BUILD_DIR/ffprobe-src/ffmpeg-$FFMPEG_VERSION"
+OUT_DIR="$ROOT_DIR/src-tauri/binaries"
+
+TARGET_ARCH="${TARGET_ARCH:-x64}"
+# CROSS_PREFIX 留空表示用 PATH 里的原生工具链；arm64 默认指向 llvm-mingw 的前缀。
+CROSS_PREFIX="${CROSS_PREFIX:-}"
+NEED_NASM=1
+
+case "$TARGET_ARCH" in
+  x64)
+    TRIPLE="x86_64-pc-windows-msvc"
+    ARCH_FLAG="--arch=x86_64"
+    PE_MACHINE="8664"
+    ;;
+  arm64)
+    TRIPLE="aarch64-pc-windows-msvc"
+    ARCH_FLAG="--arch=aarch64"
+    PE_MACHINE="aa64"
+    # aarch64 不走 x86 汇编，nasm 也不需要。缺 cross 前缀会导致 configure
+    # 悄悄退回 PATH 里的 x86_64 gcc，最终产出 x64 二进制却命名为 aarch64。
+    CROSS_PREFIX="${CROSS_PREFIX:-aarch64-w64-mingw32-}"
+    NEED_NASM=0
+    ;;
+  *)
+    echo "不支持的 TARGET_ARCH: $TARGET_ARCH（可选 x64 / arm64）" >&2
+    exit 1
+    ;;
+esac
+
+log() { printf '\033[36m[build-ffmpeg]\033[0m %s\n' "$*"; }
+
+# ── 平台与工具链检查 ───────────────────────────────────────────
+case "$(uname -s)" in
+  MINGW* | MSYS*) ;;
+  *)
+    echo "此脚本仅支持 Windows（MSYS2 / Git Bash 环境）" >&2
+    exit 1
+    ;;
+esac
+
+for cmd in make curl tar; do
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    echo "缺少命令: $cmd" >&2
+    echo "请在 MSYS2 MINGW64 中安装: base-devel make" >&2
+    exit 1
+  fi
+done
+
+# 编译器按 CROSS_PREFIX 找：x64 上是 gcc，arm64 上是 aarch64-w64-mingw32-gcc。
+# 必须显式校验 —— configure 找不到带前缀的编译器时会退回宿主机的 cc/gcc，
+# 也就是 x86_64 gcc，最后链接出一个架构错误的二进制，而且全程不报错。
+CC_BIN="${CROSS_PREFIX}gcc"
+if ! command -v "$CC_BIN" >/dev/null 2>&1; then
+  echo "缺少编译器: $CC_BIN" >&2
+  if [[ "$TARGET_ARCH" = "arm64" ]]; then
+    echo "arm64 需要 llvm-mingw：下载 *-ucrt-x86_64.zip，把解压后的 bin 目录加入 PATH，" >&2
+    echo "或用 CROSS_PREFIX 指定自备的 aarch64-w64-mingw32- 工具链前缀。" >&2
+  else
+    echo "请在 MSYS2 MINGW64 中安装: mingw-w64-x86_64-gcc" >&2
+  fi
+  exit 1
+fi
+
+if [[ "$NEED_NASM" = "1" ]] && ! command -v nasm >/dev/null 2>&1; then
+  # 缺 nasm 时 configure 不会失败，而是静默 --disable-x86asm：产物变大、
+  # 转码变慢，日志里只有一行不显眼的 disable 提示，不主动拦就很难发现。
+  echo "缺少 nasm：x86 汇编优化会被静默关闭，请 pacman -S mingw-w64-x86_64-nasm" >&2
+  exit 1
+fi
+
+CROSS_FLAG=""
+if [[ -n "$CROSS_PREFIX" ]]; then
+  CROSS_FLAG="--cross-prefix=$CROSS_PREFIX"
+fi
+
+mkdir -p "$BUILD_DIR" "$OUT_DIR"
+
+# Git Bash / MSYS2 下 TMPDIR 若继承自 Windows 的 TEMP（形如 C:\Users\...\Temp），
+# 反斜杠会被 MSYS 的路径转换吞掉，configure 的临时文件测试会拿到
+# `C:Users...Temp/ffconf.xxx` 这种非法路径而失败。强制使用 MSYS 风格的 /tmp。
+export TMPDIR=/tmp
+mkdir -p "$TMPDIR"
+
+# ── 获取源码 ───────────────────────────────────────────────────
+# 已下载的源包，官方优先；两者可能同时存在（官方超时后由镜像补下）。
+# 必须恒返回 0：调用处是 `x="$(cached_archive)"`，非零退出会被 set -e 直接终止脚本。
+cached_archive() {
+  if [[ -f "$ARCHIVE" ]]; then
+    printf '%s\n' "$ARCHIVE"
+  elif [[ -f "$ARCHIVE_MIRROR" ]]; then
+    printf '%s\n' "$ARCHIVE_MIRROR"
+  fi
+  return 0
+}
+
+# 下载源码包：官方源不可达时退回 GitHub 镜像。
+fetch_source() {
+  local archive
+  archive="$(cached_archive)"
+  if [[ -n "$archive" ]]; then
+    log "复用已下载的源码包: $(basename "$archive")"
+    return 0
+  fi
+
+  local url target
+  for url in "$URL_OFFICIAL" "$URL_MIRROR" "$URL_MIRROR_ALT"; do
+    case "$url" in
+      *.tar.xz) target="$ARCHIVE" ;;
+      *) target="$ARCHIVE_MIRROR" ;;
+    esac
+    log "下载 ffmpeg $FFMPEG_VERSION 源码: $url"
+    # 半成品必须删掉：残留文件会被下一次误判为"已下载"，解压时才炸。
+    # --speed-limit/--speed-time：慢但仍在传输（ffmpeg.org 实测 ~70 KB/s）不该被打断，
+    # 但彻底无响应的连接要在 60 秒内放弃，否则会挂到 CI 任务超时。
+    if curl -fL --connect-timeout 15 --retry 2 --retry-delay 2 \
+      --speed-limit 1024 --speed-time 60 --progress-bar \
+      -o "$target.part" "$url"; then
+      mv -f "$target.part" "$target"
+      return 0
+    fi
+    rm -f "$target.part"
+    log "该源不可用，改用下一个"
+  done
+
+  echo "ffmpeg $FFMPEG_VERSION 源码下载失败：官方源与 GitHub 镜像均不可用" >&2
+  exit 1
+}
+
+# 解压到指定源码目录，并抹平两种源包的差异：
+#   官方包  ffmpeg-<ver>/                    带 RELEASE
+#   GitHub  FFmpeg-n<ver>/ 或 FFmpeg-FFmpeg-<sha>/   不带 RELEASE
+# 顶层目录名随下载端点变化（archive / codeload / legacy 三种各不相同），
+# 所以不按名字猜，先解压到临时目录，再把唯一的顶层目录改名成规范目录名。
+# 缺 RELEASE 时 ffbuild/version.sh 判不出真实版本，随包二进制的 -version 会是空串，
+# 这里补齐，保证两种来源产出一致。
+extract_source() {
+  local dst="$1" base archive stage top
+  base="$(dirname "$dst")"
+  if [[ -d "$dst" ]]; then
+    return 0
+  fi
+
+  archive="$(cached_archive)"
+  if [[ -z "$archive" ]]; then
+    echo "源码包缺失，无法解压到 $dst" >&2
+    exit 1
+  fi
+
+  mkdir -p "$base"
+  stage="$base/.extract-$$"
+  rm -rf "$stage"
+  mkdir -p "$stage"
+
+  log "解压源码到 $base（来源 $(basename "$archive")）"
+  if ! tar -xf "$archive" -C "$stage"; then
+    rm -rf "$stage"
+    echo "解压失败: $archive（若怀疑缓存损坏，删除该文件后重试）" >&2
+    exit 1
+  fi
+
+  if [[ "$(find "$stage" -mindepth 1 -maxdepth 1 -type d | wc -l)" -ne 1 ]]; then
+    rm -rf "$stage"
+    echo "源码包顶层应只有一个目录: $archive" >&2
+    exit 1
+  fi
+  top="$(find "$stage" -mindepth 1 -maxdepth 1 -type d)"
+
+  if [[ ! -f "$top/configure" ]]; then
+    rm -rf "$stage"
+    echo "源码不完整（缺少 configure）: $archive" >&2
+    exit 1
+  fi
+
+  mv "$top" "$dst"
+  rm -rf "$stage"
+
+  if [[ ! -f "$dst/RELEASE" ]]; then
+    printf '%s\n' "$FFMPEG_VERSION" >"$dst/RELEASE"
+  fi
+}
+
+fetch_source
+extract_source "$SRC_DIR"
+
+cd "$SRC_DIR"
+
+# ── 配置 ───────────────────────────────────────────────────────
+# ARCH_FLAG 需要按空格拆分，故意不加引号
+#
+# --enable-d3d11va 是必需的：h264_mf 的实现（libavcodec/mfenc.c）无条件下引用
+# ID3D11DeviceContext / AVD3D11VADeviceContext 等类型，d3d11va 关掉会直接编译失败。
+# 而 --disable-autodetect 会把 d3d11va 一并关闭，所以必须显式打开。
+#
+# 滤镜白名单不能只看代码里有没有显式写 -vf，以下几项由 ffmpeg 自动插入：
+#   transpose / hflip / vflip / rotate —— -autorotate 默认开启（ffmpeg_demux.c），
+#     按 displaymatrix 的旋转角自动插入：90°/270° 用 transpose，180° 用 hflip+vflip，
+#     非 90 倍数用 rotate。手机竖拍视频必然命中，删掉会让这类文件转码直接失败。
+#   crop —— MP4 的 clap（Clean Aperture）box、matroska 的 crop 元数据会生成
+#     AV_PKT_DATA_FRAME_CROPPING side data，apply_cropping 默认 CROP_ALL 而非 CROP_CODEC，
+#     因此只要文件带该元数据就会插入 crop。
+# 以上任一缺失，ffmpeg_filter.c 的 insert_filter() 返回 AVERROR_BUG，
+# 报 "Error configuring filter graph" 后整条转码失败，不是降级也不是画质损失。
+# wrapped_avframe 是 --disable-everything 下最容易漏的一项：
+# probe_encoder() 用 `-f lavfi -i color=...` 造一帧再喂给编码器，lavfi 输出的
+# 原始帧以 wrapped_avframe 包装，进入 -c:v 之前需要同名"解码器"接住。
+# 缺它时报 "no decoder found for: wrapped_avframe"，试编必然失败 ——
+# 而 select_encoder() 会把试编失败解读为"该编码器不可用"，最终 nvenc/amf/qsv/mf
+# 全部落选，转码整体失败，且错误信息指向编码器而不是缺解码器，极难排查。
+log "配置构建参数（arch=$TARGET_ARCH）"
+# --disable-everything 必须排在所有 --enable-* 之前。它的实现是
+# `unset ${XXX_LIST}`，即把各类别组件列表清空；之后的 --enable-* 往空列表里追加。
+# 顺序颠倒会让白名单整体失效（等价于全量构建）。
+./configure \
+  $ARCH_FLAG \
+  $CROSS_FLAG \
+  --target-os=mingw32 \
+  --disable-everything \
+  --disable-gpl \
+  --disable-doc \
+  --disable-debug \
+  --disable-ffplay \
+  --disable-ffprobe \
+  --disable-network \
+  --disable-autodetect \
+  --enable-small \
+  --enable-static \
+  --disable-shared \
+  --enable-mediafoundation \
+  --enable-d3d11va \
+  --enable-hwaccel=h264_d3d11va,hevc_d3d11va \
+  --enable-decoder=h264,hevc,vp8,vp9,av1,mpeg4,mpeg2video,mpeg1video \
+  --enable-decoder=msmpeg4v3,msmpeg4v2,wmv3,wmv2,vc1,prores,dnxhd,flv,theora,mjpeg,rawvideo,h263,vp6,vp6f \
+  --enable-decoder=aac,mp3,mp2,ac3,eac3,dts,flac,opus,vorbis,alac,wmav2,truehd,amrnb,amrwb \
+  --enable-decoder=pcm_s16le,pcm_s24le,pcm_s32le,pcm_f32le,pcm_u8,pcm_alaw,pcm_mulaw \
+  --enable-decoder=wrapped_avframe \
+  --enable-encoder=h264_mf,aac,wrapped_avframe \
+  --enable-muxer=hls,mpegts,mp4,matroska,image2,null \
+  --enable-demuxer=mov,matroska,mpegts,mpegps,avi,flv,asf,ogg,wav,mp3,aac,flac,h264,hevc,image2,rm \
+  --enable-bsf=h264_mp4toannexb,hevc_mp4toannexb \
+  --enable-protocol=file,pipe \
+  --enable-filter=buffer,buffersink,abuffer,abuffersink,scale,format,aformat,aresample,transpose,hflip,vflip,rotate,crop,color,null,anull,fps,trim \
+  --enable-indev=lavfi \
+  --enable-parser=h264,hevc,vp9,av1,mpeg4video,mpegvideo,aac,ac3,dts,flac,opus,vorbis \
+  --extra-cflags="-Os -ffunction-sections -fdata-sections" \
+  --extra-ldflags="-static -Wl,--gc-sections"
+
+# CONFIG_GPL 必须为 0，否则说明意外引入了 GPL 组件
+if grep -qE '^#define CONFIG_GPL 1' config.h; then
+  echo "构建配置仍包含 GPL 组件，请检查 configure 参数" >&2
+  exit 1
+fi
+
+# h264_mf 是去掉 libx264 后唯一的软件编码回退，必须确认已启用。
+# 注意：FFmpeg 6.1 起组件开关被拆到 config_components.h，不在 config.h 里。
+if ! grep -qE '^#define CONFIG_H264_MF_ENCODER 1' config_components.h; then
+  echo "h264_mf 编码器未启用，Media Foundation 支持不可用" >&2
+  exit 1
+fi
+
+# ── 编译 ───────────────────────────────────────────────────────
+JOBS="$(nproc 2>/dev/null || echo 4)"
+log "编译中（-j$JOBS），首次构建约需 10-20 分钟"
+
+# 用 -k 跑到尽可能多的目标。Windows 上 make 归档大库时会触发命令行长度上限
+# （约 8191 字符），表现为 `ar` 拿到空的 .objs 响应文件，最终产出 8 字节的空归档。
+# 这类失败不影响已编译的 .o，下面统一修复。
+make -k -j"$JOBS" || true
+
+# ── 修复被截断的静态库 ─────────────────────────────────────────
+# 判断依据：AR 归档文件至少含 "!<arch>\n" 8 字节头 + 符号表，
+# 小于 1KB 视为空归档，改用 .o 列表文件重新归档（ar 的 @file 不受命令行长度限制）。
+# 返回值 1 表示确实重建过，调用方据此决定是否需要重新链接。
+fix_truncated_archives() {
+  local tree="$1" rebuilt=0 libdir libdir_path archive rel size
+
+  # 按目录遍历而不是按已存在的 *.a 遍历：llvm-ar 碰到不存在的响应文件会直接
+  # 报错退出，不像 MSYS 的 GNU ar 那样留下 8 字节空壳，归档可能压根没生成。
+  for libdir_path in "$tree"/lib*/; do
+    [[ -d "$libdir_path" ]] || continue
+    libdir="$(basename "${libdir_path%/}")"
+
+    # 未启用的库目录里没有目标文件，跳过
+    if [[ -z "$(find "$tree/$libdir" -name '*.o' -print -quit)" ]]; then
+      continue
+    fi
+
+    archive="$tree/$libdir/$libdir.a"
+    if [[ -f "$archive" ]]; then
+      size=$(wc -c < "$archive")
+      if [[ $size -ge 1024 ]]; then
+        continue
+      fi
+    else
+      size=0
+    fi
+
+    rel="$libdir/$libdir.a"
+    log "重建被破坏的归档: $rel ($size 字节)"
+
+    # ar / ranlib 也要带交叉前缀：arm64 的目标文件用宿主的 x86_64 ar 处理会失败。
+    # 它们同样是原生 Windows 程序，只在命令行参数上做 MSYS 路径转换，
+    # 响应文件**内部**的路径不会被转换：写成 /e/... 会让 ar 报 No such file，
+    # 而且归档会留成 8 字节的空壳。因此在树内用相对路径。
+    (
+      cd "$tree"
+      find "$libdir" -name "*.o" | sort > "$libdir.objs"
+      rm -f "$rel"
+      "${CROSS_PREFIX}ar" rcD "$rel" "@$libdir.objs" || {
+        echo "归档失败: $rel" >&2
+        exit 1
+      }
+      "${CROSS_PREFIX}ranlib" "$rel"
+    )
+
+    size=$(wc -c < "$archive")
+    if [[ $size -lt 1024 ]]; then
+      echo "归档仍为空: $archive ($size 字节)" >&2
+      exit 1
+    fi
+    rebuilt=1
+  done
+
+  return $rebuilt
+}
+
+# 归档修复后需要重新链接可执行文件（返回值 1 表示重建过）
+if ! fix_truncated_archives "$SRC_DIR"; then
+  log "静态库已重建，重新链接 ffmpeg"
+fi
+make -j"$JOBS"
+
+# ── 安装并裁剪符号 ─────────────────────────────────────────────
+# 读取 PE 头里的 Machine 字段（0x8664 = x64，0xaa64 = arm64）。
+# 交叉工具链配错时 configure 不报错，产物会被原样改名，直到用户装上运行才崩，
+# 因此在拷贝产物的这一步就拦下来。
+pe_machine() {
+  local f="$1" off
+  off=$(od -An -tu4 -j60 -N4 "$f" | tr -d '[:space:]')
+  od -An -tx2 -j$((off + 4)) -N2 "$f" | tr -d '[:space:]'
+}
+
+install_bin() {
+  local src_bin="$1" name="$2"
+
+  if [[ ! -f "$src_bin" ]]; then
+    echo "未生成 $src_bin，请检查 configure 参数" >&2
+    exit 1
+  fi
+
+  local dst_bin="$OUT_DIR/$name-$TRIPLE.exe" machine strip_bin
+  cp "$src_bin" "$dst_bin"
+
+  # strip 也要用带前缀的那个：arm64 下裸 strip 要么不存在，要么是宿主机的 x86 版
+  strip_bin="${CROSS_PREFIX}strip"
+  if command -v "$strip_bin" >/dev/null 2>&1; then
+    "$strip_bin" "$dst_bin" || log "strip 失败，保留原始符号"
+  fi
+
+  machine=$(pe_machine "$dst_bin")
+  if [[ "$machine" != "$PE_MACHINE" ]]; then
+    echo "产物架构不符: $dst_bin 的 PE Machine 是 0x$machine，期望 0x$PE_MACHINE" >&2
+    echo "通常是交叉工具链没配好，configure 退回了宿主机的编译器。" >&2
+    rm -f "$dst_bin"
+    exit 1
+  fi
+
+  log "已生成: $dst_bin ($(du -h "$dst_bin" | cut -f1))"
+}
+
+install_bin "$SRC_DIR/ffmpeg.exe" ffmpeg
+
+# ── 阶段二：极简 ffprobe ───────────────────────────────────────
+# ffprobe 只用来读取容器元数据（codec_type / codec_name / width / height /
+# 音频的 sample_rate、channels），不输出任何帧，因此不需要滤镜、缩放、重采样，
+# 也不需要编码器。用独立的源码树做一次 --disable-everything 的构建：18 MB → 4.25 MB。
+#
+# 唯一保留的解码器是 aac，原因是 FFmpeg 8.x 的 aac parser 只负责切帧：
+# libavcodec/aac_ac3_parser.c 的 AAC 分支只写 profile / bit_rate，不把 ADTS 头里的
+# 采样率和声道数写回 avctx（源码注释说明这两个字段在 HE-AAC 下不可靠，因为 SBR/PS
+# 会让实际输出翻倍或改变声道数）。于是 ts / m2ts / 裸 ADTS 里封装的 AAC，
+# avformat_find_stream_info 只能靠解码器纠正参数；没有解码器时 sample_rate 和
+# channels 恒为 0（mp4/mkv 走容器的 AudioSpecificConfig，不受影响）。
+# 代价实测：2.59 MiB → 4.25 MiB（+1.66 MiB，aacdec 及其 DCT/FFT 依赖），
+# 换来与完整版 ffprobe 一致的音频参数，也避免将来读音频信息时踩这个坑。
+#
+# 之所以另开一棵树而不是复用上面那棵：FFmpeg 不允许在已配置过的源码目录里
+# 换一套参数重新配置，而两者的白名单差异极大，互相牵连只会让维护变难。
+#
+# 只调主构建时设 SKIP_FFPROBE=1，可跳过这段无谓的重编。
+if [[ "${SKIP_FFPROBE:-0}" = "1" ]]; then
+  log "已跳过 ffprobe 构建（SKIP_FFPROBE=1）"
+  exit 0
+fi
+
+extract_source "$FFPROBE_SRC_DIR"
+
+cd "$FFPROBE_SRC_DIR"
+
+log "配置极简 ffprobe（arch=$TARGET_ARCH）"
+./configure \
+  $ARCH_FLAG \
+  $CROSS_FLAG \
+  --target-os=mingw32 \
+  --disable-everything \
+  --disable-gpl \
+  --disable-doc \
+  --disable-debug \
+  --disable-network \
+  --disable-autodetect \
+  --disable-avdevice \
+  --disable-avfilter \
+  --disable-swscale \
+  --disable-swresample \
+  --disable-ffmpeg \
+  --disable-ffplay \
+  --enable-ffprobe \
+  --enable-static \
+  --disable-shared \
+  --enable-small \
+  --enable-protocol=file,pipe \
+  --enable-demuxer=mov,matroska,mpegts,mpegps,avi,flv,asf,ogg,wav,mp3,aac,flac,h264,hevc,image2,hls,rm \
+  --enable-parser=h264,hevc,vp9,av1,mpeg4video,mpegvideo,aac,ac3,dts,flac,opus,vorbis,mpegaudio \
+  --enable-decoder=aac \
+  --extra-cflags="-Os -ffunction-sections -fdata-sections" \
+  --extra-ldflags="-static -Wl,--gc-sections"
+
+# aac 解码器是 ts 内 AAC 参数的唯一来源，缺了它 ffprobe 会静默输出 0，不会报错，
+# 属于那种构建成功、运行也不报错、只在读音频参数时才暴露的缺陷，因此显式校验。
+if ! grep -qE '^#define CONFIG_AAC_DECODER 1' config_components.h; then
+  echo "ffprobe 缺少 aac 解码器，ts 内 AAC 的采样率/声道数将无法探测" >&2
+  exit 1
+fi
+
+if grep -qE '^#define CONFIG_GPL 1' config.h; then
+  echo "ffprobe 构建配置包含 GPL 组件，请检查 configure 参数" >&2
+  exit 1
+fi
+
+log "编译 ffprobe（-j$JOBS）"
+make -k -j"$JOBS" || true
+if ! fix_truncated_archives "$FFPROBE_SRC_DIR"; then
+  log "静态库已重建，重新链接 ffprobe"
+fi
+make -j"$JOBS"
+
+install_bin "$FFPROBE_SRC_DIR/ffprobe.exe" ffprobe
+
+log "完成。Tauri 打包时将按 target triple 自动选取对应架构的二进制。"

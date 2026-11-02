@@ -1,8 +1,9 @@
+use std::ffi::OsStr;
 use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{LazyLock, Mutex};
+use std::sync::{LazyLock, Mutex, OnceLock};
 
 use quicklook_cache::{CacheDir, file_key};
 use quicklook_error::QuickLookError;
@@ -10,20 +11,65 @@ use serde::Serialize;
 
 const CACHE_DIR: &str = "quicklook_videos";
 
+/// HLS 分片时长（秒）。`-hls_time` 与 GOP 长度都由它派生，两处随常量同步变化。
+const HLS_SEGMENT_SECONDS: u32 = 2;
+/// GOP 帧数：按 30fps 折算到 HLS_SEGMENT_SECONDS，保证分片边界落在关键帧上。
+const HLS_GOP_FRAMES: u32 = 30 * HLS_SEGMENT_SECONDS;
+
+/// 随包分发的二进制路径，由宿主在启动时注入。
+/// 未注入时回退到 PATH 查找，兼容开发环境与用户自装 ffmpeg 的场景。
+static FFMPEG_BIN: OnceLock<PathBuf> = OnceLock::new();
+static FFPROBE_BIN: OnceLock<PathBuf> = OnceLock::new();
+
+/// 注入随包分发的 ffmpeg / ffprobe 绝对路径。
+/// `ffprobe` 缺失时保持 PATH 回退；仅在首次调用时生效，重复调用会被忽略。
+pub fn set_bundled_binaries(ffmpeg: PathBuf, ffprobe: Option<PathBuf>) {
+    let _ = FFMPEG_BIN.set(ffmpeg);
+    if let Some(ffprobe) = ffprobe {
+        let _ = FFPROBE_BIN.set(ffprobe);
+    }
+}
+
+/// 当前实际使用的 ffmpeg 程序，仅用于日志与错误提示。
+pub fn ffmpeg_program() -> String {
+    match FFMPEG_BIN.get() {
+        Some(path) => path.to_string_lossy().to_string(),
+        None => "ffmpeg".to_string(),
+    }
+}
+
 /// CREATE_NO_WINDOW：启动控制台子进程时不弹出终端窗口。
-fn silent_command(program: &str) -> Command {
+fn silent_command(program: impl AsRef<OsStr>) -> Command {
     let mut cmd = Command::new(program);
     cmd.creation_flags(0x0800_0000);
     cmd
 }
 
-/// 视频编码器：独显硬件编码优先，其次核显，最后 CPU 软编。
+/// 优先使用随包分发的 ffmpeg，其次回退 PATH 中的同名可执行文件。
+fn ffmpeg_command() -> Command {
+    match FFMPEG_BIN.get() {
+        Some(path) => silent_command(path),
+        None => silent_command("ffmpeg"),
+    }
+}
+
+fn ffprobe_command() -> Command {
+    match FFPROBE_BIN.get() {
+        Some(path) => silent_command(path),
+        None => silent_command("ffprobe"),
+    }
+}
+
+/// 视频编码器：独显硬件编码优先，其次核显，最后系统媒体组件软编。
+///
+/// 末位的 `MediaFoundation` 使用系统自带的 Media Foundation H.264 编码器（`h264_mf`），
+/// 不依赖 libx264，因此整个分发包不引入 GPL 组件。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VideoEncoder {
     Nvenc,
     Amf,
     Qsv,
-    Libx264,
+    MediaFoundation,
 }
 
 impl VideoEncoder {
@@ -32,12 +78,16 @@ impl VideoEncoder {
             Self::Nvenc => "h264_nvenc",
             Self::Amf => "h264_amf",
             Self::Qsv => "h264_qsv",
-            Self::Libx264 => "libx264",
+            Self::MediaFoundation => "h264_mf",
         }
     }
 
-    pub fn is_hardware(self) -> bool {
-        !matches!(self, Self::Libx264)
+    /// 失败后可回退到的通用编码器；`MediaFoundation` 已是最后一环，无更软的兜底。
+    pub fn fallback(self) -> Option<Self> {
+        match self {
+            Self::MediaFoundation => None,
+            _ => Some(Self::MediaFoundation),
+        }
     }
 }
 
@@ -51,17 +101,32 @@ pub struct VideoPreviewDecision {
     pub preview_path: String,
 }
 
+/// ffprobe 探测结果。任一字段缺失时保持默认值，由调用方走保守转码路径。
+#[derive(Debug, Default, Clone)]
+struct CodecProbe {
+    video: String,
+    audio: String,
+    width: u32,
+    height: u32,
+}
+
 /// 全局记录正在运行的 ffmpeg 进程 PID 及其对应的临时目录，用于取消时终止进程并清理。
 static FFMPEG_PROCESS: LazyLock<Mutex<Option<(u32, PathBuf)>>> = LazyLock::new(|| Mutex::new(None));
 static FFMPEG_CANCELLED: AtomicBool = AtomicBool::new(false);
 
-/// 检测本机是否安装了 ffmpeg
+/// 检测 ffmpeg 是否可用：优先随包分发的二进制，其次 PATH。
 pub fn check_ffmpeg() -> bool {
-    silent_command("ffmpeg")
+    let available = ffmpeg_command()
         .arg("-version")
         .output()
         .map(|o| o.status.success())
-        .unwrap_or(false)
+        .unwrap_or(false);
+    log::info!(
+        "ffmpeg 检测: program={}, available={}",
+        ffmpeg_program(),
+        available
+    );
+    available
 }
 
 /// 预检查视频是否可直接原生播放。
@@ -78,14 +143,16 @@ pub fn prepare_video_for_preview(path: &str) -> Result<VideoPreviewDecision, Qui
         .unwrap_or_default()
         .to_lowercase();
 
-    let (codec, _audio_codec) = probe_codecs(path)?;
+    let probe = probe_codecs(path)?;
     log::info!(
-        "prepare_video_for_preview: path={:?}, ext={}, codec={}",
+        "prepare_video_for_preview: path={:?}, ext={}, codec={}, size={}x{}",
         path,
         extension,
-        codec
+        probe.video,
+        probe.width,
+        probe.height
     );
-    let is_compatible = is_compatible_video(path, &extension, &codec);
+    let is_compatible = is_compatible_video(path, &extension, &probe.video);
 
     if is_compatible {
         return Ok(VideoPreviewDecision {
@@ -179,15 +246,21 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, QuickLookError> {
 
     std::fs::create_dir_all(&temp_dir)?;
 
-    // 用 ffprobe 检测视频/音频流编解码器
-    let (codec, audio_codec) = probe_codecs(Path::new(path))?;
-    log::info!("检测到编解码器: video={}, audio={}", codec, audio_codec);
+    // 用 ffprobe 检测视频/音频流编解码器与分辨率
+    let probe = probe_codecs(Path::new(path))?;
+    log::info!(
+        "检测到编解码器: video={}, audio={}, size={}x{}",
+        probe.video,
+        probe.audio,
+        probe.width,
+        probe.height
+    );
 
-    // 如果已是 h264，直接复制视频流；否则按 独显 → 核显 → libx264 选编码器转码。
-    let video_encoder = if codec == "h264" {
+    // 如果已是 h264，直接复制视频流；否则按 独显 → 核显 → 系统媒体组件 选编码器转码。
+    let video_encoder = if probe.video == "h264" {
         None
     } else {
-        Some(select_encoder())
+        Some(select_encoder()?)
     };
 
     let mut hls_base_url = temp_dir.to_string_lossy().replace('\\', "/").to_string();
@@ -195,27 +268,29 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, QuickLookError> {
         hls_base_url.push('/');
     }
 
-    let mut ffmpeg = silent_command("ffmpeg");
+    let mut ffmpeg = ffmpeg_command();
     ffmpeg.current_dir(&temp_dir).arg("-i").arg(path);
 
     // 转码时固定像素格式和 profile，提升浏览器/MSE 兼容性；copy 模式保持原编码。
     if let Some(encoder) = video_encoder {
-        apply_video_encode_args(&mut ffmpeg, encoder);
+        apply_video_encode_args(&mut ffmpeg, encoder, probe.width, probe.height);
     } else {
         ffmpeg.arg("-c:v").arg("copy");
     }
 
     // 音频已是 aac 时直接复制，避免二次有损转码；否则转为 aac。
-    if audio_codec == "aac" {
+    if probe.audio == "aac" {
         ffmpeg.arg("-c:a").arg("copy");
     } else {
         ffmpeg.args(["-c:a", "aac", "-b:a", "128k", "-ac", "2", "-ar", "48000"]);
     }
 
+    // 分片时长与 GOP 同源：这里若写死数字，改常量时 -hls_time 不跟着变，
+    // 分片边界就落不到关键帧上，播放器要等下一个 IDR 才能起播。
     let mut child = match ffmpeg
+        .arg("-hls_time")
+        .arg(HLS_SEGMENT_SECONDS.to_string())
         .args([
-            "-hls_time",
-            "2",
             "-hls_list_size",
             "0",
             "-hls_flags",
@@ -232,16 +307,17 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, QuickLookError> {
     {
         Ok(child) => child,
         Err(e) => {
-            // 硬件编码器启动失败时回退软编再试一次
+            // 硬件编码器启动失败时回退到通用编码器再试一次
             if let Some(encoder) = video_encoder
-                && encoder.is_hardware()
+                && let Some(next) = encoder.fallback()
             {
                 log::warn!(
-                    "硬件编码器 {} 启动失败: {}，回退 libx264 重试",
+                    "编码器 {} 启动失败: {}，回退 {} 重试",
                     encoder.codec_name(),
-                    e
+                    e,
+                    next.codec_name()
                 );
-                set_selected_encoder(VideoEncoder::Libx264);
+                set_selected_encoder(next);
                 let _ = std::fs::remove_dir_all(&temp_dir);
                 return convert_video_to_hls(path);
             }
@@ -302,20 +378,21 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, QuickLookError> {
         std::thread::sleep(std::time::Duration::from_millis(100));
     }
 
-    // m3u8 在 12 秒内未生成：终止进程、清理临时目录；硬件编码则回退软编重试。
+    // m3u8 在 12 秒内未生成：终止进程、清理临时目录；硬件编码则回退通用编码重试。
     log::error!("ffmpeg 已启动，但 m3u8 生成超时，正在终止进程并清理临时文件");
     kill_ffmpeg_process();
     let _ = std::fs::remove_dir_all(&temp_dir);
 
     if let Some(encoder) = video_encoder
-        && encoder.is_hardware()
+        && let Some(next) = encoder.fallback()
         && !FFMPEG_CANCELLED.load(Ordering::Relaxed)
     {
         log::warn!(
-            "硬件编码器 {} 未产出 m3u8，回退 libx264 重试",
-            encoder.codec_name()
+            "编码器 {} 未产出 m3u8，回退 {} 重试",
+            encoder.codec_name(),
+            next.codec_name()
         );
-        set_selected_encoder(VideoEncoder::Libx264);
+        set_selected_encoder(next);
         return convert_video_to_hls(path);
     }
 
@@ -324,14 +401,15 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, QuickLookError> {
     ))
 }
 
-/// 探测首条视频流和音频流的编码名。失败时返回空串，由调用方走保守转码路径。
-fn probe_codecs(path: &Path) -> Result<(String, String), QuickLookError> {
-    let output = match silent_command("ffprobe")
+/// 探测首条视频流与音频流的编码名及视频分辨率。
+/// 失败时返回默认值，由调用方走保守转码路径。
+fn probe_codecs(path: &Path) -> Result<CodecProbe, QuickLookError> {
+    let output = match ffprobe_command()
         .args([
             "-v",
             "error",
             "-show_entries",
-            "stream=codec_type,codec_name",
+            "stream=codec_type,codec_name,width,height",
             "-of",
             "csv=p=0",
             path.to_string_lossy().as_ref(),
@@ -341,43 +419,65 @@ fn probe_codecs(path: &Path) -> Result<(String, String), QuickLookError> {
         Ok(output) => output,
         Err(e) => {
             log::warn!("ffprobe 执行失败: {}，将使用转码模式", e);
-            return Ok((String::new(), String::new()));
+            return Ok(CodecProbe::default());
         },
     };
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         log::warn!("ffprobe 退出异常: {}，将使用转码模式", stderr.trim());
-        return Ok((String::new(), String::new()));
+        return Ok(CodecProbe::default());
     }
 
     let stdout = match String::from_utf8(output.stdout) {
         Ok(stdout) => stdout,
         Err(e) => {
             log::warn!("ffprobe 输出解析失败: {}，将使用转码模式", e);
-            return Ok((String::new(), String::new()));
+            return Ok(CodecProbe::default());
         },
     };
 
-    let mut video = String::new();
-    let mut audio = String::new();
+    let mut probe = CodecProbe::default();
     for line in stdout.lines() {
         let line = line.trim();
         if line.is_empty() {
             continue;
         }
-        let mut parts = line.splitn(2, ',');
+        let mut parts = line.splitn(4, ',');
         let kind = parts.next().unwrap_or_default().trim().to_lowercase();
         let name = parts.next().unwrap_or_default().trim().to_lowercase();
+        let width = parts
+            .next()
+            .unwrap_or_default()
+            .trim()
+            .parse::<u32>()
+            .unwrap_or(0);
+        let height = parts
+            .next()
+            .unwrap_or_default()
+            .trim()
+            .parse::<u32>()
+            .unwrap_or(0);
+
         match kind.as_str() {
-            "video" if video.is_empty() => video = name,
-            "audio" if audio.is_empty() => audio = name,
+            "video" if probe.video.is_empty() => {
+                probe.video = name;
+                probe.width = width;
+                probe.height = height;
+            },
+            "audio" if probe.audio.is_empty() => probe.audio = name,
             _ => {},
         }
     }
 
-    log::info!("ffprobe codecs: video='{}', audio='{}'", video, audio);
-    Ok((video, audio))
+    log::info!(
+        "ffprobe 探测结果: video='{}', audio='{}', size={}x{}",
+        probe.video,
+        probe.audio,
+        probe.width,
+        probe.height
+    );
+    Ok(probe)
 }
 
 /// 通过 WMI 读取显卡名称列表，用于决定硬件编码器试探顺序。
@@ -420,7 +520,7 @@ pub fn gpu_name_contains(names: &[String], keyword: &str) -> bool {
     names.iter().any(|n| n.to_ascii_uppercase().contains(&key))
 }
 
-/// 编码器候选顺序：独显（NVIDIA/AMD）→ 核显（Intel）→ libx264 软编。
+/// 编码器候选顺序：独显（NVIDIA/AMD）→ 核显（Intel）→ 系统媒体组件。
 fn encoder_candidates() -> Vec<VideoEncoder> {
     let names = detect_gpu_names();
     log::info!("检测到显卡: {:?}", names);
@@ -441,14 +541,14 @@ fn encoder_candidates() -> Vec<VideoEncoder> {
     if candidates.is_empty() {
         candidates.extend([VideoEncoder::Nvenc, VideoEncoder::Amf, VideoEncoder::Qsv]);
     }
-    // 最终兜底
-    candidates.push(VideoEncoder::Libx264);
+    // 最终兜底：系统自带的 Media Foundation 编码器
+    candidates.push(VideoEncoder::MediaFoundation);
     candidates
 }
 
-/// 试编 1 帧，确认该硬件编码器当前真能工作。
+/// 试编 1 帧，确认该编码器当前真能工作。
 fn probe_encoder(encoder: VideoEncoder) -> bool {
-    let ok = silent_command("ffmpeg")
+    let ok = ffmpeg_command()
         .args([
             "-hide_banner",
             "-loglevel",
@@ -480,41 +580,65 @@ fn set_selected_encoder(encoder: VideoEncoder) {
     *SELECTED_ENCODER.lock().unwrap_or_else(|e| e.into_inner()) = Some(encoder);
 }
 
-/// 选定编码器并缓存：独显 → 核显 → libx264，每个候选用试编确认。
-fn select_encoder() -> VideoEncoder {
+/// 选定编码器并缓存：独显 → 核显 → 系统媒体组件，每个候选用试编确认。
+/// 全部候选均不可用时返回 `VideoEncoderUnavailable`。
+fn select_encoder() -> Result<VideoEncoder, QuickLookError> {
     {
         let guard = SELECTED_ENCODER.lock().unwrap_or_else(|e| e.into_inner());
         if let Some(encoder) = *guard {
-            return encoder;
+            return Ok(encoder);
         }
     }
 
     for candidate in encoder_candidates() {
-        if candidate == VideoEncoder::Libx264 || probe_encoder(candidate) {
+        if probe_encoder(candidate) {
             log::info!("选用视频编码器: {}", candidate.codec_name());
             set_selected_encoder(candidate);
-            return candidate;
+            return Ok(candidate);
         }
     }
 
-    set_selected_encoder(VideoEncoder::Libx264);
-    VideoEncoder::Libx264
+    log::error!("所有候选编码器均试编失败，无法进行视频转码");
+    Err(QuickLookError::VideoEncoderUnavailable)
+}
+
+/// 按分辨率给出目标码率。`h264_mf` 没有 CRF 等效项，必须显式指定码率。
+pub fn target_bitrate(width: u32, height: u32) -> &'static str {
+    match width.saturating_mul(height) {
+        pixels if pixels >= 3840 * 2160 => "16M",
+        pixels if pixels >= 2560 * 1440 => "8M",
+        pixels if pixels >= 1920 * 1080 => "4M",
+        pixels if pixels >= 1280 * 720 => "2M",
+        _ => "1M",
+    }
+}
+
+/// 按分辨率给出 H.264 level，1080p 以上需要 5.1。
+fn target_level(width: u32, height: u32) -> &'static str {
+    match width.saturating_mul(height) {
+        pixels if pixels > 1920 * 1080 => "5.1",
+        _ => "4.0",
+    }
 }
 
 /// 为转码命令追加编码器及其参数（像素格式/profile 固定以保证浏览器兼容）。
-fn apply_video_encode_args(ffmpeg: &mut Command, encoder: VideoEncoder) {
+fn apply_video_encode_args(ffmpeg: &mut Command, encoder: VideoEncoder, width: u32, height: u32) {
     ffmpeg.arg("-c:v").arg(encoder.codec_name());
     match encoder {
-        VideoEncoder::Libx264 => {
+        VideoEncoder::MediaFoundation => {
+            // mfenc 的 profile 只接受数字枚举值，传 "main" 会报 Invalid argument：
+            // 66 = Baseline，77 = Main，100 = High。默认不指定时输出 Constrained Baseline。
             ffmpeg
-                .arg("-preset")
-                .arg("veryfast")
-                .arg("-pix_fmt")
-                .arg("yuv420p")
-                .arg("-profile:v")
-                .arg("main")
+                .args(["-pix_fmt", "nv12"])
+                .args(["-profile:v", "77"])
                 .arg("-level")
-                .arg("4.0");
+                .arg(target_level(width, height))
+                .arg("-g")
+                .arg(HLS_GOP_FRAMES.to_string())
+                .args(["-rate_control", "u_vbr"])
+                .args(["-quality", "70"])
+                .arg("-b:v")
+                .arg(target_bitrate(width, height));
         },
         VideoEncoder::Nvenc => {
             ffmpeg
