@@ -6,12 +6,18 @@
 #   --enable-mediafoundation  保留 h264_mf（系统 Media Foundation 编码器）作为软编兜底
 #   白名单裁剪               仅保留 QuickLook 预览转码实际用到的编解码器与封装
 #
-# 前置条件（MSYS2 MINGW64）：
-#   pacman -S --needed base-devel mingw-w64-x86_64-gcc mingw-w64-x86_64-nasm make
+# 前置条件：
+#   x64（MSYS2 MINGW64 原生编译）：
+#     pacman -S --needed base-devel mingw-w64-x86_64-gcc mingw-w64-x86_64-nasm make
+#   arm64（x64 主机上交叉编译）：需要 llvm-mingw
+#     https://github.com/mstorsjo/llvm-mingw/releases（选 *-ucrt-x86_64.zip）
+#     解压后把其中的 bin 目录加进 PATH，它自带 aarch64-w64-mingw32-* 全套工具。
+#     也可以用 CROSS_PREFIX 指向自备的 aarch64-w64-mingw32- 工具链前缀。
 #
 # 用法：
-#   ./scripts/build-ffmpeg.sh                  # x64
-#   TARGET_ARCH=arm64 ./scripts/build-ffmpeg.sh
+#   ./scripts/build-ffmpeg.sh                              # x64
+#   TARGET_ARCH=arm64 ./scripts/build-ffmpeg.sh            # arm64（需 llvm-mingw 在 PATH）
+#   CROSS_PREFIX=/d/tool/bin/aarch64-w64-mingw32- ./scripts/build-ffmpeg.sh
 #
 # 产物：src-tauri/binaries/{ffmpeg,ffprobe}-<triple>.exe
 
@@ -28,14 +34,24 @@ FFPROBE_SRC_DIR="$BUILD_DIR/ffprobe-src/ffmpeg-$FFMPEG_VERSION"
 OUT_DIR="$ROOT_DIR/src-tauri/binaries"
 
 TARGET_ARCH="${TARGET_ARCH:-x64}"
+# CROSS_PREFIX 留空表示用 PATH 里的原生工具链；arm64 默认指向 llvm-mingw 的前缀。
+CROSS_PREFIX="${CROSS_PREFIX:-}"
+NEED_NASM=1
+
 case "$TARGET_ARCH" in
   x64)
     TRIPLE="x86_64-pc-windows-msvc"
     ARCH_FLAG="--arch=x86_64"
+    PE_MACHINE="8664"
     ;;
   arm64)
     TRIPLE="aarch64-pc-windows-msvc"
     ARCH_FLAG="--arch=aarch64"
+    PE_MACHINE="aa64"
+    # aarch64 不走 x86 汇编，nasm 也不需要。缺 cross 前缀会导致 configure
+    # 悄悄退回 PATH 里的 x86_64 gcc，最终产出 x64 二进制却命名为 aarch64。
+    CROSS_PREFIX="${CROSS_PREFIX:-aarch64-w64-mingw32-}"
+    NEED_NASM=0
     ;;
   *)
     echo "不支持的 TARGET_ARCH: $TARGET_ARCH（可选 x64 / arm64）" >&2
@@ -54,13 +70,40 @@ case "$(uname -s)" in
     ;;
 esac
 
-for cmd in make gcc curl tar; do
+for cmd in make curl tar; do
   if ! command -v "$cmd" >/dev/null 2>&1; then
     echo "缺少命令: $cmd" >&2
-    echo "请在 MSYS2 MINGW64 中安装: base-devel mingw-w64-x86_64-gcc mingw-w64-x86_64-nasm" >&2
+    echo "请在 MSYS2 MINGW64 中安装: base-devel make" >&2
     exit 1
   fi
 done
+
+# 编译器按 CROSS_PREFIX 找：x64 上是 gcc，arm64 上是 aarch64-w64-mingw32-gcc。
+# 必须显式校验 —— configure 找不到带前缀的编译器时会退回宿主机的 cc/gcc，
+# 也就是 x86_64 gcc，最后链接出一个架构错误的二进制，而且全程不报错。
+CC_BIN="${CROSS_PREFIX}gcc"
+if ! command -v "$CC_BIN" >/dev/null 2>&1; then
+  echo "缺少编译器: $CC_BIN" >&2
+  if [[ "$TARGET_ARCH" = "arm64" ]]; then
+    echo "arm64 需要 llvm-mingw：下载 *-ucrt-x86_64.zip，把解压后的 bin 目录加入 PATH，" >&2
+    echo "或用 CROSS_PREFIX 指定自备的 aarch64-w64-mingw32- 工具链前缀。" >&2
+  else
+    echo "请在 MSYS2 MINGW64 中安装: mingw-w64-x86_64-gcc" >&2
+  fi
+  exit 1
+fi
+
+if [[ "$NEED_NASM" = "1" ]] && ! command -v nasm >/dev/null 2>&1; then
+  # 缺 nasm 时 configure 不会失败，而是静默 --disable-x86asm：产物变大、
+  # 转码变慢，日志里只有一行不显眼的 disable 提示，不主动拦就很难发现。
+  echo "缺少 nasm：x86 汇编优化会被静默关闭，请 pacman -S mingw-w64-x86_64-nasm" >&2
+  exit 1
+fi
+
+CROSS_FLAG=""
+if [[ -n "$CROSS_PREFIX" ]]; then
+  CROSS_FLAG="--cross-prefix=$CROSS_PREFIX"
+fi
 
 mkdir -p "$BUILD_DIR" "$OUT_DIR"
 
@@ -112,6 +155,7 @@ log "配置构建参数（arch=$TARGET_ARCH）"
 # 顺序颠倒会让白名单整体失效（等价于全量构建）。
 ./configure \
   $ARCH_FLAG \
+  $CROSS_FLAG \
   --target-os=mingw32 \
   --disable-everything \
   --disable-gpl \
@@ -170,31 +214,45 @@ make -k -j"$JOBS" || true
 # 小于 1KB 视为空归档，改用 .o 列表文件重新归档（ar 的 @file 不受命令行长度限制）。
 # 返回值 1 表示确实重建过，调用方据此决定是否需要重新链接。
 fix_truncated_archives() {
-  local tree="$1" rebuilt=0 archive size libdir rel
+  local tree="$1" rebuilt=0 libdir libdir_path archive rel size
 
-  for archive in "$tree"/*/lib*.a; do
-    [[ -f "$archive" ]] || continue
-    size=$(wc -c < "$archive")
-    if [[ $size -ge 1024 ]]; then
+  # 按目录遍历而不是按已存在的 *.a 遍历：llvm-ar 碰到不存在的响应文件会直接
+  # 报错退出，不像 MSYS 的 GNU ar 那样留下 8 字节空壳，归档可能压根没生成。
+  for libdir_path in "$tree"/lib*/; do
+    [[ -d "$libdir_path" ]] || continue
+    libdir="$(basename "${libdir_path%/}")"
+
+    # 未启用的库目录里没有目标文件，跳过
+    if [[ -z "$(find "$tree/$libdir" -name '*.o' -print -quit)" ]]; then
       continue
     fi
 
-    libdir=$(basename "$(dirname "$archive")")
-    rel="$libdir/$(basename "$archive")"
-    log "重建被截断的归档: $rel ($size 字节)"
+    archive="$tree/$libdir/$libdir.a"
+    if [[ -f "$archive" ]]; then
+      size=$(wc -c < "$archive")
+      if [[ $size -ge 1024 ]]; then
+        continue
+      fi
+    else
+      size=0
+    fi
 
-    # ar / ranlib 是原生 Windows 程序，只在命令行参数上做 MSYS 路径转换，
+    rel="$libdir/$libdir.a"
+    log "重建被破坏的归档: $rel ($size 字节)"
+
+    # ar / ranlib 也要带交叉前缀：arm64 的目标文件用宿主的 x86_64 ar 处理会失败。
+    # 它们同样是原生 Windows 程序，只在命令行参数上做 MSYS 路径转换，
     # 响应文件**内部**的路径不会被转换：写成 /e/... 会让 ar 报 No such file，
     # 而且归档会留成 8 字节的空壳。因此在树内用相对路径。
     (
       cd "$tree"
       find "$libdir" -name "*.o" | sort > "$libdir.objs"
       rm -f "$rel"
-      ar rcD "$rel" "@$libdir.objs" || {
+      "${CROSS_PREFIX}ar" rcD "$rel" "@$libdir.objs" || {
         echo "归档失败: $rel" >&2
         exit 1
       }
-      ranlib "$rel"
+      "${CROSS_PREFIX}ranlib" "$rel"
     )
 
     size=$(wc -c < "$archive")
@@ -215,6 +273,15 @@ fi
 make -j"$JOBS"
 
 # ── 安装并裁剪符号 ─────────────────────────────────────────────
+# 读取 PE 头里的 Machine 字段（0x8664 = x64，0xaa64 = arm64）。
+# 交叉工具链配错时 configure 不报错，产物会被原样改名，直到用户装上运行才崩，
+# 因此在拷贝产物的这一步就拦下来。
+pe_machine() {
+  local f="$1" off
+  off=$(od -An -tu4 -j60 -N4 "$f" | tr -d '[:space:]')
+  od -An -tx2 -j$((off + 4)) -N2 "$f" | tr -d '[:space:]'
+}
+
 install_bin() {
   local src_bin="$1" name="$2"
 
@@ -223,11 +290,23 @@ install_bin() {
     exit 1
   fi
 
-  local dst_bin="$OUT_DIR/$name-$TRIPLE.exe"
+  local dst_bin="$OUT_DIR/$name-$TRIPLE.exe" machine strip_bin
   cp "$src_bin" "$dst_bin"
-  if command -v strip >/dev/null 2>&1; then
-    strip "$dst_bin" || log "strip 失败，保留原始符号"
+
+  # strip 也要用带前缀的那个：arm64 下裸 strip 要么不存在，要么是宿主机的 x86 版
+  strip_bin="${CROSS_PREFIX}strip"
+  if command -v "$strip_bin" >/dev/null 2>&1; then
+    "$strip_bin" "$dst_bin" || log "strip 失败，保留原始符号"
   fi
+
+  machine=$(pe_machine "$dst_bin")
+  if [[ "$machine" != "$PE_MACHINE" ]]; then
+    echo "产物架构不符: $dst_bin 的 PE Machine 是 0x$machine，期望 0x$PE_MACHINE" >&2
+    echo "通常是交叉工具链没配好，configure 退回了宿主机的编译器。" >&2
+    rm -f "$dst_bin"
+    exit 1
+  fi
+
   log "已生成: $dst_bin ($(du -h "$dst_bin" | cut -f1))"
 }
 
@@ -267,6 +346,7 @@ cd "$FFPROBE_SRC_DIR"
 log "配置极简 ffprobe（arch=$TARGET_ARCH）"
 ./configure \
   $ARCH_FLAG \
+  $CROSS_FLAG \
   --target-os=mingw32 \
   --disable-everything \
   --disable-gpl \

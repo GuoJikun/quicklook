@@ -3,6 +3,8 @@ on:
   push:
     tags:
       - v*
+  # 手动触发只做构建验证，不创建 Release（tagName 留空即可）
+  workflow_dispatch:
 
 jobs:
   publish-tauri:
@@ -13,10 +15,12 @@ jobs:
       matrix:
         settings:
           - platform: windows-latest
+            arch: "x64"
             args: "--target x86_64-pc-windows-msvc"
             rust-target: "x86_64-pc-windows-msvc"
             target: "windows"
           - platform: windows-latest
+            arch: "arm64"
             args: "--target aarch64-pc-windows-msvc"
             rust-target: "aarch64-pc-windows-msvc"
             target: "windows-aarch64"
@@ -26,6 +30,59 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # 随包分发的是自行裁剪构建的 ffmpeg / ffprobe（见 scripts/build-ffmpeg.sh）：
+      # 组件白名单、去掉 GPL 后的 h264_mf 兜底都是定制过的，不能改用官方预编译产物。
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          # minimal 会保留外部 PATH，arm64 的 llvm-mingw 才能被 msys2 shell 找到
+          path-type: minimal
+          update: false
+          install: >-
+            base-devel
+            make
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-nasm
+
+      # arm64 在 x64 runner 上交叉编译：llvm-mingw 自带 aarch64-w64-mingw32-* 全套工具，
+      # MSYS2 只有 x86_64 的 mingw-w64 工具链，装不出 aarch64 产物。
+      # 解压到 RUNNER_TEMP，PATH 在构建步骤里显式拼（msys2 的 minimal PATH 不继承外部目录）。
+      - name: Setup llvm-mingw (arm64 cross toolchain)
+        if: matrix.settings.arch == 'arm64'
+        shell: pwsh
+        run: |
+          $ver = '20261020'
+          $url = "https://github.com/mstorsjo/llvm-mingw/releases/download/$ver/llvm-mingw-$ver-ucrt-x86_64.zip"
+          $zip = Join-Path $env:RUNNER_TEMP 'llvm-mingw.zip'
+          Invoke-WebRequest -Uri $url -OutFile $zip
+          Expand-Archive -Path $zip -DestinationPath $env:RUNNER_TEMP -Force
+
+      # 首次约 20 分钟，之后命中缓存只重编增量部分。
+      # key 带上架构和脚本哈希：脚本里的白名单一改，旧的目标文件就不能再复用。
+      - name: Cache ffmpeg build
+        uses: actions/cache@v4
+        with:
+          path: .ffmpeg-build
+          key: ffmpeg-${{ matrix.settings.arch }}-${{ hashFiles('scripts/build-ffmpeg.sh') }}
+          restore-keys: |
+            ffmpeg-${{ matrix.settings.arch }}-
+
+      - name: Build bundled ffmpeg
+        shell: msys2 {0}
+        env:
+          TARGET_ARCH: ${{ matrix.settings.arch }}
+          # msys2 的 minimal PATH 不继承外部目录，交叉工具链得在脚本里显式加进去
+          LLVM_MINGW_BIN: ${{ runner.temp }}\llvm-mingw-20261020-ucrt-x86_64\bin
+        run: |
+          if [[ -n "${LLVM_MINGW_BIN:-}" ]] &&
+             mingw_bin="$(cygpath -u "$LLVM_MINGW_BIN" 2>/dev/null)" &&
+             [[ -d "$mingw_bin" ]]; then
+            export PATH="$mingw_bin:$PATH"
+          fi
+          bash scripts/build-ffmpeg.sh
+
       - name: Add Rust targets window aarch64
         if: matrix.settings.target == 'windows-aarch64'
         run: rustup target add aarch64-pc-windows-msvc
@@ -84,7 +141,9 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           args: ${{ matrix.settings.args }}
-          tagName: v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version
+          # 推 tag 时由 action 把 __VERSION__ 替换成包版本；手动触发时留空，
+          # 只跑构建与打包，不创建 Release、不上传资产。
+          tagName: ${{ github.event_name == 'push' && 'v__VERSION__' || '' }}
           releaseName: 'v__VERSION__'
           releaseBody: "${{ steps.release_notes.outputs.result }}"
           releaseDraft: false
