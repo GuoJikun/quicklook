@@ -11,9 +11,9 @@ use serde::Serialize;
 
 const CACHE_DIR: &str = "quicklook_videos";
 
-/// HLS 分片时长（秒），与 `-hls_time` 保持一致。
+/// HLS 分片时长（秒）。`-hls_time` 与 GOP 长度都由它派生，两处随常量同步变化。
 const HLS_SEGMENT_SECONDS: u32 = 2;
-/// GOP 帧数：按 30fps 折算为 2 秒，保证分片边界落在关键帧上。
+/// GOP 帧数：按 30fps 折算到 HLS_SEGMENT_SECONDS，保证分片边界落在关键帧上。
 const HLS_GOP_FRAMES: u32 = 30 * HLS_SEGMENT_SECONDS;
 
 /// 随包分发的二进制路径，由宿主在启动时注入。
@@ -285,10 +285,12 @@ pub fn convert_video_to_hls(path: &str) -> Result<String, QuickLookError> {
         ffmpeg.args(["-c:a", "aac", "-b:a", "128k", "-ac", "2", "-ar", "48000"]);
     }
 
+    // 分片时长与 GOP 同源：这里若写死数字，改常量时 -hls_time 不跟着变，
+    // 分片边界就落不到关键帧上，播放器要等下一个 IDR 才能起播。
     let mut child = match ffmpeg
+        .arg("-hls_time")
+        .arg(HLS_SEGMENT_SECONDS.to_string())
         .args([
-            "-hls_time",
-            "2",
             "-hls_list_size",
             "0",
             "-hls_flags",
