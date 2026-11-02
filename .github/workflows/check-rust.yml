@@ -13,7 +13,8 @@ jobs:
   cargo-check:
     name: fmt / clippy / check / test
     runs-on: windows-latest
-    timeout-minutes: 40
+    # 首次构建随包 ffmpeg 约 20 分钟，命中缓存后只重编增量部分，余量留给冷缓存场景
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
@@ -48,6 +49,38 @@ jobs:
         run: |
           cargo fmt --version
           cargo fmt --check
+
+      # 随包分发的是自行裁剪构建的 ffmpeg / ffprobe（见 scripts/build-ffmpeg.sh）。
+      # tauri-build 在编译期会校验 bundle.externalBin 对应的 binaries/ 产物是否存在，
+      # 缺失时 cargo check / clippy / test 会直接失败：
+      # resource path `binaries\ffmpeg-x86_64-pc-windows-msvc.exe` doesn't exist
+      # check 只跑宿主 x86_64 目标，因此不需要 build.yml 里那套 arm64 交叉工具链。
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          path-type: minimal
+          update: false
+          install: >-
+            base-devel
+            make
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-nasm
+
+      # key 与 build.yml 的 x64 分支保持一致，脚本哈希未变时可复用已有的构建产物
+      - name: Cache ffmpeg build
+        uses: actions/cache@v4
+        with:
+          path: .ffmpeg-build
+          key: ffmpeg-x64-${{ hashFiles('scripts/build-ffmpeg.sh') }}
+          restore-keys: |
+            ffmpeg-x64-
+
+      - name: Build bundled ffmpeg
+        shell: msys2 {0}
+        env:
+          TARGET_ARCH: x64
+        run: bash scripts/build-ffmpeg.sh
 
       - name: Cargo check
         run: |
