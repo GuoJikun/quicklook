@@ -65,8 +65,15 @@ Tauri 打包时按 target triple 自动选取对应架构。
 
 | 产物 | 用途 | 启用组件 | 体积 |
 |---|---|---|---|
-| `ffmpeg.exe` | HLS 转码 | `h264_mf` / `aac` 编码器、常用解码器、`hls` / `mpegts` 封装、`scale` 等滤镜 | 18 MB |
+| `ffmpeg.exe` | HLS 转码 | `h264_mf` / `aac` 编码器、常用解码器、`hls` / `mpegts` 封装、转码链路必需的滤镜 | 11 MB |
 | `ffprobe.exe` | 读取容器元数据 | 仅解封装与解析器，无解码器、无滤镜、无编码器 | 2.6 MB |
+
+两者均以 `--disable-everything` 为基准、按白名单显式启用，因此新增功能时若用到
+新的解码器或滤镜，必须同步写进 `scripts/build-ffmpeg.sh`，否则运行期会报
+`no decoder found for: xxx` 或 `Error configuring filter graph`。
+
+只调整 `ffmpeg` 的构建参数时，可用 `SKIP_FFPROBE=1 ./scripts/build-ffmpeg.sh`
+跳过 ffprobe 阶段，省去一次无谓的全量重编。
 
 > 注意：`bundle.externalBin` 在编译期校验文件是否存在，**未构建 ffmpeg 时 `cargo check` /
 > `pnpm tauri dev` 会直接报 `resource path ... doesn't exist`**。因此 CI 与本地首次构建

@@ -90,10 +90,30 @@ cd "$SRC_DIR"
 # --enable-d3d11va 是必需的：h264_mf 的实现（libavcodec/mfenc.c）无条件下引用
 # ID3D11DeviceContext / AVD3D11VADeviceContext 等类型，d3d11va 关掉会直接编译失败。
 # 而 --disable-autodetect 会把 d3d11va 一并关闭，所以必须显式打开。
+#
+# 滤镜白名单不能只看代码里有没有显式写 -vf，以下几项由 ffmpeg 自动插入：
+#   transpose / hflip / vflip / rotate —— -autorotate 默认开启（ffmpeg_demux.c），
+#     按 displaymatrix 的旋转角自动插入：90°/270° 用 transpose，180° 用 hflip+vflip，
+#     非 90 倍数用 rotate。手机竖拍视频必然命中，删掉会让这类文件转码直接失败。
+#   crop —— MP4 的 clap（Clean Aperture）box、matroska 的 crop 元数据会生成
+#     AV_PKT_DATA_FRAME_CROPPING side data，apply_cropping 默认 CROP_ALL 而非 CROP_CODEC，
+#     因此只要文件带该元数据就会插入 crop。
+# 以上任一缺失，ffmpeg_filter.c 的 insert_filter() 返回 AVERROR_BUG，
+# 报 "Error configuring filter graph" 后整条转码失败，不是降级也不是画质损失。
+# wrapped_avframe 是 --disable-everything 下最容易漏的一项：
+# probe_encoder() 用 `-f lavfi -i color=...` 造一帧再喂给编码器，lavfi 输出的
+# 原始帧以 wrapped_avframe 包装，进入 -c:v 之前需要同名"解码器"接住。
+# 缺它时报 "no decoder found for: wrapped_avframe"，试编必然失败 ——
+# 而 select_encoder() 会把试编失败解读为"该编码器不可用"，最终 nvenc/amf/qsv/mf
+# 全部落选，转码整体失败，且错误信息指向编码器而不是缺解码器，极难排查。
 log "配置构建参数（arch=$TARGET_ARCH）"
+# --disable-everything 必须排在所有 --enable-* 之前。它的实现是
+# `unset ${XXX_LIST}`，即把各类别组件列表清空；之后的 --enable-* 往空列表里追加。
+# 顺序颠倒会让白名单整体失效（等价于全量构建）。
 ./configure \
   $ARCH_FLAG \
   --target-os=mingw32 \
+  --disable-everything \
   --disable-gpl \
   --disable-doc \
   --disable-debug \
@@ -108,19 +128,20 @@ log "配置构建参数（arch=$TARGET_ARCH）"
   --enable-d3d11va \
   --enable-hwaccel=h264_d3d11va,hevc_d3d11va \
   --enable-decoder=h264,hevc,vp8,vp9,av1,mpeg4,mpeg2video,mpeg1video \
-  --enable-decoder=msmpeg4v3,wmv3,wmv2,vc1,prores,dnxhd,flv,theora,mjpeg,rawvideo,h263 \
-  --enable-decoder=aac,mp3,ac3,eac3,dts,flac,opus,vorbis,alac,wmav2,truehd \
-  --enable-decoder=pcm_s16le,pcm_s24le,pcm_f32le \
-  --enable-encoder=h264_mf,aac \
+  --enable-decoder=msmpeg4v3,msmpeg4v2,wmv3,wmv2,vc1,prores,dnxhd,flv,theora,mjpeg,rawvideo,h263,vp6,vp6f \
+  --enable-decoder=aac,mp3,mp2,ac3,eac3,dts,flac,opus,vorbis,alac,wmav2,truehd,amrnb,amrwb \
+  --enable-decoder=pcm_s16le,pcm_s24le,pcm_s32le,pcm_f32le,pcm_u8,pcm_alaw,pcm_mulaw \
+  --enable-decoder=wrapped_avframe \
+  --enable-encoder=h264_mf,aac,wrapped_avframe \
   --enable-muxer=hls,mpegts,mp4,matroska,image2,null \
-  --enable-demuxer=mov,matroska,mpegts,mpegps,avi,flv,asf,ogg,wav,mp3,aac,h264,hevc,image2 \
+  --enable-demuxer=mov,matroska,mpegts,mpegps,avi,flv,asf,ogg,wav,mp3,aac,flac,h264,hevc,image2,rm \
   --enable-bsf=h264_mp4toannexb,hevc_mp4toannexb \
   --enable-protocol=file,pipe \
-  --enable-filter=scale,format,aformat,aresample,transpose,crop,color,null,anull \
+  --enable-filter=buffer,buffersink,abuffer,abuffersink,scale,format,aformat,aresample,transpose,hflip,vflip,rotate,crop,color,null,anull,fps,trim \
   --enable-indev=lavfi \
   --enable-parser=h264,hevc,vp9,av1,mpeg4video,mpegvideo,aac,ac3,dts,flac,opus,vorbis \
-  --extra-cflags="-O2" \
-  --extra-ldflags="-static"
+  --extra-cflags="-Os -ffunction-sections -fdata-sections" \
+  --extra-ldflags="-static -Wl,--gc-sections"
 
 # CONFIG_GPL 必须为 0，否则说明意外引入了 GPL 组件
 if grep -qE '^#define CONFIG_GPL 1' config.h; then
@@ -217,8 +238,21 @@ install_bin "$SRC_DIR/ffmpeg.exe" ffmpeg
 # 不解码任何帧，因此不需要解码器、滤镜、缩放、重采样，也不需要编码器。
 # 用独立的源码树做一次 --disable-everything 的构建：18 MB → 2.6 MB。
 #
+# 已知限制：ts 容器内以 ADTS 封装的 AAC，其 sample_rate / channels 需要 aac 解码器
+# 参与 avformat_find_stream_info 才能填充，本产物对这类流会报 0；mp4/mkv 里的 AAC
+# 由容器的 AudioSpecificConfig 直接给出，不受影响。
+# probe_codecs() 只读 codec_type / codec_name / width / height，不受此限制影响，
+# 因此不为此引入约 300 KB 的 aac 解码器。若将来要用音频参数，需加 --enable-decoder=aac。
+#
 # 之所以另开一棵树而不是复用上面那棵：FFmpeg 不允许在已配置过的源码目录里
 # 换一套参数重新配置，而两者的白名单差异极大，互相牵连只会让维护变难。
+#
+# 只调主构建时设 SKIP_FFPROBE=1，可跳过这段无谓的重编。
+if [[ "${SKIP_FFPROBE:-0}" = "1" ]]; then
+  log "已跳过 ffprobe 构建（SKIP_FFPROBE=1）"
+  exit 0
+fi
+
 if [[ ! -d "$FFPROBE_SRC_DIR" ]]; then
   log "解压第二份源码用于 ffprobe"
   mkdir -p "$(dirname "$FFPROBE_SRC_DIR")"
