@@ -61,6 +61,13 @@ TARGET_ARCH=arm64 ./scripts/build-ffmpeg.sh # arm64
 脚本产出 `src-tauri/binaries/{ffmpeg,ffprobe}-<triple>.exe`（已加入 `.gitignore`），
 Tauri 打包时按 target triple 自动选取对应架构。
 
+两个二进制由脚本分两阶段构建，组件白名单不同：
+
+| 产物 | 用途 | 启用组件 | 体积 |
+|---|---|---|---|
+| `ffmpeg.exe` | HLS 转码 | `h264_mf` / `aac` 编码器、常用解码器、`hls` / `mpegts` 封装、`scale` 等滤镜 | 18 MB |
+| `ffprobe.exe` | 读取容器元数据 | 仅解封装与解析器，无解码器、无滤镜、无编码器 | 2.6 MB |
+
 > 注意：`bundle.externalBin` 在编译期校验文件是否存在，**未构建 ffmpeg 时 `cargo check` /
 > `pnpm tauri dev` 会直接报 `resource path ... doesn't exist`**。因此 CI 与本地首次构建
 > 都必须先执行上面的脚本，或从 Release 下载对应架构的二进制放入该目录。

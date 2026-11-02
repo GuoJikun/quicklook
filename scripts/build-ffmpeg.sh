@@ -21,6 +21,10 @@ FFMPEG_VERSION="${FFMPEG_VERSION:-8.1.1}"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="${BUILD_DIR:-$ROOT_DIR/.ffmpeg-build}"
 SRC_DIR="$BUILD_DIR/ffmpeg-$FFMPEG_VERSION"
+ARCHIVE="$BUILD_DIR/ffmpeg-$FFMPEG_VERSION.tar.xz"
+# ffprobe 用独立源码树构建：FFmpeg 不允许在已配置过的树里做第二种配置，
+# 而两者的组件白名单差异极大，共用一个树会互相牵连。
+FFPROBE_SRC_DIR="$BUILD_DIR/ffprobe-src/ffmpeg-$FFMPEG_VERSION"
 OUT_DIR="$ROOT_DIR/src-tauri/binaries"
 
 TARGET_ARCH="${TARGET_ARCH:-x64}"
@@ -67,13 +71,13 @@ export TMPDIR=/tmp
 mkdir -p "$TMPDIR"
 
 # ── 获取源码 ───────────────────────────────────────────────────
+if [[ ! -f "$ARCHIVE" ]]; then
+  log "下载 ffmpeg $FFMPEG_VERSION 源码"
+  curl -fL --retry 3 --progress-bar \
+    -o "$ARCHIVE" "https://ffmpeg.org/releases/ffmpeg-$FFMPEG_VERSION.tar.xz"
+fi
+
 if [[ ! -d "$SRC_DIR" ]]; then
-  ARCHIVE="$BUILD_DIR/ffmpeg-$FFMPEG_VERSION.tar.xz"
-  if [[ ! -f "$ARCHIVE" ]]; then
-    log "下载 ffmpeg $FFMPEG_VERSION 源码"
-    curl -fL --retry 3 --progress-bar \
-      -o "$ARCHIVE" "https://ffmpeg.org/releases/ffmpeg-$FFMPEG_VERSION.tar.xz"
-  fi
   log "解压源码到 $BUILD_DIR"
   tar -xf "$ARCHIVE" -C "$BUILD_DIR"
 fi
@@ -94,6 +98,7 @@ log "配置构建参数（arch=$TARGET_ARCH）"
   --disable-doc \
   --disable-debug \
   --disable-ffplay \
+  --disable-ffprobe \
   --disable-network \
   --disable-autodetect \
   --enable-small \
@@ -133,21 +138,133 @@ fi
 # ── 编译 ───────────────────────────────────────────────────────
 JOBS="$(nproc 2>/dev/null || echo 4)"
 log "编译中（-j$JOBS），首次构建约需 10-20 分钟"
+
+# 用 -k 跑到尽可能多的目标。Windows 上 make 归档大库时会触发命令行长度上限
+# （约 8191 字符），表现为 `ar` 拿到空的 .objs 响应文件，最终产出 8 字节的空归档。
+# 这类失败不影响已编译的 .o，下面统一修复。
+make -k -j"$JOBS" || true
+
+# ── 修复被截断的静态库 ─────────────────────────────────────────
+# 判断依据：AR 归档文件至少含 "!<arch>\n" 8 字节头 + 符号表，
+# 小于 1KB 视为空归档，改用 .o 列表文件重新归档（ar 的 @file 不受命令行长度限制）。
+# 返回值 1 表示确实重建过，调用方据此决定是否需要重新链接。
+fix_truncated_archives() {
+  local tree="$1" rebuilt=0 archive size libdir rel
+
+  for archive in "$tree"/*/lib*.a; do
+    [[ -f "$archive" ]] || continue
+    size=$(wc -c < "$archive")
+    if [[ $size -ge 1024 ]]; then
+      continue
+    fi
+
+    libdir=$(basename "$(dirname "$archive")")
+    rel="$libdir/$(basename "$archive")"
+    log "重建被截断的归档: $rel ($size 字节)"
+
+    # ar / ranlib 是原生 Windows 程序，只在命令行参数上做 MSYS 路径转换，
+    # 响应文件**内部**的路径不会被转换：写成 /e/... 会让 ar 报 No such file，
+    # 而且归档会留成 8 字节的空壳。因此在树内用相对路径。
+    (
+      cd "$tree"
+      find "$libdir" -name "*.o" | sort > "$libdir.objs"
+      rm -f "$rel"
+      ar rcD "$rel" "@$libdir.objs" || {
+        echo "归档失败: $rel" >&2
+        exit 1
+      }
+      ranlib "$rel"
+    )
+
+    size=$(wc -c < "$archive")
+    if [[ $size -lt 1024 ]]; then
+      echo "归档仍为空: $archive ($size 字节)" >&2
+      exit 1
+    fi
+    rebuilt=1
+  done
+
+  return $rebuilt
+}
+
+# 归档修复后需要重新链接可执行文件（返回值 1 表示重建过）
+if ! fix_truncated_archives "$SRC_DIR"; then
+  log "静态库已重建，重新链接 ffmpeg"
+fi
 make -j"$JOBS"
 
 # ── 安装并裁剪符号 ─────────────────────────────────────────────
-for bin in ffmpeg ffprobe; do
-  src_bin="$SRC_DIR/$bin.exe"
+install_bin() {
+  local src_bin="$1" name="$2"
+
   if [[ ! -f "$src_bin" ]]; then
-    echo "未生成 $src_bin，请确认未启用 --disable-$bin" >&2
+    echo "未生成 $src_bin，请检查 configure 参数" >&2
     exit 1
   fi
-  dst_bin="$OUT_DIR/$bin-$TRIPLE.exe"
+
+  local dst_bin="$OUT_DIR/$name-$TRIPLE.exe"
   cp "$src_bin" "$dst_bin"
   if command -v strip >/dev/null 2>&1; then
     strip "$dst_bin" || log "strip 失败，保留原始符号"
   fi
   log "已生成: $dst_bin ($(du -h "$dst_bin" | cut -f1))"
-done
+}
+
+install_bin "$SRC_DIR/ffmpeg.exe" ffmpeg
+
+# ── 阶段二：极简 ffprobe ───────────────────────────────────────
+# ffprobe 只用来读取容器元数据（codec_type / codec_name / width / height），
+# 不解码任何帧，因此不需要解码器、滤镜、缩放、重采样，也不需要编码器。
+# 用独立的源码树做一次 --disable-everything 的构建：18 MB → 2.6 MB。
+#
+# 之所以另开一棵树而不是复用上面那棵：FFmpeg 不允许在已配置过的源码目录里
+# 换一套参数重新配置，而两者的白名单差异极大，互相牵连只会让维护变难。
+if [[ ! -d "$FFPROBE_SRC_DIR" ]]; then
+  log "解压第二份源码用于 ffprobe"
+  mkdir -p "$(dirname "$FFPROBE_SRC_DIR")"
+  tar -xf "$ARCHIVE" -C "$(dirname "$FFPROBE_SRC_DIR")"
+fi
+
+cd "$FFPROBE_SRC_DIR"
+
+log "配置极简 ffprobe（arch=$TARGET_ARCH）"
+./configure \
+  $ARCH_FLAG \
+  --target-os=mingw32 \
+  --disable-everything \
+  --disable-gpl \
+  --disable-doc \
+  --disable-debug \
+  --disable-network \
+  --disable-autodetect \
+  --disable-avdevice \
+  --disable-avfilter \
+  --disable-swscale \
+  --disable-swresample \
+  --disable-ffmpeg \
+  --disable-ffplay \
+  --enable-ffprobe \
+  --enable-static \
+  --disable-shared \
+  --enable-small \
+  --enable-protocol=file,pipe \
+  --enable-demuxer=mov,matroska,mpegts,mpegps,avi,flv,asf,ogg,wav,mp3,aac,flac,h264,hevc,image2,hls,rm \
+  --enable-parser=h264,hevc,vp9,av1,mpeg4video,mpegvideo,aac,ac3,dts,flac,opus,vorbis,mpegaudio \
+  --extra-cflags="-Os -ffunction-sections -fdata-sections" \
+  --extra-ldflags="-static -Wl,--gc-sections"
+
+if grep -qE '^#define CONFIG_GPL 1' config.h; then
+  echo "ffprobe 构建配置包含 GPL 组件，请检查 configure 参数" >&2
+  exit 1
+fi
+
+log "编译 ffprobe（-j$JOBS）"
+make -k -j"$JOBS" || true
+if ! fix_truncated_archives "$FFPROBE_SRC_DIR"; then
+  log "静态库已重建，重新链接 ffprobe"
+fi
+make -j"$JOBS"
+
+install_bin "$FFPROBE_SRC_DIR/ffprobe.exe" ffprobe
 
 log "完成。Tauri 打包时将按 target triple 自动选取对应架构的二进制。"
