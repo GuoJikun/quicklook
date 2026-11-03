@@ -1,5 +1,7 @@
 <script lang="ts" setup>
 import { check, type Update } from '@tauri-apps/plugin-updater'
+import { useI18n } from 'vue-i18n'
+import { currentLocale } from '@/locales'
 import { computed, onMounted, onUnmounted, ref, shallowRef } from 'vue'
 import { error as logError, info } from '@tauri-apps/plugin-log'
 import { Check, CircleClose, Download, Refresh, Warning } from '@element-plus/icons-vue'
@@ -8,6 +10,8 @@ import MdViewer from '@/components/md-viewer/index.vue'
 import { createMd } from '@/utils/markdown/index'
 import { formatBytes } from '@/utils/index'
 import type MarkdownIt from 'markdown-it'
+
+const { t } = useI18n()
 
 type Phase = 'idle' | 'downloading' | 'finished' | 'cancelled'
 
@@ -53,7 +57,7 @@ const formatDate = (iso: string): string => {
     if (!iso) return ''
     const d = new Date(iso)
     if (Number.isNaN(d.getTime())) return iso
-    return d.toLocaleString('zh-CN', { dateStyle: 'long', timeStyle: 'short' })
+    return d.toLocaleString(currentLocale.value, { dateStyle: 'long', timeStyle: 'short' })
 }
 
 const renderNotes = async (txt: string) => {
@@ -116,14 +120,14 @@ const startDownload = async () => {
         try {
             const fresh = await check()
             if (!fresh) {
-                ElMessage.warning('当前已无新版本可更新')
+                ElMessage.warning(t('upgrade.noNewVersion'))
                 phase.value = 'idle'
                 return
             }
             updater.value = fresh
             u = fresh
         } catch (e) {
-            errMsg.value = `检查更新失败：${(e as Error)?.message ?? e}`
+            errMsg.value = t('upgrade.checkError', { error: String((e as Error)?.message ?? e) })
             ElMessage.error(errMsg.value)
             logError(`recheck after cancel failed: ${e}`)
             return
@@ -166,7 +170,7 @@ const startDownload = async () => {
     } catch (e) {
         if (!downloadCancelled) {
             phase.value = 'idle'
-            errMsg.value = `下载更新失败：${(e as Error)?.message ?? e}`
+            errMsg.value = t('upgrade.downloadError', { error: String((e as Error)?.message ?? e) })
             ElMessage.error(errMsg.value)
             logError(`upgrade failed: ${e}`)
         }
@@ -184,7 +188,7 @@ const cancelDownload = async () => {
     updater.value = null
     phase.value = 'cancelled'
     progress.value.speed = 0
-    ElMessage.info('已取消更新下载')
+    ElMessage.info(t('upgrade.cancelled'))
     if (u) {
         try {
             await u.close()
@@ -206,10 +210,10 @@ onUnmounted(() => {
 
 <template>
     <div class="upgrade">
-        <div class="upgrade-card" v-loading="checking" element-loading-text="正在检查更新…">
+        <div class="upgrade-card" v-loading="checking" :element-loading-text="t('upgrade.checking')">
             <header class="upgrade-header">
                 <div class="upgrade-header-left">
-                    <h2 class="upgrade-title">软件更新</h2>
+                    <h2 class="upgrade-title">{{ t('upgrade.title') }}</h2>
                     <el-tag v-if="currentVersion && !checking" size="small" type="info" effect="plain">
                         v{{ currentVersion }}
                     </el-tag>
@@ -219,7 +223,7 @@ onUnmounted(() => {
             <template v-if="!checking">
                 <section v-if="errMsg" class="state state-error">
                     <el-icon class="state-icon" :size="56"><Warning /></el-icon>
-                    <p class="state-title">检查更新失败</p>
+                    <p class="state-title">{{ t('upgrade.checkFailed') }}</p>
                     <p class="state-desc">{{ errMsg }}</p>
                 </section>
 
@@ -227,23 +231,23 @@ onUnmounted(() => {
                     <div class="state-icon-wrap success">
                         <el-icon :size="36"><Check /></el-icon>
                     </div>
-                    <p class="state-title">当前已经是最新版本</p>
+                    <p class="state-title">{{ t('upgrade.upToDate') }}</p>
                     <p class="state-desc" v-if="currentVersion">v{{ currentVersion }}</p>
                 </section>
 
                 <section v-else class="state state-upgrade">
                     <div class="upgrade-banner">
                         <div class="banner-row">
-                            <span class="banner-label">最新版本</span>
+                            <span class="banner-label">{{ t('upgrade.latestVersion') }}</span>
                             <span class="banner-version">v{{ newVersion || '—' }}</span>
                         </div>
                         <div class="banner-row" v-if="releaseDate">
-                            <span class="banner-label">发布日期</span>
+                            <span class="banner-label">{{ t('upgrade.releaseDate') }}</span>
                             <span class="banner-value">{{ formatDate(releaseDate) }}</span>
                         </div>
                     </div>
 
-                    <div class="section-title">更新内容</div>
+                    <div class="section-title">{{ t('upgrade.releaseNotes') }}</div>
                     <div class="notes-wrapper" v-loading="mdLoading">
                         <MdViewer :content="releaseNotes" />
                     </div>
@@ -251,7 +255,7 @@ onUnmounted(() => {
                     <div v-if="phase === 'downloading' || phase === 'finished'" class="progress-block">
                         <div class="progress-header">
                             <span class="progress-label">
-                                {{ phase === 'finished' ? '下载完成' : '正在下载更新…' }}
+                                {{ phase === 'finished' ? t('upgrade.downloadFinished') : t('upgrade.downloading') }}
                             </span>
                             <span class="progress-stats">
                                 {{ formatBytes(progress.downloaded) }} / {{ formatBytes(progress.total) }}
@@ -274,13 +278,13 @@ onUnmounted(() => {
                 <footer class="upgrade-footer">
                     <el-button @click="doCheck" :disabled="phase === 'downloading'">
                         <el-icon><Refresh /></el-icon>
-                        <span style="margin-left: 4px">重新检查</span>
+                        <span style="margin-left: 4px">{{ t('upgrade.recheck') }}</span>
                     </el-button>
                     <template v-if="errMsg">
-                        <el-button type="primary" @click="doCheck">重试</el-button>
+                        <el-button type="primary" @click="doCheck">{{ t('upgrade.retry') }}</el-button>
                     </template>
                     <template v-else-if="!upgradeAvailable">
-                        <el-button type="primary" plain @click="doCheck">再次检查</el-button>
+                        <el-button type="primary" plain @click="doCheck">{{ t('upgrade.checkAgain') }}</el-button>
                     </template>
                     <template v-else>
                         <el-button
@@ -289,7 +293,7 @@ onUnmounted(() => {
                             :icon="CircleClose"
                             @click="cancelDownload"
                         >
-                            取消下载
+                            {{ t('upgrade.cancelDownload') }}
                         </el-button>
                         <el-button
                             v-else
@@ -298,7 +302,7 @@ onUnmounted(() => {
                             :disabled="phase === 'finished'"
                             @click="startDownload"
                         >
-                            {{ phase === 'finished' ? '下载完成' : '立即更新' }}
+                            {{ phase === 'finished' ? t('upgrade.downloadFinished') : t('upgrade.updateNow') }}
                         </el-button>
                     </template>
                 </footer>

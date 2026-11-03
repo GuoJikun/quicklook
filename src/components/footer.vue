@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import type { FileInfo } from '@/utils/typescript'
 import { formatBytes } from '@/utils/index'
 
@@ -6,13 +7,15 @@ interface Props {
     file?: FileInfo
 }
 const { file } = defineProps<Props>()
+
+const { t } = useI18n()
 </script>
 
 <template>
     <div class="footer">
-        <span class="footer-item">文件类型：{{ file?.file_type }}</span>
-        <span class="footer-item">文件格式：{{ file?.extension }}</span>
-        <span class="footer-item">文件大小：{{ formatBytes(file?.size as number) }}</span>
+        <span class="footer-item">{{ t('footer.type', { value: file?.file_type ?? '—' }) }}</span>
+        <span class="footer-item">{{ t('footer.format', { value: file?.extension ?? '—' }) }}</span>
+        <span class="footer-item">{{ t('footer.size', { value: formatBytes(file?.size as number) }) }}</span>
     </div>
 </template>
 

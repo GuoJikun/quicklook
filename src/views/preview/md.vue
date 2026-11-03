@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import LayoutPreview from '@/components/layout-preview.vue'
 import { useRoute } from 'vue-router'
 import type { FileInfo } from '@/utils/typescript'
@@ -10,6 +11,7 @@ import MdViewer from '@/components/md-viewer/index.vue'
 import type MarkdownIt from 'markdown-it'
 
 const route = useRoute()
+const { t } = useI18n()
 
 let md: MarkdownIt | null = null
 
@@ -32,7 +34,7 @@ onMounted(async () => {
             md = await createMd()
         }
     } catch (e) {
-        error.value = `创建md解析器失败：${e instanceof Error ? e.message : String(e)}`
+        error.value = t('preview.mdParserFailed', { error: e instanceof Error ? e.message : String(e) })
         loading.value = false
         return
     }
@@ -41,7 +43,7 @@ onMounted(async () => {
         const txt = await readTextFile(path)
         content.value = (md as MarkdownIt).render(txt)
     } catch (e) {
-        error.value = `读取md文件失败：${e instanceof Error ? e.message : String(e)}`
+        error.value = t('preview.mdReadFailed', { error: e instanceof Error ? e.message : String(e) })
     } finally {
         loading.value = false
     }
@@ -52,7 +54,7 @@ onMounted(async () => {
     <LayoutPreview :file="file" :loading="loading">
         <div class="md-support">
             <div v-if="error" class="md-error">
-                <p class="md-error-title">文件加载失败</p>
+                <p class="md-error-title">{{ t('preview.loadFailed') }}</p>
                 <p class="md-error-detail">{{ error }}</p>
             </div>
             <div v-else class="md-support-inner" id="markdown-body">

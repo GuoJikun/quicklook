@@ -7,6 +7,7 @@ QuickLook 是一个 windows 平台的快速预览工具。
 - 在文件资源管理器（Explorer）预览
 - 在桌面（Desktop）预览
 - 在文件选择弹窗（FileOpenDialog）预览
+- 界面支持简体中文与英文，默认简体中文，可在设置页切换（托盘菜单同步）
 
 ## 支持预览的格式
 

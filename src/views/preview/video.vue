@@ -1,20 +1,24 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 
 import { info } from '@tauri-apps/plugin-log'
 
 import Player, { I18N } from 'xgplayer'
 import 'xgplayer/dist/index.min.css'
 import ZH from 'xgplayer/es/lang/zh-cn'
+import EN from 'xgplayer/es/lang/en'
 
 import type { FileInfo } from '@/utils/typescript'
 import LayoutPreview from '@/components/layout-preview.vue'
 import { convertFileSrc, invoke } from '@tauri-apps/api/core'
-import { load } from '@tauri-apps/plugin-store'
+import { getConfigStore } from '@/utils/store'
 import { getCurrentWindow } from '@tauri-apps/api/window'
+import { getLocale } from '@/locales'
 
 const route = useRoute()
+const { t } = useI18n()
 let unlistenWindowClose: (() => void) | null = null
 let disposed = false
 
@@ -39,8 +43,10 @@ const listenWindowClose = async () => {
     })
 }
 
-// 启用中文
-I18N.use(ZH)
+// 播放器控件语言跟随应用语言（xgplayer 的 I18N 是全局单例，每次创建前重设即可）
+const applyPlayerLanguage = () => {
+    I18N.use(getLocale() === 'en-US' ? EN : ZH)
+}
 
 defineOptions({
     name: 'VideoSupport',
@@ -52,6 +58,7 @@ const converting = ref(false)
 const convertError = ref<string | null>(null)
 
 const initPlayer = (url: string, isHls = false) => {
+    applyPlayerLanguage()
     if (player !== null) {
         player.destroy()
         ;(document.querySelector('#videos') as HTMLElement).innerHTML = ''
@@ -89,7 +96,7 @@ onMounted(async () => {
     const filePath = fileInfo.value.path
 
     // 检查是否启用了本机 ffmpeg 解析
-    const store = await load('config.data', { autoSave: false, defaults: {} })
+    const store = await getConfigStore()
     const useLocalFfmpeg = (await store.get<boolean>('useLocalFfmpeg')) ?? false
 
     if (useLocalFfmpeg) {
@@ -155,7 +162,7 @@ onUnmounted(() => {
         <div class="video-support">
             <el-alert
                 v-if="convertError"
-                :title="'ffmpeg 转换失败，已回退到直接播放：' + convertError"
+                :title="t('video.convertFailed', { error: convertError })"
                 type="warning"
                 :closable="false"
                 style="margin-bottom: 8px"
@@ -163,7 +170,7 @@ onUnmounted(() => {
             <div
                 class="video-support-inner"
                 v-loading="converting"
-                element-loading-text="正在使用 ffmpeg 转换视频，请稍候…"
+                :element-loading-text="t('video.converting')"
             >
                 <div id="videos"></div>
             </div>
