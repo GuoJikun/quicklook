@@ -1,22 +1,27 @@
 <script lang="ts" setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { BaseDirectory } from '@tauri-apps/plugin-fs'
 import { readTextFile } from '@/utils'
 import { app } from '@tauri-apps/api'
-import { load, type Store } from '@tauri-apps/plugin-store'
+import type { Store } from '@tauri-apps/plugin-store'
 import { invoke } from '@tauri-apps/api/core'
 import { LogLevel } from '@tauri-apps/plugin-log'
-import { Delete, EditPen, Files, InfoFilled, VideoCamera } from '@element-plus/icons-vue'
+import { ChatDotRound, Delete, EditPen, Files, InfoFilled, VideoCamera } from '@element-plus/icons-vue'
 
 import SettingItem from '@/components/setting-item.vue'
+import { getConfigStore } from '@/utils/store'
+import { LOCALE_OPTIONS, currentLocale, setLocale, type LocaleCode } from '@/locales'
+
+const { t } = useI18n()
 
 let localStore: Store | null = null
 const loadStore = async () => {
-    localStore = await load('config.data', { autoSave: false, defaults: {} })
+    localStore = await getConfigStore()
 }
 
 interface FormatSupport {
-    name: string
+    nameKey: string
     code: string
     data: string[]
 }
@@ -25,21 +30,33 @@ const getConfig = async (): Promise<FormatSupport[]> => {
     const config = await readTextFile('config.json', { baseDir: BaseDirectory.Resource })
     const data = JSON.parse(config)
     return [
-        { name: 'Markdown', code: 'Md', data: data['preview.markdown.checked'] },
-        { name: '图片', code: 'Image', data: data['preview.image.checked'] },
-        { name: '视频', code: 'Video', data: data['preview.video.checked'] },
-        { name: '音频', code: 'Audio', data: data['preview.audio.checked'] },
-        { name: '文档', code: 'Doc', data: data['preview.doc.checked'] },
-        { name: '代码', code: 'Code', data: data['preview.code.checked'] },
-        { name: '字体', code: 'Font', data: data['preview.font.checked'] },
-        { name: '压缩包', code: 'Archive', data: data['preview.archive.checked'] },
-        { name: '书籍', code: 'Book', data: data['preview.book.checked'] },
-        { name: '3D模型', code: 'Model', data: data['preview.model.checked'] },
+        { nameKey: 'settings.formats.markdown', code: 'Md', data: data['preview.markdown.checked'] },
+        { nameKey: 'settings.formats.image', code: 'Image', data: data['preview.image.checked'] },
+        { nameKey: 'settings.formats.video', code: 'Video', data: data['preview.video.checked'] },
+        { nameKey: 'settings.formats.audio', code: 'Audio', data: data['preview.audio.checked'] },
+        { nameKey: 'settings.formats.doc', code: 'Doc', data: data['preview.doc.checked'] },
+        { nameKey: 'settings.formats.code', code: 'Code', data: data['preview.code.checked'] },
+        { nameKey: 'settings.formats.font', code: 'Font', data: data['preview.font.checked'] },
+        { nameKey: 'settings.formats.archive', code: 'Archive', data: data['preview.archive.checked'] },
+        { nameKey: 'settings.formats.book', code: 'Book', data: data['preview.book.checked'] },
+        { nameKey: 'settings.formats.model', code: 'Model', data: data['preview.model.checked'] },
     ]
 }
 
 const config = ref<FormatSupport[]>([])
 const version = ref<string>('')
+
+const localeOptions = LOCALE_OPTIONS
+const switchingLocale = ref(false)
+const handleLocaleChange = async (value: unknown) => {
+    if (typeof value !== 'string') return
+    switchingLocale.value = true
+    try {
+        await setLocale(value as LocaleCode)
+    } finally {
+        switchingLocale.value = false
+    }
+}
 
 const logLevel = ref<string | number>(LogLevel.Warn)
 const logLevelList = [
@@ -68,6 +85,29 @@ const handleLogLevelChange = (level: unknown) => {
 const useLocalFfmpeg = ref<boolean>(false)
 const ffmpegAvailable = ref<boolean | null>(null)
 
+type AlertType = 'info' | 'success' | 'error'
+const ffmpegStatus = computed<{ type: AlertType; title: string; description: string }>(() => {
+    if (ffmpegAvailable.value === null) {
+        return {
+            type: 'info',
+            title: t('settings.video.checking'),
+            description: t('settings.video.checkingDesc'),
+        }
+    }
+    if (ffmpegAvailable.value) {
+        return {
+            type: 'success',
+            title: t('settings.video.available'),
+            description: t('settings.video.availableDesc'),
+        }
+    }
+    return {
+        type: 'error',
+        title: t('settings.video.unavailable'),
+        description: t('settings.video.unavailableDesc'),
+    }
+})
+
 const handleUseLocalFfmpegChange = async (val: unknown) => {
     if (typeof val !== 'boolean') return
     useLocalFfmpeg.value = val
@@ -87,14 +127,14 @@ const addCodeExt = async () => {
     const ext = newCodeExt.value.trim().toLowerCase().replace(/^\./, '')
     if (!ext) return
     if (customCodeExts.value.includes(ext)) {
-        ElMessage.warning(`扩展名 "${ext}" 已存在`)
+        ElMessage.warning(t('settings.customCode.exists', { ext }))
         return
     }
     customCodeExts.value.push(ext)
     newCodeExt.value = ''
     await localStore?.set('customCodeExtensions', customCodeExts.value)
     await localStore?.save()
-    ElMessage.success(`已添加代码格式：${ext}`)
+    ElMessage.success(t('settings.customCode.added', { ext }))
 }
 
 const removeCodeExt = async (ext: string) => {
@@ -111,14 +151,14 @@ const addVideoExt = async () => {
     const ext = newVideoExt.value.trim().toLowerCase().replace(/^\./, '')
     if (!ext) return
     if (customVideoExts.value.includes(ext)) {
-        ElMessage.warning(`扩展名 "${ext}" 已存在`)
+        ElMessage.warning(t('settings.customCode.exists', { ext }))
         return
     }
     customVideoExts.value.push(ext)
     newVideoExt.value = ''
     await localStore?.set('customVideoExtensions', customVideoExts.value)
     await localStore?.save()
-    ElMessage.success(`已添加视频格式：${ext}`)
+    ElMessage.success(t('settings.video.added', { ext }))
 }
 
 const removeVideoExt = async (ext: string) => {
@@ -150,9 +190,9 @@ const handleClearCache = async () => {
     clearingCache.value = true
     try {
         const removed = await invoke<number>('clear_cache')
-        ElMessage.success(`已清理 ${removed} 项缓存`)
+        ElMessage.success(t('settings.cache.cleared', { count: removed }))
     } catch (e) {
-        ElMessage.error(`清理缓存失败：${e}`)
+        ElMessage.error(t('settings.cache.clearFailed', { error: String(e) }))
     } finally {
         clearingCache.value = false
     }
@@ -163,9 +203,9 @@ const handleClearImageCache = async () => {
     clearingImageCache.value = true
     try {
         await invoke('clear_image_cache')
-        ElMessage.success('图片缓存已清理')
+        ElMessage.success(t('settings.cache.imageCleared'))
     } catch (e) {
-        ElMessage.error(`清理图片缓存失败：${e}`)
+        ElMessage.error(t('settings.cache.imageClearFailed', { error: String(e) }))
     } finally {
         clearingImageCache.value = false
     }
@@ -176,9 +216,9 @@ const handleClearPdfCache = async () => {
     clearingPdfCache.value = true
     try {
         const removed = await invoke<number>('clear_pdf_cache')
-        ElMessage.success(`已清理 ${removed} 个 PDF 缓存文件`)
+        ElMessage.success(t('settings.cache.pdfCleared', { count: removed }))
     } catch (e) {
-        ElMessage.error(`清理 PDF 缓存失败：${e}`)
+        ElMessage.error(t('settings.cache.pdfClearFailed', { error: String(e) }))
     } finally {
         clearingPdfCache.value = false
     }
@@ -190,26 +230,44 @@ const handleClearPdfCache = async () => {
         <div class="settings-inner">
             <nav class="settings-nav">
                 <el-anchor direction="horizontal" container="#app" :offset="100" :bound="30">
-                    <el-anchor-link href="#support">支持的格式</el-anchor-link>
-                    <el-anchor-link href="#custom-code">代码格式</el-anchor-link>
-                    <el-anchor-link href="#video">视频</el-anchor-link>
-                    <el-anchor-link href="#cache">缓存</el-anchor-link>
-                    <el-anchor-link href="#log">日志</el-anchor-link>
-                    <el-anchor-link href="#version">关于</el-anchor-link>
+                    <el-anchor-link href="#language">{{ t('settings.nav.language') }}</el-anchor-link>
+                    <el-anchor-link href="#support">{{ t('settings.nav.support') }}</el-anchor-link>
+                    <el-anchor-link href="#custom-code">{{ t('settings.nav.code') }}</el-anchor-link>
+                    <el-anchor-link href="#video">{{ t('settings.nav.video') }}</el-anchor-link>
+                    <el-anchor-link href="#cache">{{ t('settings.nav.cache') }}</el-anchor-link>
+                    <el-anchor-link href="#log">{{ t('settings.nav.log') }}</el-anchor-link>
+                    <el-anchor-link href="#version">{{ t('settings.nav.about') }}</el-anchor-link>
                 </el-anchor>
             </nav>
             <div class="settings-content">
                 <SettingItem
+                    id="language"
+                    :title="t('language.title')"
+                    :description="t('language.description')"
+                    :icon="ChatDotRound"
+                >
+                    <el-radio-group
+                        :model-value="currentLocale"
+                        :disabled="switchingLocale"
+                        @change="handleLocaleChange"
+                    >
+                        <el-radio-button v-for="item in localeOptions" :key="item.value" :value="item.value">
+                            {{ t(item.labelKey) }}
+                        </el-radio-button>
+                    </el-radio-group>
+                </SettingItem>
+
+                <SettingItem
                     id="support"
-                    title="支持的格式"
-                    description="QuickLook 已识别的文件类型与对应扩展名。"
+                    :title="t('settings.support.title')"
+                    :description="t('settings.support.description')"
                     :icon="Files"
                 >
                     <div class="format-grid">
                         <div v-for="type in config" :key="type.code" class="format-card">
                             <div class="format-card-head">
                                 <span class="format-card-code">{{ type.code }}</span>
-                                <span class="format-card-name">{{ type.name }}</span>
+                                <span class="format-card-name">{{ t(type.nameKey) }}</span>
                             </div>
                             <div class="format-card-exts">
                                 <el-tag v-for="ext in type.data" :key="ext" size="small" effect="plain" type="info">
@@ -222,8 +280,8 @@ const handleClearPdfCache = async () => {
 
                 <SettingItem
                     id="custom-code"
-                    title="自定义代码格式"
-                    description="添加额外的代码文件扩展名（如 rb、lua），添加后即可预览对应文件。"
+                    :title="t('settings.customCode.title')"
+                    :description="t('settings.customCode.description')"
                     :icon="EditPen"
                 >
                     <div v-if="customCodeExts.length > 0" class="ext-tags">
@@ -238,29 +296,29 @@ const handleClearPdfCache = async () => {
                             {{ ext }}
                         </el-tag>
                     </div>
-                    <div v-else class="ext-empty">尚未添加自定义代码格式</div>
+                    <div v-else class="ext-empty">{{ t('settings.customCode.empty') }}</div>
                     <div class="ext-input-row">
                         <el-input
                             v-model="newCodeExt"
-                            placeholder="输入扩展名，如 rb"
+                            :placeholder="t('settings.customCode.placeholder')"
                             size="default"
                             class="ext-input"
                             @keyup.enter="addCodeExt"
                         />
-                        <el-button type="primary" @click="addCodeExt">添加</el-button>
+                        <el-button type="primary" @click="addCodeExt">{{ t('common.add') }}</el-button>
                     </div>
                 </SettingItem>
 
                 <SettingItem
                     id="video"
-                    title="视频"
-                    description="启用 ffmpeg 解析后，将优先直接播放兼容格式/编码的视频，并对不兼容内容自动转码。"
+                    :title="t('settings.video.title')"
+                    :description="t('settings.video.description')"
                     :icon="VideoCamera"
                 >
                     <div class="field-row">
                         <div class="field-row-label">
-                            <span class="field-row-title">使用 ffmpeg 解析视频</span>
-                            <span class="field-row-desc">兼容格式/编码的视频将直接播放，不兼容时才自动转码。</span>
+                            <span class="field-row-title">{{ t('settings.video.toggle') }}</span>
+                            <span class="field-row-desc">{{ t('settings.video.toggleDesc') }}</span>
                         </div>
                         <el-switch
                             v-model="useLocalFfmpeg"
@@ -271,29 +329,17 @@ const handleClearPdfCache = async () => {
 
                     <el-alert
                         v-if="useLocalFfmpeg"
-                        :type="ffmpegAvailable === false ? 'error' : ffmpegAvailable ? 'success' : 'info'"
-                        :title="
-                            ffmpegAvailable === null
-                                ? '正在检测 ffmpeg…'
-                                : ffmpegAvailable
-                                  ? 'ffmpeg 可用'
-                                  : 'ffmpeg 不可用'
-                        "
-                        :description="
-                            ffmpegAvailable === false
-                                ? '应用内置的 ffmpeg 缺失。可安装 ffmpeg 并加入系统 PATH 作为后备，或重新安装应用。'
-                                : ffmpegAvailable
-                                  ? '所有视频转码都将通过内置 ffmpeg 完成。'
-                                  : '正在检测 ffmpeg 是否可用…'
-                        "
+                        :type="ffmpegStatus.type"
+                        :title="ffmpegStatus.title"
+                        :description="ffmpegStatus.description"
                         :closable="false"
                         show-icon
                     />
 
                     <div class="ext-sub">
                         <div class="ext-sub-title">
-                            <span>自定义视频格式扩展名</span>
-                            <span v-if="!useLocalFfmpeg" class="ext-sub-tip">（需先启用 ffmpeg 解析）</span>
+                            <span>{{ t('settings.video.customTitle') }}</span>
+                            <span v-if="!useLocalFfmpeg" class="ext-sub-tip">{{ t('settings.video.customTip') }}</span>
                         </div>
                         <div v-if="customVideoExts.length > 0" class="ext-tags">
                             <el-tag
@@ -308,18 +354,18 @@ const handleClearPdfCache = async () => {
                                 {{ ext }}
                             </el-tag>
                         </div>
-                        <div v-else-if="useLocalFfmpeg" class="ext-empty">尚未添加自定义视频格式</div>
+                        <div v-else-if="useLocalFfmpeg" class="ext-empty">{{ t('settings.video.customEmpty') }}</div>
                         <div class="ext-input-row">
                             <el-input
                                 v-model="newVideoExt"
-                                placeholder="输入扩展名，如 ts"
+                                :placeholder="t('settings.video.customPlaceholder')"
                                 size="default"
                                 class="ext-input"
                                 :disabled="!useLocalFfmpeg"
                                 @keyup.enter="addVideoExt"
                             />
                             <el-button type="primary" :disabled="!useLocalFfmpeg" @click="addVideoExt">
-                                添加
+                                {{ t('common.add') }}
                             </el-button>
                         </div>
                     </div>
@@ -327,39 +373,39 @@ const handleClearPdfCache = async () => {
 
                 <SettingItem
                     id="cache"
-                    title="缓存"
-                    description="管理由预览生成的临时缓存文件，释放磁盘空间。"
+                    :title="t('settings.cache.title')"
+                    :description="t('settings.cache.description')"
                     :icon="Delete"
                 >
                     <div class="cache-list">
                         <div class="cache-item">
                             <div class="cache-item-info">
-                                <div class="cache-item-title">ffmpeg 转码缓存</div>
-                                <div class="cache-item-desc">由视频转码生成的临时 HLS 缓存文件。</div>
+                                <div class="cache-item-title">{{ t('settings.cache.ffmpegTitle') }}</div>
+                                <div class="cache-item-desc">{{ t('settings.cache.ffmpegDesc') }}</div>
                             </div>
                             <el-button type="danger" plain :loading="clearingCache" @click="handleClearCache">
                                 <el-icon><Delete /></el-icon>
-                                <span style="margin-left: 4px">清理缓存</span>
+                                <span style="margin-left: 4px">{{ t('settings.cache.clear') }}</span>
                             </el-button>
                         </div>
                         <div class="cache-item">
                             <div class="cache-item-info">
-                                <div class="cache-item-title">图片预览缓存</div>
-                                <div class="cache-item-desc">由图片预览（含 PSD）转码生成的临时 PNG 缓存文件。</div>
+                                <div class="cache-item-title">{{ t('settings.cache.imageTitle') }}</div>
+                                <div class="cache-item-desc">{{ t('settings.cache.imageDesc') }}</div>
                             </div>
                             <el-button type="danger" plain :loading="clearingImageCache" @click="handleClearImageCache">
                                 <el-icon><Delete /></el-icon>
-                                <span style="margin-left: 4px">清理缓存</span>
+                                <span style="margin-left: 4px">{{ t('settings.cache.clear') }}</span>
                             </el-button>
                         </div>
                         <div class="cache-item">
                             <div class="cache-item-info">
-                                <div class="cache-item-title">PDF 渲染缓存</div>
-                                <div class="cache-item-desc">由 PDF 预览渲染生成的临时 WebP 缓存文件。</div>
+                                <div class="cache-item-title">{{ t('settings.cache.pdfTitle') }}</div>
+                                <div class="cache-item-desc">{{ t('settings.cache.pdfDesc') }}</div>
                             </div>
                             <el-button type="danger" plain :loading="clearingPdfCache" @click="handleClearPdfCache">
                                 <el-icon><Delete /></el-icon>
-                                <span style="margin-left: 4px">清理缓存</span>
+                                <span style="margin-left: 4px">{{ t('settings.cache.clear') }}</span>
                             </el-button>
                         </div>
                     </div>
@@ -367,12 +413,12 @@ const handleClearPdfCache = async () => {
 
                 <SettingItem
                     id="log"
-                    title="日志"
-                    description="调整应用日志的输出级别。级别越详细，输出越多。"
+                    :title="t('settings.log.title')"
+                    :description="t('settings.log.description')"
                     :icon="Files"
                 >
                     <div class="log-row">
-                        <span class="log-label">日志级别</span>
+                        <span class="log-label">{{ t('settings.log.level') }}</span>
                         <el-radio-group v-model="logLevel" @change="handleLogLevelChange">
                             <el-radio-button v-for="item in logLevelList" :key="item.value" :value="item.value">
                                 {{ item.label }}
@@ -381,10 +427,15 @@ const handleClearPdfCache = async () => {
                     </div>
                 </SettingItem>
 
-                <SettingItem id="version" title="关于" description="版本信息与最新发布渠道。" :icon="InfoFilled">
+                <SettingItem
+                    id="version"
+                    :title="t('settings.about.title')"
+                    :description="t('settings.about.description')"
+                    :icon="InfoFilled"
+                >
                     <div class="about-row">
                         <div class="about-info">
-                            <div class="about-version-label">当前版本</div>
+                            <div class="about-version-label">{{ t('settings.about.currentVersion') }}</div>
                             <div class="about-version-value">v{{ version || '—' }}</div>
                         </div>
                         <div class="about-links">

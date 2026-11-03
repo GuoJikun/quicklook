@@ -1,8 +1,11 @@
 <!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { convertFileSrc, invoke } from '@tauri-apps/api/core'
 import { CollectionTag, RefreshRight, ZoomIn, ZoomOut } from '@element-plus/icons-vue'
+
+const { t } = useI18n()
 
 const props = defineProps<{
     path: string
@@ -433,7 +436,7 @@ onUnmounted(() => {
                     </el-icon>
                 </el-button>
                 <el-divider direction="vertical" />
-                <el-button text size="small" @click="handleFitWidth">适合宽度</el-button>
+                <el-button text size="small" @click="handleFitWidth">{{ t('pdf.fitWidth') }}</el-button>
                 <el-divider direction="vertical" />
                 <el-button text size="small" @click="handleRotate">
                     <el-icon size="18px">
@@ -483,7 +486,7 @@ onUnmounted(() => {
                             :src="convertFileSrc(pages.get(n - 1)!.path)"
                             class="pdf-viewer-page"
                         />
-                        <div v-else-if="renderingPages.has(n - 1)" class="pdf-viewer-page-loading">渲染中...</div>
+                        <div v-else-if="renderingPages.has(n - 1)" class="pdf-viewer-page-loading">{{ t('pdf.rendering') }}</div>
                     </div>
                 </div>
             </div>

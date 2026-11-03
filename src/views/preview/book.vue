@@ -4,6 +4,7 @@
  -->
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import LayoutPreview from '@/components/layout-preview.vue'
 import { useRoute } from 'vue-router'
 import type { FileInfo } from '@/utils/typescript'
@@ -13,6 +14,8 @@ import { Document, Menu, Remove, Plus } from '@element-plus/icons-vue'
 defineOptions({
     name: 'BookSupport',
 })
+
+const { t } = useI18n()
 
 // ── 类型 ──────────────────────────────────────
 
@@ -179,7 +182,8 @@ function updateIframeSrcdoc() {
     if (!el) return
     const html = chapterHtml.value
 
-    const contentHtml = html || '<p style="color:#999;text-align:center;margin-top:40px;text-indent:0">暂无内容</p>'
+    const contentHtml =
+        html || `<p style="color:#999;text-align:center;margin-top:40px;text-indent:0">${t('book.empty')}</p>`
 
     el.onload = () => {
         try {
@@ -371,7 +375,7 @@ function showCoverInContent() {
     if (!epubInfo.value?.cover_data) return
     currentChapterIndex.value = -1
     chapterHtml.value = `<div style="text-align:center; padding: 20px;">
-        <img src="${epubInfo.value.cover_data}" alt="封面" style="max-width: 100%; max-height: 80vh; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+        <img src="${epubInfo.value.cover_data}" alt="${t('book.cover')}" style="max-width: 100%; max-height: 80vh; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
     </div>`
     updateIframeSrcdoc()
 }
@@ -548,7 +552,7 @@ function handleIframeLink(href: string) {
 onMounted(async () => {
     fileInfo.value = route?.query as unknown as FileInfo
     if (!fileInfo.value?.path) {
-        error.value = '未指定文件路径'
+        error.value = t('book.noPath')
         return
     }
 
@@ -577,16 +581,16 @@ onUnmounted(() => {
                 <div class="book-toolbar__center">
                     <el-icon><Document /></el-icon>
                     <span class="book-toolbar__title">
-                        {{ epubInfo?.title || '电子书' }}
+                        {{ epubInfo?.title || t('book.ebook') }}
                     </span>
                     <span class="book-toolbar__author"> — {{ epubInfo?.author }} </span>
                 </div>
                 <div class="book-toolbar__right">
-                    <el-link :underline="false" @click="changeFontSize(-1)" title="缩小字体 (Ctrl+-)">
+                    <el-link :underline="false" @click="changeFontSize(-1)" :title="t('book.fontSmaller')">
                         <el-icon size="16px"><Remove /></el-icon>
                     </el-link>
                     <span class="book-toolbar__font-size">{{ fontSize }}px</span>
-                    <el-link :underline="false" @click="changeFontSize(1)" title="放大字体 (Ctrl++)">
+                    <el-link :underline="false" @click="changeFontSize(1)" :title="t('book.fontLarger')">
                         <el-icon size="16px"><Plus /></el-icon>
                     </el-link>
                 </div>
@@ -602,7 +606,7 @@ onUnmounted(() => {
                             class="book-sidebar__item"
                             :class="{ 'is-active': currentChapterIndex === -1 }"
                             @click="showCoverInContent"
-                        >封面</div>
+                        >{{ t('book.cover') }}</div>
 <div
     v-for="ch in epubInfo?.chapters"
     :key="`${ch.index}-${ch.fragment || 'root'}`"

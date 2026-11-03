@@ -1,6 +1,7 @@
 pub mod commands;
 pub mod error;
 pub mod helper;
+pub mod i18n;
 pub mod preview;
 pub mod tray;
 pub mod utils;
@@ -19,7 +20,7 @@ use commands::{
     clear_image_cache, clear_pdf_cache, convert_to_png, convert_video_to_hls, document,
     get_default_program_name, get_epub_chapter, get_epub_info, get_pdf_outline, get_pdf_page_sizes,
     parse_lrc, prepare_video_for_preview, read_audio_info, render_pdf_page, resolve_epub_link,
-    set_log_level, show_open_with_dialog,
+    set_locale, set_log_level, show_open_with_dialog,
 };
 
 /// 解析随包分发的 ffmpeg / ffprobe 路径。
@@ -173,6 +174,7 @@ pub fn run() {
             document,
             get_default_program_name,
             set_log_level,
+            set_locale,
             convert_to_png,
             read_audio_info,
             parse_lrc,

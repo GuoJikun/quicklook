@@ -1,11 +1,12 @@
 use crate::error::QuickLookError;
 use crate::helper::win;
+use crate::i18n::{self, Locale};
 use log::LevelFilter;
 use quicklook_docs::pdf as pdf_helper;
 use quicklook_image::clear_image_cache;
 use quicklook_video::clear_ffmpeg_cache;
 use std::sync::atomic::{AtomicU8, Ordering};
-use tauri::{AppHandle, Manager, command};
+use tauri::{AppHandle, Emitter, Manager, command};
 use windows::Win32::Foundation::HWND;
 
 /// 当前生效的日志级别（LevelFilter 的枚举值）。
@@ -39,6 +40,35 @@ pub fn show_open_with_dialog(app: AppHandle, path: &str) {
         let hwnd = preview_window.hwnd().unwrap_or(HWND::default());
         let _ = win::show_open_with_dialog(path, hwnd);
     }
+}
+
+/// 切换界面语言：更新托盘菜单与窗口标题，并广播给所有窗口。
+///
+/// 语言本身由前端写入 `config.data`，这里再写一次是为了保证托盘在下次启动时
+/// 读到与界面一致的值（前端 store 写入失败时不至于两边不一致）。
+#[command]
+pub fn set_locale(app: AppHandle, locale: String) -> Result<(), QuickLookError> {
+    let locale = Locale::from_tag(Some(&locale));
+
+    if let Err(e) = i18n::save_locale(&app, locale) {
+        log::warn!("保存语言失败: {e}");
+    }
+
+    let texts = locale.tray_texts();
+    crate::tray::refresh_tray(&app);
+
+    if let Some(window) = app.get_webview_window("settings") {
+        let _ = window.set_title(texts.settings);
+    }
+    if let Some(window) = app.get_webview_window("upgrade") {
+        let _ = window.set_title(texts.update_window_title);
+    }
+
+    app.emit("locale-changed", locale.tag())
+        .map_err(|e| QuickLookError::Other(format!("广播语言变更失败: {e}")))?;
+
+    log::debug!("界面语言已切换为 {}", locale.tag());
+    Ok(())
 }
 
 #[command]

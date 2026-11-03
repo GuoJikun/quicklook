@@ -113,6 +113,8 @@ impl PreviewFile {
 
         match app.get_webview_window("preview") {
             Some(window) => {
+                // 复用窗口时先退出全屏，避免上一张图片的全屏状态被下一个预览继承
+                let _ = window.set_fullscreen(false);
                 navigate_to(&window, &route.to_url());
                 let _ = window.set_size(tauri::LogicalSize::new(width, height));
                 let _ = window.center();

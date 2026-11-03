@@ -106,10 +106,17 @@ export class Type {
 }
 /**
  * 格式化字节大小
- * @param size 字节大小
+ * @param size 字节大小；缺失或非法（NaN / Infinity）时返回占位符
  * @returns
  */
-export const formatBytes = (size: number): string => {
+export const formatBytes = (size: number | null | undefined): string => {
+    // `undefined` 参与比较恒为 false，会一路落到 else 分支输出 "NaN TB"，
+    // 因此必须先拦截。文件信息缺失（如「暂不支持」页不传 file、预览数据
+    // 尚未就绪）都会走到这里。
+    if (size === null || size === undefined || !Number.isFinite(size)) {
+        return '—'
+    }
+
     const KB = 1024
     const MB = KB * 1024
     const GB = MB * 1024

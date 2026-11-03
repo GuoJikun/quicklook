@@ -29,12 +29,16 @@ E:/private/Rust/quicklook/
 ├── package.json                   # 前端依赖
 ├── vite.config.ts                 # Vite 构建配置
 ├── src/                           # 前端源码
-│   ├── main.ts                    # 入口: Pinia + Router + Element Plus + Sentry
-│   ├── App.vue                    # 根组件 (<RouterView>)
+│   ├── main.ts                    # 入口: Pinia + Router + i18n + Element Plus + Sentry
+│   ├── App.vue                    # 根组件 (<RouterView> + el-config-provider 语言)
 │   ├── router/index.ts            # 15 个路由
 │   ├── stores/index.ts            # Pinia store (音视频配置列表)
+│   ├── locales/                    # 国际化
+│   │   ├── index.ts               # createI18n + 语言持久化/切换/跨窗口同步
+│   │   ├── zh-CN.ts               # 简体中文（基准语言，默认）
+│   │   └── en-US.ts               # 英文（键集合须与 zh-CN 完全一致）
 │   ├── hooks/                     # theme.ts (useTheme, 实际使用), use-window.ts
-│   ├── utils/                     # index.ts, typescript.ts, sentry.ts
+│   ├── utils/                     # index.ts, typescript.ts, sentry.ts, store.ts (config.data 单例)
 │   │   └── markdown/              # markdown-it 工厂 + 插件
 │   ├── components/                # layout-preview, header, footer, setting-item, md-viewer, excel
 │   └── views/
@@ -194,6 +198,7 @@ error.rs (统一错误类型: QuickLookError)
 | `show_open_with_dialog` | FE → BE | header.vue | `commands/system.rs` | helper/win (SHOpenWithDialog) |
 | `get_default_program_name` | FE → BE | header.vue | `commands/system.rs` | helper/win (AssocQueryStringW) |
 | `set_log_level` | FE → BE | settings.vue | `commands/system.rs` | log::set_max_level |
+| `set_locale` | FE → BE | settings.vue | `commands/system.rs` | i18n::save_locale + tray::refresh_tray + emit `locale-changed` |
 
 ## 空格键预览完整流程
 
@@ -316,7 +321,7 @@ App.vue
     │   └── LayoutPreview
     │       ├── Header (文件名称, 主题切换, 固定窗口, 打开, 打开方式, 最大化, 关闭)
     │       ├── Body
-    │       │   ├── Image:  <img> + PreviewImage (滚轮缩放 + 鼠标拖拽)
+    │       │   ├── Image:  <img> + PreviewImage (缩放/拖拽/旋转/适应窗口/全屏)
     │       │   ├── Video:  xgplayer (HLS 流)
     │       │   ├── Audio:  <audio> + 封面 + LRC 歌词
     │       │   ├── Code:   <div v-html="shikiHtml">

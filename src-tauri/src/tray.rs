@@ -1,6 +1,6 @@
 use tauri::{
-    App, AppHandle, Manager, WebviewUrl, WebviewWindowBuilder,
-    menu::{MenuBuilder, MenuItem, MenuItemBuilder},
+    App, AppHandle, Manager, WebviewUrl, WebviewWindowBuilder, Wry,
+    menu::{Menu, MenuBuilder, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
 };
 use tauri_plugin_autostart::ManagerExt;
@@ -8,14 +8,21 @@ use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 use tauri_plugin_store::StoreExt;
 use tauri_plugin_updater::UpdaterExt;
 
+use crate::i18n::{self, Locale};
+
+/// 托盘图标 id，重建菜单时按此取回托盘实例
+const TRAY_ID: &str = "tray";
+
 async fn updater_check(app: AppHandle) -> tauri_plugin_updater::Result<()> {
+    let texts = i18n::current_locale(&app).tray_texts();
+
     let checked = app.updater()?.check().await;
     if checked.is_err() {
         let _ = app
             .dialog()
-            .message("检查更新失败")
+            .message(texts.update_failed)
             .kind(MessageDialogKind::Error)
-            .title("Warning")
+            .title(texts.update_error_title)
             .blocking_show();
         return Ok(());
     }
@@ -26,7 +33,7 @@ async fn updater_check(app: AppHandle) -> tauri_plugin_updater::Result<()> {
         Some(_) => {
             let _ = WebviewWindowBuilder::new(&app, "upgrade", WebviewUrl::App("/upgrade".into()))
                 .center()
-                .title("检查更新")
+                .title(texts.update_window_title)
                 .inner_size(600.0, 500.0)
                 .focused(true)
                 .window_classname("quicklook-upgrade")
@@ -36,9 +43,9 @@ async fn updater_check(app: AppHandle) -> tauri_plugin_updater::Result<()> {
         None => {
             let _ = app
                 .dialog()
-                .message("没有可用的更新")
+                .message(texts.update_none)
                 .kind(MessageDialogKind::Info)
-                .title("更新检查")
+                .title(texts.update_check_title)
                 .blocking_show();
         },
     }
@@ -46,30 +53,63 @@ async fn updater_check(app: AppHandle) -> tauri_plugin_updater::Result<()> {
     Ok(())
 }
 
-pub fn create_tray(app: &mut App) -> tauri::Result<()> {
-    let quit = MenuItemBuilder::with_id("quit", "退出").build(app)?;
-    let upgrade = MenuItem::with_id(app, "upgrade", "检查更新", true, None::<&str>)?;
-    let autostart_manager = app.autolaunch();
-    let is_enabled = autostart_manager.is_enabled();
-    let auto_start = MenuItem::with_id(
-        app,
-        "auto_start",
-        if let Ok(is_enabled) = is_enabled {
-            if is_enabled {
-                "禁用开机自启"
-            } else {
-                "启用开机自启"
-            }
-        } else {
-            "启用开机自启"
-        },
-        true,
-        None::<&str>,
-    )?;
-    let setting = MenuItem::with_id(app, "setting", "设置", true, None::<&str>)?;
-    let menu = MenuBuilder::new(app)
+/// 开机自启当前是否启用：store 优先，缺失时读取系统实际状态
+fn autostart_enabled(app: &AppHandle) -> bool {
+    let stored = app
+        .store(i18n::CONFIG_STORE)
+        .ok()
+        .and_then(|store| store.get("autostart"))
+        .and_then(|value| value.as_bool());
+
+    stored
+        .or_else(|| app.autolaunch().is_enabled().ok())
+        .unwrap_or(false)
+}
+
+/// 按当前语言与自启状态构建托盘菜单
+fn build_menu(app: &AppHandle, locale: Locale) -> tauri::Result<Menu<Wry>> {
+    let texts = locale.tray_texts();
+    let autostart_text = if autostart_enabled(app) {
+        texts.disable_autostart
+    } else {
+        texts.enable_autostart
+    };
+
+    let setting = MenuItem::with_id(app, "setting", texts.settings, true, None::<&str>)?;
+    let auto_start = MenuItem::with_id(app, "auto_start", autostart_text, true, None::<&str>)?;
+    let upgrade = MenuItem::with_id(app, "upgrade", texts.check_update, true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", texts.quit, true, None::<&str>)?;
+
+    MenuBuilder::new(app)
         .items(&[&setting, &auto_start, &upgrade, &quit])
-        .build()?;
+        .build()
+}
+
+/// 重建托盘菜单。语言切换与自启状态变化后调用。
+///
+/// 菜单事件处理器挂在托盘图标上（`TrayIcon::on_menu_event` 注册的是应用级监听，
+/// 与具体 Menu 实例无关），因此整块替换菜单不会丢失事件响应。
+pub fn refresh_tray(app: &AppHandle) {
+    let Some(tray) = app.tray_by_id(TRAY_ID) else {
+        log::warn!("未找到托盘图标 {TRAY_ID}，跳过菜单刷新");
+        return;
+    };
+
+    match build_menu(app, i18n::current_locale(app)) {
+        Ok(menu) => {
+            if let Err(e) = tray.set_menu(Some(menu)) {
+                log::warn!("刷新托盘菜单失败: {:?}", e);
+            }
+        },
+        Err(e) => log::warn!("构建托盘菜单失败: {:?}", e),
+    }
+}
+
+pub fn create_tray(app: &mut App) -> tauri::Result<()> {
+    let handle = app.handle().clone();
+    let locale = i18n::current_locale(&handle);
+    let menu = build_menu(&handle, locale)?;
+
     let pkg_info = app.package_info();
     let name = pkg_info.name.clone();
     let version = pkg_info.version.clone();
@@ -78,7 +118,7 @@ pub fn create_tray(app: &mut App) -> tauri::Result<()> {
         name, version.major, version.minor, version.patch
     );
 
-    let mut tray = TrayIconBuilder::with_id("tray")
+    let mut tray = TrayIconBuilder::with_id(TRAY_ID)
         .tooltip(tooltip_text)
         .menu(&menu)
         .show_menu_on_left_click(false);
@@ -100,17 +140,18 @@ pub fn create_tray(app: &mut App) -> tauri::Result<()> {
             },
             "setting" => {
                 log::debug!("Setting");
+                let texts = i18n::current_locale(app).tray_texts();
                 // 打开设置窗口
                 if let Ok(webview_window) =
                     crate::helper::get_webview_window(app, "settings", "/settings")
                 {
-                    let _ = webview_window.set_title("设置");
+                    let _ = webview_window.set_title(texts.settings);
                     let _ = webview_window.show();
                 }
             },
             "auto_start" => {
                 let autostart_manager = app.autolaunch();
-                let store = match app.store("config.data") {
+                let store = match app.store(i18n::CONFIG_STORE) {
                     Ok(s) => s,
                     Err(e) => {
                         log::warn!("Failed to open config.data store: {:?}", e);
@@ -125,19 +166,15 @@ pub fn create_tray(app: &mut App) -> tauri::Result<()> {
                 if let Some(enabled) = is_enabled {
                     if enabled {
                         let _ = autostart_manager.disable();
-                        let _ = auto_start
-                            .set_text("启用开机自启")
-                            .map_err(|e| log::warn!("set_text 失败: {:?}", e));
                         store.set("autostart", serde_json::Value::Bool(false));
                         log::info!("自启动设置为禁用");
                     } else {
                         let _ = autostart_manager.enable();
-                        let _ = auto_start
-                            .set_text("关闭开机自启")
-                            .map_err(|e| log::warn!("set_text 失败: {:?}", e));
                         store.set("autostart", serde_json::Value::Bool(true));
                         log::info!("自启动设置为开启");
                     }
+                    // 菜单项文案随状态变化，直接整块重建
+                    refresh_tray(app);
                 }
             },
             // Add more events here
