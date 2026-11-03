@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import LayoutPreview from '@/components/layout-preview.vue'
+
+const { t } = useI18n()
 
 defineOptions({
     name: 'NotSupport',
@@ -9,7 +12,7 @@ defineOptions({
 <template>
     <LayoutPreview>
         <div class="not-support">
-            <div class="font-support-inner">暂不支持此格式的预览</div>
+            <div class="font-support-inner">{{ t('preview.notSupported') }}</div>
         </div>
     </LayoutPreview>
 </template>

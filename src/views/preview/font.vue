@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, onBeforeUnmount, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import type { FileInfo } from '@/utils/typescript'
 import LayoutPreview from '@/components/layout-preview.vue'
 import { convertFileSrc } from '@tauri-apps/api/core'
 
 const route = useRoute()
+const { t } = useI18n()
 
 defineOptions({
     name: 'FontSupport',
@@ -60,12 +62,12 @@ onBeforeUnmount(() => {
     <LayoutPreview :file="fileInfo">
         <div class="font-support">
             <div class="font-support-inner" :style="{ fontFamily: fontFamily }">
-                <template v-if="isError"> 字体解析错误 </template>
+                <template v-if="isError"> {{ t('font.parseError') }} </template>
                 <template v-else>
                     <p>ABCDEFGHIGKLMNOPQRSTUVWXYZ</p>
                     <p>abcdefghigklmnopqrstuvwxyz</p>
                     <p>0123456789</p>
-                    <p>中国制造惠及全球</p>
+                    <p>{{ t('font.sample') }}</p>
                 </template>
             </div>
         </div>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useElementSize, useEventListener, useThrottleFn } from '@vueuse/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import {
@@ -11,6 +12,8 @@ import {
     ZoomIn16Regular,
     ZoomOut16Regular,
 } from '@vicons/fluent'
+
+const { t } = useI18n()
 
 const props = defineProps<{
     src: string
@@ -190,6 +193,7 @@ async function setWindowFullscreen(value: boolean): Promise<boolean> {
         await getCurrentWindow().setFullscreen(value)
     } catch (error) {
         console.error('切换全屏失败:', error)
+        ElMessage.error(t('image.toggleFailed', { error: String(error) }))
         return false
     }
     isFullscreen.value = value
@@ -236,11 +240,11 @@ onBeforeUnmount(() => {
         />
 
         <div class="image-toolbar" @wheel.stop @dblclick.stop>
-            <div class="image-toolbar-btn" title="缩小" @click="zoomBy(1 / ZOOM_STEP)">
+            <div class="image-toolbar-btn" :title="t('image.zoomOut')" @click="zoomBy(1 / ZOOM_STEP)">
                 <el-icon :size="16"><ZoomOut16Regular /></el-icon>
             </div>
-            <span class="image-toolbar-percent" title="当前缩放比例">{{ percent }}%</span>
-            <div class="image-toolbar-btn" title="放大" @click="zoomBy(ZOOM_STEP)">
+            <span class="image-toolbar-percent" :title="t('image.zoomPercent')">{{ percent }}%</span>
+            <div class="image-toolbar-btn" :title="t('image.zoomIn')" @click="zoomBy(ZOOM_STEP)">
                 <el-icon :size="16"><ZoomIn16Regular /></el-icon>
             </div>
 
@@ -249,7 +253,7 @@ onBeforeUnmount(() => {
             <div
                 class="image-toolbar-btn"
                 :class="{ 'is-active': mode === 'fit' }"
-                title="适应窗口（双击图片切换）"
+                :title="t('image.fit')"
                 @click="applyFit"
             >
                 <el-icon :size="16"><ArrowFit16Regular /></el-icon>
@@ -257,7 +261,7 @@ onBeforeUnmount(() => {
             <div
                 class="image-toolbar-btn is-text"
                 :class="{ 'is-active': mode === 'actual' }"
-                title="实际大小 1:1（双击图片切换）"
+                :title="t('image.actual')"
                 @click="setActualSize"
             >
                 1:1
@@ -265,16 +269,20 @@ onBeforeUnmount(() => {
 
             <span class="image-toolbar-divider"></span>
 
-            <div class="image-toolbar-btn" title="向左旋转 90°" @click="rotateBy(-90)">
+            <div class="image-toolbar-btn" :title="t('image.rotateLeft')" @click="rotateBy(-90)">
                 <el-icon :size="16"><ArrowRotateCounterclockwise20Regular /></el-icon>
             </div>
-            <div class="image-toolbar-btn" title="向右旋转 90°" @click="rotateBy(90)">
+            <div class="image-toolbar-btn" :title="t('image.rotateRight')" @click="rotateBy(90)">
                 <el-icon :size="16"><ArrowClockwise16Regular /></el-icon>
             </div>
 
             <span class="image-toolbar-divider"></span>
 
-            <div class="image-toolbar-btn" :title="isFullscreen ? '退出全屏 (Esc)' : '全屏'" @click="toggleFullscreen">
+            <div
+                class="image-toolbar-btn"
+                :title="isFullscreen ? t('image.exitFullscreen') : t('image.fullscreen')"
+                @click="toggleFullscreen"
+            >
                 <el-icon :size="16">
                     <ArrowMinimize16Regular v-if="isFullscreen" />
                     <FullScreenMaximize16Regular v-else />

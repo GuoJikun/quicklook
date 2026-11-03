@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import LayoutPreview from '@/components/layout-preview.vue'
 import { useRoute } from 'vue-router'
 import type { FileInfo } from '@/utils/typescript'
@@ -11,6 +12,7 @@ import PdfViewer from './components/pdf-viewer.vue'
 import { renderAsync } from 'docx-preview'
 
 const route = useRoute()
+const { t } = useI18n()
 
 defineOptions({
     name: 'DocumentSupport',
@@ -87,7 +89,7 @@ onMounted(async () => {
                     <div ref="docsRef"></div>
                     <div class="docx-style" ref="docsStyleRef"></div>
                 </div>
-                <div v-else>暂不支持</div>
+                <div v-else>{{ t('preview.notSupportedShort') }}</div>
             </div>
         </div>
     </LayoutPreview>

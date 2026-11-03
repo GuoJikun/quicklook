@@ -2,6 +2,7 @@
 import { nextTick } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch, useTemplateRef } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { invoke } from '@tauri-apps/api/core'
 
 import { useWindow } from '@/hooks/use-window'
@@ -15,6 +16,7 @@ import { useEventListener } from '@vueuse/core'
 useTheme()
 
 const route = useRoute()
+const { t } = useI18n()
 const { handleClose } = useWindow()
 
 defineOptions({
@@ -238,7 +240,7 @@ watch(duration, val => {
         <audio ref="player" class="audio-player-hidden" hidden autoplay></audio>
         <div class="audio-player" data-tauri-drag-region>
             <div class="audio-poster" data-tauri-drag-region>
-                <img v-if="audioInfo.poster" :src="audioInfo.poster as string" alt="封面" />
+                <img v-if="audioInfo.poster" :src="audioInfo.poster as string" :alt="t('audio.cover')" />
                 <div class="audio-poster-overlay">
                     <el-icon class="audio-poster-btn" @click="togglePlay" size="48">
                         <PauseCircle20Regular v-if="isPlaying" />
@@ -265,7 +267,7 @@ watch(duration, val => {
                             </div>
                         </template>
                         <div v-else class="audio-lyric-empty">
-                            <span>暂无歌词</span>
+                            <span>{{ t('audio.noLyrics') }}</span>
                         </div>
                     </el-scrollbar>
                 </div>

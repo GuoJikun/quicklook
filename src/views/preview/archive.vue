@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import LayoutPreview from '@/components/layout-preview.vue'
 import { useRoute } from 'vue-router'
 import type { FileInfo } from '@/utils/typescript'
@@ -8,6 +9,7 @@ import { formatBytes } from '@/utils/index'
 import { ArrowRight } from '@element-plus/icons-vue'
 
 const route = useRoute()
+const { t } = useI18n()
 
 defineOptions({
     name: 'ArchiveSupport',
@@ -42,11 +44,11 @@ async function loadArchive(path: string, password?: string) {
 /** 弹出密码输入框；用户取消/关闭返回 null */
 async function promptPassword(message: string): Promise<string | null> {
     try {
-        const { value } = await ElMessageBox.prompt(message, '输入密码', {
-            confirmButtonText: '确定',
-            cancelButtonText: '取消',
+        const { value } = await ElMessageBox.prompt(message, t('archive.inputPassword'), {
+            confirmButtonText: t('common.confirm'),
+            cancelButtonText: t('common.cancel'),
             inputType: 'password',
-            inputPlaceholder: '请输入密码',
+            inputPlaceholder: t('archive.passwordPlaceholder'),
             closeOnClickModal: false,
         })
         return value ?? ''
@@ -61,7 +63,7 @@ async function promptPassword(message: string): Promise<string | null> {
 
 /** 密码输错时允许重新输入，直到成功或用户取消 */
 async function loadArchiveWithPasswordRetry(path: string) {
-    let message = '该压缩文件需要密码才能查看'
+    let message = t('archive.passwordRequired')
     for (;;) {
         const password = await promptPassword(message)
         if (password === null) {
@@ -72,7 +74,7 @@ async function loadArchiveWithPasswordRetry(path: string) {
             return
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err)
-            message = `密码错误或无法打开：${msg}，请重新输入`
+            message = t('archive.passwordWrong', { error: msg })
         }
     }
 }
@@ -90,7 +92,7 @@ onMounted(async () => {
         }
     } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err)
-        await ElMessageBox.alert(msg, '压缩文件读取失败')
+        await ElMessageBox.alert(msg, t('archive.readFailed'))
     } finally {
         loading.value = false
     }

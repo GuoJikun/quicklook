@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, shallowRef, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { convertFileSrc } from '@tauri-apps/api/core'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
@@ -46,6 +47,7 @@ function getModelStats(object: THREE.Object3D, format: string): ModelInfo {
 }
 
 const route = useRoute()
+const { t } = useI18n()
 const fileInfo = ref<FileInfo>()
 const loading = ref(true)
 const errorMsg = ref('')
@@ -428,7 +430,7 @@ onMounted(async () => {
         } else if (ext === 'lwo' || ext === 'lws') {
             group = await loadLwo(assetUrl)
         } else {
-            throw new Error(`不支持的格式: .${ext}`)
+            throw new Error(t('model.unsupported', { ext }))
         }
 
         modelGroup.value = group
@@ -479,7 +481,12 @@ onUnmounted(() => {
 
             <!-- Controls panel -->
             <div v-if="!loading && !errorMsg" class="model-controls">
-                <button class="ctrl-btn" :class="{ active: wireframe }" title="线框模式" @click="toggleWireframe">
+                <button
+                    class="ctrl-btn"
+                    :class="{ active: wireframe }"
+                    :title="t('model.wireframe')"
+                    @click="toggleWireframe"
+                >
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                         <path
                             d="M1 1h6v6H1zm8 0h6v6h-6zM1 9h6v6H1zm8 0h6v6h-6z"
@@ -489,7 +496,7 @@ onUnmounted(() => {
                         />
                     </svg>
                 </button>
-                <button class="ctrl-btn" title="重置视角" @click="resetView">
+                <button class="ctrl-btn" :title="t('model.resetView')" @click="resetView">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                         <path
                             d="M8 2a6 6 0 1 0 5.196 3H11.5a4.5 4.5 0 1 1-1.5-1.5V5l3-3-3-3v1.5A6 6 0 0 0 8 2z"
@@ -501,9 +508,9 @@ onUnmounted(() => {
             <!-- Model info panel -->
             <div v-if="modelInfo && !loading && !errorMsg" class="model-info">
                 <span class="info-tag">{{ modelInfo.format }}</span>
-                <span class="info-item">顶点 {{ modelInfo.vertexCount.toLocaleString() }}</span>
+                <span class="info-item">{{ t('model.vertices', { count: modelInfo.vertexCount.toLocaleString() }) }}</span>
                 <span class="info-sep">·</span>
-                <span class="info-item">面 {{ modelInfo.faceCount.toLocaleString() }}</span>
+                <span class="info-item">{{ t('model.faces', { count: modelInfo.faceCount.toLocaleString() }) }}</span>
             </div>
         </div>
     </LayoutPreview>

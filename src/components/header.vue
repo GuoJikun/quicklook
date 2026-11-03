@@ -9,7 +9,8 @@ import {
     WeatherSunny16Regular,
     WeatherMoon16Regular,
 } from '@vicons/fluent'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { openPath } from '@tauri-apps/plugin-opener'
 import type { FileInfo } from '@/utils/typescript'
@@ -17,6 +18,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { useTheme } from '@/hooks/theme'
 import { useWindow } from '@/hooks/use-window'
 
+const { t } = useI18n()
 const { isDark, toggle } = useTheme()
 const { handleClose } = useWindow()
 
@@ -26,7 +28,7 @@ interface LayoutHeaderProps {
     file?: FileInfo
 }
 const props = withDefaults(defineProps<LayoutHeaderProps>(), {
-    title: '文件预览',
+    title: '',
     path: '',
 })
 
@@ -61,16 +63,21 @@ const pin = async () => {
     await curWindow.setAlwaysOnTop(pined.value)
 }
 
-const defaultProgrameName = ref<string>('使用默认程序打开')
+const defaultProgramName = ref<string>('')
+const openWithDefaultLabel = computed(() =>
+    defaultProgramName.value
+        ? t('header.openWithApp', { name: defaultProgramName.value })
+        : t('header.openWithDefault'),
+)
 watch(
     () => props.file,
     async val => {
         const path = val?.path
         if (path) {
             const name = (await invoke('get_default_program_name', { path: path })) as string
-            defaultProgrameName.value = name ? `使用 ${name} 打开` : '使用默认程序打开'
+            defaultProgramName.value = name || ''
         } else {
-            defaultProgrameName.value = '使用默认程序打开'
+            defaultProgramName.value = ''
         }
     },
 )
@@ -82,29 +89,31 @@ watch(
             <slot name="logo">
                 <img v-if="props.logo" :src="logo" alt="logo" data-tauri-drag-region />
             </slot>
-            <h1 class="layout-header-title" data-tauri-drag-region>{{ props?.file?.name || props.title }}</h1>
+            <h1 class="layout-header-title" data-tauri-drag-region>
+                {{ props?.file?.name || props.title || t('header.defaultTitle') }}
+            </h1>
         </div>
         <div class="layout-header-operate no-selected" data-tauri-drag-region>
             <div
                 class="layout-header-operate-item"
                 @click="toggle"
-                :title="isDark ? '切换为明亮模式' : '切换为暗黑模式'"
+                :title="isDark ? t('header.toLight') : t('header.toDark')"
             >
                 <el-icon :size="16"><WeatherMoon16Regular v-if="isDark" /><WeatherSunny16Regular v-else /></el-icon>
             </div>
-            <div class="layout-header-operate-item" @click="pin" :title="`${pined ? '取消固定' : '固定'}`">
+            <div class="layout-header-operate-item" @click="pin" :title="pined ? t('header.unpin') : t('header.pin')">
                 <el-icon :size="16"><PinOff16Regular v-if="pined" /><Pin16Regular v-else /></el-icon>
             </div>
-            <div class="layout-header-operate-item" @click="openByDefault" :title="defaultProgrameName">
+            <div class="layout-header-operate-item" @click="openByDefault" :title="openWithDefaultLabel">
                 <el-icon :size="16"><Open16Regular /></el-icon>
             </div>
-            <div class="layout-header-operate-item" @click="openWith" title="推荐打开程序列表">
+            <div class="layout-header-operate-item" @click="openWith" :title="t('header.openWithList')">
                 <el-icon :size="16"><Apps16Regular /></el-icon>
             </div>
-            <div class="layout-header-operate-item" @click="handleMax" title="最大化">
+            <div class="layout-header-operate-item" @click="handleMax" :title="t('header.maximize')">
                 <el-icon :size="16"><Maximize16Regular /></el-icon>
             </div>
-            <div class="layout-header-operate-item is-close" @click="handleClose" title="关闭">
+            <div class="layout-header-operate-item is-close" @click="handleClose" :title="t('header.close')">
                 <el-icon :size="16"><Dismiss16Regular /></el-icon>
             </div>
         </div>
