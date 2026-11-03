@@ -6,6 +6,8 @@ import type { FileInfo } from '@/utils/typescript'
 interface Props {
     file?: FileInfo
     loading?: boolean
+    /** 沉浸模式：隐藏头尾，仅保留内容区，用于图片全屏等场景 */
+    immersive?: boolean
 }
 
 const props = defineProps<Props>()
@@ -13,11 +15,11 @@ const props = defineProps<Props>()
 
 <template>
     <div class="preview">
-        <Header class="preview-header" :file="props.file" />
+        <Header v-if="!props.immersive" class="preview-header" :file="props.file" />
         <div class="preview-body" v-loading="props.loading" element-loading-background="rgba(210, 210, 210, 0.5)">
             <slot></slot>
         </div>
-        <Footer class="preview-footer" :file="props.file" />
+        <Footer v-if="!props.immersive" class="preview-footer" :file="props.file" />
     </div>
 </template>
 

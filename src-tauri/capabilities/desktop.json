@@ -27,6 +27,8 @@
     "core:window:allow-set-position",
     "core:window:allow-set-always-on-top",
     "core:window:allow-set-resizable",
+    "core:window:allow-set-fullscreen",
+    "core:window:allow-is-fullscreen",
     "core:event:allow-listen",
     "core:path:allow-extname",
     "core:app:allow-version",

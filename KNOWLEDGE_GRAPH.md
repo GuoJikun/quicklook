@@ -316,7 +316,7 @@ App.vue
     │   └── LayoutPreview
     │       ├── Header (文件名称, 主题切换, 固定窗口, 打开, 打开方式, 最大化, 关闭)
     │       ├── Body
-    │       │   ├── Image:  <img> + PreviewImage (滚轮缩放 + 鼠标拖拽)
+    │       │   ├── Image:  <img> + PreviewImage (缩放/拖拽/旋转/适应窗口/全屏)
     │       │   ├── Video:  xgplayer (HLS 流)
     │       │   ├── Audio:  <audio> + 封面 + LRC 歌词
     │       │   ├── Code:   <div v-html="shikiHtml">

@@ -17,6 +17,8 @@ const fileInfo = ref<FileInfo>()
 
 const loading = ref(false)
 const imgPath = ref<string>()
+// 图片全屏时隐藏头尾，进入沉浸模式
+const isFullscreen = ref(false)
 
 const convertFormats = ['psd', 'tiff', 'tif', 'tga', 'pbm', 'pgm', 'ppm', 'qoi', 'exr', 'heic', 'heif', 'jxl']
 
@@ -37,10 +39,14 @@ onMounted(async () => {
 </script>
 
 <template>
-    <LayoutPreview :file="fileInfo" :loading="loading">
+    <LayoutPreview :file="fileInfo" :loading="loading" :immersive="isFullscreen">
         <div class="image-support">
             <div class="image-support-inner" id="canvas">
-                <PreviewImage v-if="!loading" :src="imgPath as string" />
+                <PreviewImage
+                    v-if="!loading"
+                    :src="imgPath as string"
+                    @fullscreen-change="isFullscreen = $event"
+                />
             </div>
         </div>
     </LayoutPreview>
