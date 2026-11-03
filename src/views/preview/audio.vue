@@ -51,13 +51,22 @@ const audioInfo = ref<IAudioInfo>({
     bitrate: 0,
     cover: null,
 })
+const emptyAudioInfo = (): IAudioInfo => ({
+    title: '',
+    artist: '',
+    album: '',
+    duration: 0,
+    bitrate: 0,
+    cover: null,
+})
+
 const getAudioInfo = async (path: string) => {
-    const info: IAudioInfo = await invoke('read_audio_info', { path })
-    audioInfo.value = info
-    console.log(info.cover, 'audio info.cover')
-    if (info && info.cover) {
+    // lofty 读取失败（无标签或文件头异常）时后端返回 null，这里降级为空信息，
+    // 避免模板访问 null.title 导致整个预览视图渲染失败
+    const info = await invoke<IAudioInfo | null>('read_audio_info', { path })
+    audioInfo.value = info ?? emptyAudioInfo()
+    if (info?.cover) {
         audioInfo.value.poster = URL.createObjectURL(new Blob([new Uint8Array(info.cover)]))
-        console.log(audioInfo.value.poster, 'audioInfo.value.poster')
     }
 }
 

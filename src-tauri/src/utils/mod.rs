@@ -252,6 +252,9 @@ static FILE_TYPE_MAPPING: LazyLock<HashMap<&'static str, &'static str>> = LazyLo
         ("mp3", "Audio"),
         ("ogg", "Audio"),
         ("m4a", "Audio"),
+        ("wav", "Audio"),
+        ("flac", "Audio"),
+        ("opus", "Audio"),
         // 压缩文件
         ("7z", "Archive"),
         ("zip", "Archive"),

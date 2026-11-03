@@ -46,6 +46,20 @@ fn maps_builtin_extensions_to_file_types() {
 }
 
 #[test]
+fn maps_audio_extensions() {
+    // wav / flac / opus 均由 WebView2 原生解码，与 mp3 / ogg / m4a 同属 Audio
+    for name in ["a.mp3", "b.ogg", "c.m4a", "d.wav", "e.flac", "f.opus"] {
+        let path = touch(name);
+        assert_eq!(
+            type_of(&path).as_deref(),
+            Some("Audio"),
+            "扩展名 {} 应归类为 Audio",
+            name
+        );
+    }
+}
+
+#[test]
 fn extension_is_normalized_to_lowercase() {
     let path = touch("Upper.PNG");
     let info = get_file_info(&path, &[], &[]).unwrap();

@@ -82,12 +82,18 @@
     "preview.audio": [
         "mp3",
         "ogg",
-        "m4a"
+        "m4a",
+        "wav",
+        "flac",
+        "opus"
     ],
     "preview.audio.checked": [
         "mp3",
         "ogg",
-        "m4a"
+        "m4a",
+        "wav",
+        "flac",
+        "opus"
     ],
     "preview.doc": [
         "docx",

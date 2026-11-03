@@ -28,6 +28,7 @@ const getConfig = async (): Promise<FormatSupport[]> => {
         { name: 'Markdown', code: 'Md', data: data['preview.markdown.checked'] },
         { name: '图片', code: 'Image', data: data['preview.image.checked'] },
         { name: '视频', code: 'Video', data: data['preview.video.checked'] },
+        { name: '音频', code: 'Audio', data: data['preview.audio.checked'] },
         { name: '文档', code: 'Doc', data: data['preview.doc.checked'] },
         { name: '代码', code: 'Code', data: data['preview.code.checked'] },
         { name: '字体', code: 'Font', data: data['preview.font.checked'] },
