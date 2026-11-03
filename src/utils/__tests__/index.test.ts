@@ -113,6 +113,14 @@ describe('formatBytes', () => {
         expect(formatBytes(1024 ** 3)).toBe('1.00 GB')
         expect(formatBytes(1024 ** 4)).toBe('1.00 TB')
     })
+
+    it('缺失或非法值回退为占位符而不是 NaN', () => {
+        // `undefined` 参与大小比较恒为 false，曾一路落到 else 分支输出 "NaN TB"
+        expect(formatBytes(undefined)).toBe('—')
+        expect(formatBytes(null)).toBe('—')
+        expect(formatBytes(Number.NaN)).toBe('—')
+        expect(formatBytes(Number.POSITIVE_INFINITY)).toBe('—')
+    })
 })
 
 describe('readTextFile', () => {

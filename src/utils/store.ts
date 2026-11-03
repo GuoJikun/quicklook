@@ -12,7 +12,13 @@ let instance: Promise<Store> | null = null
 
 export function getConfigStore(): Promise<Store> {
     if (!instance) {
-        instance = load('config.data', { autoSave: false, defaults: {} })
+        // 缓存的是 Promise 而不是结果，必须显式处理失败：否则一次加载失败
+        // 会把 rejected Promise 永久留在 instance 里，此后所有调用都直接
+        // 抛错，只有重载页面才能恢复。
+        instance = load('config.data', { autoSave: false, defaults: {} }).catch(error => {
+            instance = null
+            throw error
+        })
     }
     return instance
 }

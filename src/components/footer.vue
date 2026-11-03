@@ -15,7 +15,7 @@ const { t } = useI18n()
     <div class="footer">
         <span class="footer-item">{{ t('footer.type', { value: file?.file_type ?? '—' }) }}</span>
         <span class="footer-item">{{ t('footer.format', { value: file?.extension ?? '—' }) }}</span>
-        <span class="footer-item">{{ t('footer.size', { value: formatBytes(file?.size as number) }) }}</span>
+        <span class="footer-item">{{ t('footer.size', { value: formatBytes(file?.size) }) }}</span>
     </div>
 </template>
 
