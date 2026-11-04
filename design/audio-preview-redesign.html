@@ -1,0 +1,743 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>QuickLook · 音频预览 UI 重设计</title>
+<style>
+/* ============================================================
+   Design tokens —— 与 src/assets/var.css、var/layout.css 对齐
+   ============================================================ */
+:root {
+    --bg: #f3f3f3;
+    --surface: #ffffff;
+    --text: #1a1a1a;
+    --text-2: #555555;
+    --text-3: #8a8a8a;
+    --border: #e1e1e1;
+    --accent: #0078d4;
+    --accent-hi: #2b95e3;
+    --accent-soft: rgba(0, 120, 212, 0.12);
+    --hover: rgba(0, 0, 0, 0.06);
+    --ring-track: rgba(0, 0, 0, 0.10);
+    --win-border: transparent;
+    --pill-text: #8a8a8a;
+    --scrim: rgba(243, 243, 243, 0.76);
+    --shadow-win: 0 1px 2px rgba(0, 0, 0, 0.08), 0 12px 32px rgba(0, 0, 0, 0.12);
+    --cover-hi: #d4863a;
+    --page-bg: #e9edf2;
+    --page-card: #ffffff;
+    --page-line: #dfe3e8;
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 10px;
+    --radius-xl: 12px;
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --font-xs: 12px;
+    --font-sm: 13px;
+    --font-md: 14px;
+    --font-lg: 15px;
+    --font-xl: 16px;
+    --t-fast: 0.15s ease;
+    --t-base: 0.2s ease;
+    --t-med: 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+html[data-theme='dark'] {
+    --bg: #1c1c1c;
+    --surface: #2b2b2b;
+    --text: #ffffff;
+    --text-2: #c2c2c2;
+    --text-3: #8f8f8f;
+    --border: #3a3a3a;
+    --accent: #2b95e3;
+    --accent-hi: #4aa8f0;
+    --accent-soft: rgba(43, 149, 227, 0.16);
+    --hover: rgba(255, 255, 255, 0.07);
+    --ring-track: rgba(255, 255, 255, 0.14);
+    --win-border: rgba(255, 255, 255, 0.08);
+    --pill-text: #b4b4b4;
+    --scrim: rgba(24, 24, 24, 0.78);
+    --shadow-win: 0 2px 6px rgba(0, 0, 0, 0.4), 0 16px 40px rgba(0, 0, 0, 0.45);
+    --page-bg: #111111;
+    --page-card: #1b1b1b;
+    --page-line: #2e2e2e;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    padding: 40px 32px 72px;
+    background: var(--page-bg);
+    color: var(--text);
+    font-family: 'Segoe UI Variable Display', 'Segoe UI', 'Microsoft YaHei UI', 'Microsoft YaHei', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    transition: background var(--t-med), color var(--t-med);
+}
+
+/* ---------- 页面外壳 ---------- */
+.doc-head {
+    max-width: 1224px;
+    margin: 0 auto 28px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+.doc-head h1 {
+    margin: 0 0 6px;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+}
+.doc-head p {
+    margin: 0;
+    font-size: var(--font-sm);
+    color: var(--text-2);
+    line-height: 1.7;
+    max-width: 860px;
+}
+.head-tools { display: flex; align-items: center; gap: 8px; }
+
+.seg {
+    display: inline-flex;
+    padding: 3px;
+    gap: 2px;
+    background: var(--page-card);
+    border: 1px solid var(--page-line);
+    border-radius: 999px;
+}
+.seg button {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--text-2);
+    font: inherit;
+    font-size: var(--font-xs);
+    padding: 6px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background var(--t-fast), color var(--t-fast);
+}
+.seg button:hover { background: var(--hover); }
+.seg button[aria-pressed='true'] {
+    background: var(--accent);
+    color: #fff;
+}
+.seg svg { width: 14px; height: 14px; }
+
+.grid {
+    max-width: 1224px;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 28px;
+    align-items: flex-start;
+}
+
+.frame { flex: 0 0 auto; }
+.frame-cap {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin: 0 2px 10px;
+}
+.frame-cap b { font-size: var(--font-sm); font-weight: 600; }
+.frame-cap span {
+    font-size: 11px;
+    color: var(--text-3);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.3px;
+}
+
+/* ---------- 播放器窗口外壳（模拟真实无边框窗口） ---------- */
+.win {
+    position: relative;
+    width: 560px;
+    height: 360px;
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--win-border);
+    background: var(--bg);
+    box-shadow: var(--shadow-win);
+    overflow: hidden;
+    isolation: isolate;
+    user-select: none;
+}
+
+
+/* 主播放键：46px 圆形，位于传输簇中央 */
+.play-btn {
+    width: 46px;
+    height: 46px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    color: #fff;
+    background: color-mix(in srgb, var(--accent) 92%, #000);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+    transition: transform var(--t-fast), background var(--t-fast);
+}
+.play-btn svg { width: 20px; height: 20px; }
+.play-btn:hover { transform: scale(1.06); background: var(--accent-hi); }
+.play-btn:active { transform: scale(0.95); }
+
+
+.pill {
+    flex: 0 0 auto;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    line-height: 1;
+    padding: 3px 6px;
+    border-radius: var(--radius-sm);
+    color: var(--pill-text);
+    background: var(--hover);
+    font-variant-numeric: tabular-nums;
+    text-transform: uppercase;
+}
+
+
+/* 迷你歌词：三行、上下渐隐、高亮用字重与色彩而非整块背景 */
+
+/* 进度行：真实 track + buffer + thumb，hover 加粗 */
+.time {
+    flex: 0 0 auto;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-2);
+    letter-spacing: 0.2px;
+}
+.time.end { color: var(--text-3); }
+
+.track {
+    position: relative;
+    flex: 1;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    touch-action: none;
+}
+.track::before {
+    content: '';
+    position: absolute;
+    inset: 8px 0;
+    border-radius: 999px;
+    background: var(--ring-track);
+    transition: padding var(--t-fast);
+}
+.track .buffer,
+.track .fill {
+    position: absolute;
+    left: 0;
+    height: 4px;
+    top: 8px;
+    border-radius: 999px;
+    transition: height var(--t-fast), top var(--t-fast);
+}
+.track .buffer {
+    width: 62%;
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.track .fill {
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-hi));
+}
+.track .thumb {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 2px solid var(--accent);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+    transform: translate(-50%, -50%);
+    top: 10px;
+    left: 0%;
+    opacity: 0;
+    transition: opacity var(--t-fast), width var(--t-fast), height var(--t-fast);
+}
+.win:hover .track .thumb, .track.dragging .thumb { opacity: 1; }
+.is-playing .track .thumb { opacity: 1; }
+.track:hover .buffer, .track:hover .fill,
+.track.dragging .buffer, .track.dragging .fill { height: 6px; top: 7px; }
+.track:hover .thumb, .track.dragging .thumb { width: 12px; height: 12px; }
+
+/* 次级控件 */
+.icon-btn {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--text-2);
+    width: 24px;
+    height: 24px;
+    border-radius: var(--radius-sm);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    flex: 0 0 auto;
+    transition: background var(--t-fast), color var(--t-fast);
+}
+.icon-btn:hover { background: var(--hover); color: var(--text); }
+.icon-btn svg { width: 15px; height: 15px; }
+
+/* 窗口操作：悬停窗口才出现，避免常驻抢占标题空间 */
+.win-actions {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity var(--t-base);
+    z-index: 3;
+}
+.win:hover .win-actions { opacity: 1; }
+.win-actions .icon-btn { width: 26px; height: 26px; background: color-mix(in srgb, var(--bg) 72%, transparent); backdrop-filter: blur(8px); }
+.win-actions .icon-btn:hover { background: var(--hover); }
+.win-actions .icon-btn.close:hover { background: #e81123; color: #fff; }
+.win-actions .icon-btn svg { width: 12px; height: 12px; }
+
+/* 顶部拖拽提示区（等同于 Tauri 的 data-tauri-drag-region） */
+.drag-strip { position: absolute; inset: 0 0 auto 0; height: 22px; z-index: 0; }
+
+.transport { display: flex; align-items: center; gap: 14px; margin-top: 3px; }
+.transport .icon-btn { width: 32px; height: 32px; }
+.transport .icon-btn svg { width: 17px; height: 17px; stroke-width: 1.6; }
+.transport .play-btn svg { width: 20px; height: 20px; }
+.transport .skip { position: relative; }
+.transport .skip small {
+    position: absolute;
+    bottom: -1px;
+    font-size: 7px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+}
+
+/* ---------- 音量：悬停弹出竖向滑块 ---------- */
+.vol { position: relative; display: flex; align-items: center; }
+.vol-pop {
+    position: absolute;
+    bottom: 34px;
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    padding: 8px 0 8px;
+    border-radius: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--t-fast), transform var(--t-fast);
+}
+.vol:hover .vol-pop { opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0); }
+.vol-rail {
+    position: relative;
+    width: 4px;
+    height: 80px;
+    margin: 0 14px;
+    border-radius: 2px;
+    background: var(--hover);
+}
+.vol-fill {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    border-radius: 2px;
+    background: var(--accent);
+}
+.vol-knob {
+    position: absolute;
+    left: 50%;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--surface);
+    transform: translate(-50%, 50%);
+}
+
+/* ============================================================
+   展开态 —— 沉浸歌词（封面退为背景，纵向全给歌词）
+   ============================================================ */
+
+.exp-bg {
+    position: absolute;
+    inset: -14%;
+    z-index: 0;
+    filter: blur(34px) saturate(1.35);
+    opacity: 0.72;
+    pointer-events: none;
+}
+.exp-bg svg { display: block; width: 100%; height: 100%; }
+.exp-scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: var(--scrim);
+    pointer-events: none;
+}
+
+.imm {
+    position: relative;
+    z-index: 1;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 20px 24px 16px;
+    gap: 9px;
+}
+.imm-top { display: flex; align-items: center; gap: 12px; padding-right: 60px; }
+.imm-art {
+    width: 56px;
+    height: 56px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    flex: 0 0 auto;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+    position: relative;
+}
+.imm-art svg { display: block; width: 100%; height: 100%; }
+.imm-meta { min-width: 0; }
+.imm-title-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.imm-title {
+    font-size: var(--font-lg);
+    font-weight: 600;
+    line-height: 1.35;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.imm-sub {
+    font-size: var(--font-xs);
+    color: var(--text-2);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.imm-lyric {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 9%, #000 91%, transparent 100%);
+    mask-image: linear-gradient(180deg, transparent 0, #000 9%, #000 91%, transparent 100%);
+}
+.imm-lyric .line {
+    flex: 0 0 auto;
+    font-size: var(--font-md);
+    line-height: 30px;
+    color: var(--text-3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: color var(--t-med), font-size var(--t-med);
+}
+.imm-lyric .line.near { color: var(--text-2); }
+.imm-lyric .line.current {
+    font-size: 22px;
+    line-height: 34px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: -0.3px;
+}
+
+.imm-progress { display: flex; align-items: center; gap: 10px; }
+.imm-transport { justify-content: center; margin-top: 0; }
+
+/* ============================================================
+   规范说明区
+   ============================================================ */
+.notes { max-width: 1224px; margin: 44px auto 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.note {
+    background: var(--page-card);
+    border: 1px solid var(--page-line);
+    border-radius: 12px;
+    padding: 16px 18px;
+}
+.note h3 { margin: 0 0 10px; font-size: var(--font-sm); font-weight: 600; display: flex; align-items: center; gap: 7px; }
+.note h3 i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); display: inline-block; }
+.note ul { margin: 0; padding-left: 16px; }
+.note li { font-size: var(--font-xs); line-height: 1.9; color: var(--text-2); }
+.note code { font-family: 'Cascadia Code', Consolas, monospace; font-size: 11px; background: var(--hover); padding: 1px 5px; border-radius: 3px; color: var(--text); }
+.note .bad { color: #c33; }
+html[data-theme='dark'] .note .bad { color: #ff8b81; }
+</style>
+</head>
+<body>
+
+<header class="doc-head">
+    <div>
+        <h1>音频预览 · UI 重设计</h1>
+        <p>固定单态：<b>沉浸歌词</b> 560×360，模糊封面作背景、5 行歌词、完整传输簇。改造目标 <code style="font-family:Consolas,monospace;font-size:12px">src/views/preview/audio.vue</code> 与 <code style="font-family:Consolas,monospace;font-size:12px">preview/window.rs</code>。</p>
+    </div>
+    <div class="head-tools">
+        <div class="seg" role="group" aria-label="主题">
+            <button id="btn-light" aria-pressed="true">浅色</button>
+            <button id="btn-dark" aria-pressed="false">深色</button>
+        </div>
+    </div>
+</header>
+
+<div class="grid">
+
+    <!-- ================= 展开态 ================= -->
+    <section class="frame">
+        <div class="frame-cap"><b>音频预览 · 沉浸歌词</b><span>560 × 360 · 固定窗口尺寸</span></div>
+        <div class="win is-playing" data-player>
+            <div class="exp-bg" id="artBg"></div>
+            <div class="exp-scrim"></div>
+            <div class="drag-strip" data-tauri-drag-region></div>
+
+            <div class="win-actions">
+                <button class="icon-btn close" title="关闭">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg>
+                </button>
+            </div>
+
+            <div class="imm">
+                <div class="imm-top">
+                    <div class="imm-art" id="artD"></div>
+                    <div class="imm-meta">
+                        <div class="imm-title-row">
+                            <span class="imm-title">文爱</span>
+                            <span class="pill">MP3</span>
+                            <span class="pill">320k</span>
+                        </div>
+                        <div class="imm-sub">CG、贺敬轩 · 文爱</div>
+                    </div>
+                </div>
+
+                <div class="imm-lyric">
+                    <div class="line">作词：CG</div>
+                    <div class="line near">作曲：Luck Christopher</div>
+                    <div class="line current">知道爱你没有结局</div>
+                    <div class="line near">痴情一场我却不后悔</div>
+                    <div class="line">我的心里只有一个你</div>
+                </div>
+
+                <div class="imm-progress">
+                    <span class="time start">01:12</span>
+                    <div class="track" role="slider" tabindex="0" aria-label="播放进度">
+                        <div class="buffer" style="width:78%"></div>
+                        <div class="fill" style="width:36%"></div>
+                        <div class="thumb" style="left:36%"></div>
+                    </div>
+                    <span class="time end">-02:08</span>
+                </div>
+
+                <div class="transport imm-transport">
+                    <button class="icon-btn skip" title="后退 10 秒 (←)">
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M13 8a5 5 0 1 1-1.5-3.5"/><path d="M13 2.5v3.2h-3.2"/></svg>
+                    </button>
+                    <button class="play-btn" aria-label="播放/暂停">
+                        <svg class="i-play" viewBox="0 0 16 16" fill="currentColor" style="display:none"><path d="M5 3.2c0-.5.55-.8.97-.55l7.2 4.8a.65.65 0 0 1 0 1.1l-7.2 4.8A.65.65 0 0 1 5 12.8z"/></svg>
+                        <svg class="i-pause" viewBox="0 0 16 16" fill="currentColor"><rect x="4.2" y="3.2" width="2.6" height="9.6" rx="1"/><rect x="9.2" y="3.2" width="2.6" height="9.6" rx="1"/></svg>
+                    </button>
+                    <button class="icon-btn skip" title="前进 10 秒 (→)">
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 8a5 5 0 1 0 1.5-3.5"/><path d="M3 2.5v3.2h3.2"/></svg>
+                    </button>
+                    <div class="vol">
+                        <button class="icon-btn" title="音量（单击静音 · 悬停调节）">
+                            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8.5 2.5 5 5.2H2.8v5.6H5l3.5 2.7z"/><path d="M10.8 5.6a3.4 3.4 0 0 1 0 4.8M12.6 3.8a6 6 0 0 1 0 8.4"/></svg>
+                        </button>
+                        <div class="vol-pop">
+                            <div class="vol-rail">
+                                <div class="vol-fill" style="height:72%"></div>
+                                <div class="vol-knob" style="bottom:72%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="icon-btn" title="倍速">
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="5.6"/><path d="M8 4.8V8l2.2 1.4"/></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+</div>
+
+<section class="notes">
+    <div class="note">
+        <h3><i></i>现状问题</h3>
+        <ul>
+            <li><span class="bad">空间失衡</span>：160px 封面占宽 28%，右列只剩约 360px 承载 5 行文本</li>
+            <li><span class="bad">层级混乱</span>：文件名、专辑域名、歌词同一字号族，缺少分隔</li>
+            <li><span class="bad">高亮过重</span>：歌词用整行浅蓝底色，行宽不齐形成锯齿色块</li>
+            <li><span class="bad">可发现性</span>：播放按钮藏在 hover 遮罩内，静止时不可见</li>
+            <li><span class="bad">控制缺失</span>：无音量、无倍速、无缓冲进度、无空格键播放</li>
+        </ul>
+    </div>
+    <div class="note">
+        <h3><i></i>关键参数</h3>
+        <ul>
+            <li>顶部行 <code>56×56</code> 缩略封面 + 标题 <code>15px/600</code>，右侧留 <code>44px</code> 避开窗口按钮</li>
+            <li>歌词 5 行可见，行高 <code>30</code>，当前行 <code>22px/600 accent</code>，上下 9% 遮罩渐隐</li>
+            <li>背景层 <code>blur(34px)</code> + 0.76 主题蒙版，文字对比度不依赖封面色</li>
+            <li>循环按钮已替换为音量：单击静音、悬停弹竖向滑块、<code>↑↓</code> 步进 0.05，图标四档</li>
+            <li>传输簇居中：后退 10s / 播放 <code>46px</code> / 前进 10s / 音量 / 倍速，间距 <code>14px</code></li>
+        </ul>
+    </div>
+    <div class="note">
+        <h3><i></i>落地要点</h3>
+        <ul>
+            <li>歌词同步改为 <code>findLastIndex</code> + <code>Map&lt;timestamp, index&gt;</code>，避免重复时间戳误命中</li>
+            <li>滚动容器用 <code>scrollTop</code> 计算，弃用 <code>scrollIntoView</code>（会连带滚动外层）</li>
+            <li><code>requestAnimationFrame</code> 循环内加 <code>playing</code> 守卫，暂停即停止</li>
+            <li>补充 <code>Space</code> 播放暂停、<code>↑↓</code> 音量快捷键</li>
+            <li>窗口尺寸固定为 <code>560×360</code>（<code>preview/window.rs</code> 的 Audio 分支），不再运行时 <code>setSize</code></li>
+        </ul>
+    </div>
+</section>
+
+<script>
+/* ---------- 生成封面（自包含，无外部图片依赖） ---------- */
+const coverSVG = (id) => `
+<svg viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="bg${id}" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#3a1f0d"/>
+            <stop offset="52%" stop-color="#8a4a13"/>
+            <stop offset="100%" stop-color="#d98a35"/>
+        </linearGradient>
+        <radialGradient id="gl${id}" cx="0.32" cy="0.26" r="0.72">
+            <stop offset="0%" stop-color="#ffd9a8" stop-opacity="0.55"/>
+            <stop offset="100%" stop-color="#ffd9a8" stop-opacity="0"/>
+        </radialGradient>
+    </defs>
+    <rect width="128" height="128" fill="url(#bg${id})"/>
+    <rect width="128" height="128" fill="url(#gl${id})"/>
+    <g stroke="#fff" stroke-opacity="0.13" fill="none">
+        <circle cx="64" cy="64" r="52"/><circle cx="64" cy="64" r="43"/>
+        <circle cx="64" cy="64" r="34"/><circle cx="64" cy="64" r="25"/>
+    </g>
+    <circle cx="64" cy="64" r="15" fill="#fff" fill-opacity="0.16" stroke="#fff" stroke-opacity="0.45"/>
+    <circle cx="64" cy="64" r="4" fill="#fff" fill-opacity="0.85"/>
+    <path d="M0 100 L128 62 L128 74 L0 112 Z" fill="#fff" fill-opacity="0.07"/>
+</svg>`;
+
+['artD', 'artBg'].forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = coverSVG(i);
+    /* 背景层需要铺满容器，用 slice 裁切而非 meet 留白 */
+    if (id === 'artBg') {
+        el.querySelector('svg')?.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+    }
+});
+
+/* ---------- 主题切换 ---------- */
+const btns = { light: document.getElementById('btn-light'), dark: document.getElementById('btn-dark') };
+function setTheme(mode) {
+    document.documentElement.dataset.theme = mode;
+    btns.light.setAttribute('aria-pressed', String(mode === 'light'));
+    btns.dark.setAttribute('aria-pressed', String(mode === 'dark'));
+}
+btns.light.onclick = () => setTheme('light');
+btns.dark.onclick = () => setTheme('dark');
+/* 支持以 #dark 直接打开深色态，便于评审与截图 */
+if (location.hash === '#dark') setTheme('dark');
+
+/* ---------- 迷你播放器：仅用于演示交互 ---------- */
+const TOTAL = 200; // 3:20
+
+document.querySelectorAll('[data-player]').forEach(win => {
+    const track = win.querySelector('.track');
+    const fill = win.querySelector('.fill');
+    const thumb = win.querySelector('.thumb');
+    const startLabel = win.querySelector('.time.start');
+    const buttons = win.querySelectorAll('.play-btn');
+    let pct = track ? parseFloat(fill?.style.width) || 1.5 : 0;
+    let timer = null;
+
+    const pad = n => String(n).padStart(2, '0');
+    const fmt = s => `${pad(Math.floor(s / 60))}:${pad(Math.floor(s % 60))}`;
+
+    function render() {
+        if (!track) return;
+        fill.style.width = pct + '%';
+        thumb.style.left = pct + '%';
+        if (startLabel) startLabel.textContent = fmt(TOTAL * pct / 100);
+    }
+
+    function tick() {
+        pct = Math.min(100, pct + 0.22);
+        render();
+        if (pct >= 100) stop();
+    }
+
+    function play() {
+        win.classList.add('is-playing');
+        buttons.forEach(b => {
+            const ip = b.querySelector('.i-play'), ipa = b.querySelector('.i-pause');
+            if (ip) ip.style.display = 'none';
+            if (ipa) ipa.style.display = '';
+        });
+        if (timer) clearInterval(timer);
+        timer = setInterval(tick, 60);
+    }
+
+    function stop() {
+        win.classList.remove('is-playing');
+        buttons.forEach(b => {
+            const ip = b.querySelector('.i-play'), ipa = b.querySelector('.i-pause');
+            if (ip) ip.style.display = '';
+            if (ipa) ipa.style.display = 'none';
+        });
+        if (timer) { clearInterval(timer); timer = null; }
+    }
+
+    buttons.forEach(b => b.addEventListener('click', () => {
+        win.classList.contains('is-playing') ? stop() : play();
+    }));
+
+    /* 进度拖拽 */
+    if (track) {
+        const seek = e => {
+            const r = track.getBoundingClientRect();
+            pct = Math.min(100, Math.max(0, ((e.clientX - r.left) / r.width) * 100));
+            render();
+        };
+        track.addEventListener('pointerdown', e => {
+            track.setPointerCapture(e.pointerId);
+            track.classList.add('dragging');
+            seek(e);
+        });
+        track.addEventListener('pointermove', e => {
+            if (track.classList.contains('dragging')) seek(e);
+        });
+        track.addEventListener('pointerup', () => track.classList.remove('dragging'));
+        track.addEventListener('pointercancel', () => track.classList.remove('dragging'));
+    }
+
+    /* 初始态：按 class 同步按钮图标，不自动起播，保持静态可读 */
+    const playing = win.classList.contains('is-playing');
+    buttons.forEach(b => {
+        const ip = b.querySelector('.i-play'), ipa = b.querySelector('.i-pause');
+        if (ip) ip.style.display = playing ? 'none' : '';
+        if (ipa) ipa.style.display = playing ? '' : 'none';
+    });
+    render();
+});
+</script>
+</body>
+</html>

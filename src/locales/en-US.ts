@@ -143,6 +143,13 @@ export default {
     audio: {
         cover: 'Cover',
         noLyrics: 'No lyrics',
+        play: 'Play',
+        pause: 'Pause',
+        backward: 'Back 10 seconds (←)',
+        forward: 'Forward 10 seconds (→)',
+        volume: 'Volume (↑↓ to adjust)',
+        speed: 'Playback speed',
+        progress: 'Playback progress',
     },
     book: {
         ebook: 'eBook',

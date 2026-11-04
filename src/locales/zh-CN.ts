@@ -143,6 +143,13 @@ export default {
     audio: {
         cover: '封面',
         noLyrics: '暂无歌词',
+        play: '播放',
+        pause: '暂停',
+        backward: '后退 10 秒 (←)',
+        forward: '前进 10 秒 (→)',
+        volume: '音量 (↑↓ 调节)',
+        speed: '播放速度',
+        progress: '播放进度',
     },
     book: {
         ebook: '电子书',
