@@ -1,0 +1,1855 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>QuickLook · 预览类型 UI 重设计</title>
+<script>
+    // 支持 ?theme=dark#type 直接深链，避免首帧闪白与截图时序问题
+    (() => {
+        const q = new URLSearchParams(location.search).get('theme')
+        if (q === 'dark' || q === 'light') document.documentElement.dataset.theme = q
+    })()
+</script>
+<style>
+/* ============================================================
+   Design tokens —— 与 src/assets/var.css、var/layout.css 对齐
+   ============================================================ */
+:root {
+    --bg: #f3f3f3;
+    --surface: #ffffff;
+    --text: #1a1a1a;
+    --text-2: #555555;
+    --text-3: #8a8a8a;
+    --border: #e1e1e1;
+    --accent: #0078d4;
+    --accent-hi: #2b95e3;
+    --accent-soft: rgba(0, 120, 212, 0.12);
+    --hover: rgba(0, 0, 0, 0.06);
+    --hover-strong: rgba(0, 0, 0, 0.1);
+    --chip-bg: rgba(0, 0, 0, 0.05);
+    /* Fluent 分隔：不用 1px 实线，改用低透明度发丝线；层与层之间靠底色与留白 */
+    --divider: rgba(0, 0, 0, 0.07);
+    --pill-text: #8a8a8a;
+    --win-border: transparent;
+    --shadow-win: 0 1px 2px rgba(0, 0, 0, 0.08), 0 16px 40px rgba(0, 0, 0, 0.14);
+    --paper: #ffffff;
+    --paper-line: #e6e6e6;
+    --stage: #e9edf2;
+    --code-line: #f7f8fa;
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 10px;
+    --radius-xl: 12px;
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+    --font-xs: 12px;
+    --font-sm: 13px;
+    --font-md: 14px;
+    --font-lg: 15px;
+    --font-xl: 16px;
+    --font-2xl: 18px;
+    --t-fast: 0.15s ease;
+    --t-base: 0.2s ease;
+    --t-med: 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    --fit: 1;
+}
+
+html[data-theme='dark'] {
+    --bg: #1c1c1c;
+    --surface: #2b2b2b;
+    --text: #ffffff;
+    --text-2: #c2c2c2;
+    --text-3: #8f8f8f;
+    --border: #3a3a3a;
+    --accent: #2b95e3;
+    --accent-hi: #4aa8f0;
+    --accent-soft: rgba(43, 149, 227, 0.16);
+    --hover: rgba(255, 255, 255, 0.07);
+    --hover-strong: rgba(255, 255, 255, 0.12);
+    --chip-bg: rgba(255, 255, 255, 0.08);
+    --divider: rgba(255, 255, 255, 0.08);
+    --pill-text: #b4b4b4;
+    --win-border: rgba(255, 255, 255, 0.08);
+    --shadow-win: 0 2px 8px rgba(0, 0, 0, 0.45), 0 18px 44px rgba(0, 0, 0, 0.5);
+    --paper: #262626;
+    --paper-line: #333333;
+    --stage: #111111;
+    --code-line: #212121;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--stage);
+    color: var(--text);
+    font-family: 'Segoe UI Variable Display', 'Segoe UI', 'Microsoft YaHei UI', 'Microsoft YaHei', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    transition: background var(--t-med), color var(--t-med);
+}
+
+/* ---------- 页面外壳 ---------- */
+.shell {
+    display: grid;
+    grid-template-columns: 232px minmax(0, 1fr);
+    min-height: 100vh;
+}
+
+.side {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    padding: 22px 14px 20px;
+    background: transparent;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.side h1 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+
+.side .sub {
+    margin: -12px 0 0;
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--text-3);
+}
+
+.nav { display: flex; flex-direction: column; gap: 1px; }
+
+.nav button {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--text-2);
+    font: inherit;
+    font-size: 13px;
+    text-align: left;
+    padding: 7px 10px 7px 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    position: relative;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    transition: background var(--t-fast), color var(--t-fast);
+}
+
+.nav button .idx {
+    font-size: 10.5px;
+    color: var(--text-3);
+    font-variant-numeric: tabular-nums;
+    width: 12px;
+    flex: none;
+}
+
+.nav button:hover { background: var(--hover); color: var(--text); }
+
+.nav button[aria-current='true'] {
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.nav button[aria-current='true']::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 2px;
+    border-radius: 2px;
+    background: var(--accent);
+}
+
+.nav button[aria-current='true'] .idx { color: var(--accent); opacity: 0.7; }
+
+.side-foot { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
+
+.seg {
+    display: inline-flex;
+    padding: 2px;
+    gap: 2px;
+    background: var(--chip-bg);
+    border-radius: var(--radius-md);
+}
+
+.seg button {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--text-2);
+    font: inherit;
+    font-size: 12px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    flex: 1;
+    transition: background var(--t-fast), color var(--t-fast);
+}
+
+.seg button[aria-pressed='true'] {
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+html[data-theme='dark'] .seg button[aria-pressed='true'] {
+    background: rgba(255, 255, 255, 0.14);
+    box-shadow: none;
+}
+
+.hint {
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--text-3);
+}
+
+.hint kbd {
+    font: inherit;
+    font-size: 10px;
+    padding: 1px 4px;
+    border-radius: 3px;
+    background: var(--chip-bg);
+    border: 1px solid var(--border);
+}
+
+/* ---------- 舞台 ---------- */
+.stage {
+    padding: 26px 32px 56px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+}
+
+.stage-head {
+    width: 100%;
+    max-width: 1000px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.stage-head .name { font-size: 15px; font-weight: 600; }
+.stage-head .meta { font-size: 11.5px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+
+.frame {
+    width: 1000px;
+    zoom: var(--fit);
+    flex: none;
+}
+
+/* ---------- 窗口：Fluent 浮层卡片 ----------
+   刻意不使用「标题栏 + 工具条 + 状态栏」三条白底横带。
+   与 audio-preview-redesign 同一语言：单一底色、无实线分隔、
+   控件悬浮在内容之上，层级靠留白、圆角与阴影建立。 */
+.win {
+    width: 1000px;
+    height: 600px;
+    background: var(--bg);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--win-border);
+    box-shadow: var(--shadow-win);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    isolation: isolate;
+    transition: background var(--t-med);
+}
+
+/* 标题行 44 —— 透明，标题即内容的第一层 */
+.hd {
+    flex: none;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 6px 0 16px;
+    background: transparent;
+    user-select: none;
+}
+
+.hd-title {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.35;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 0 1 auto;
+}
+
+/* 元信息胶囊组：由原脚注迁移而来，规格对齐 audio 的 MP3 / 320k */
+.hd-pills { display: flex; align-items: center; gap: 6px; flex: none; }
+
+.hd-acts {
+    display: flex;
+    align-items: center;
+    gap: 1px;
+    margin-left: auto;
+    flex: none;
+}
+
+/* 窗口按钮：常态无底色，hover 才浮现；关闭 hover 转红 */
+.hd-btn {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--text-3);
+    width: 34px;
+    height: 30px;
+    border-radius: var(--radius-sm);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    transition: background var(--t-fast), color var(--t-fast);
+}
+
+.hd-btn:hover { background: var(--hover); color: var(--text); }
+.hd-btn:active { background: var(--hover-strong); }
+.hd-btn.close { margin-left: 4px; }
+.hd-btn.close:hover { background: #e81123; color: #fff; }
+.hd-btn svg { width: 13px; height: 13px; }
+
+/* 命令栏 40 —— 与窗口同底色，无下边框 */
+.tb {
+    flex: none;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 0 10px;
+    background: transparent;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.tb-btn {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--text-2);
+    height: 28px;
+    min-width: 28px;
+    padding: 0 7px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    flex: none;
+    white-space: nowrap;
+    transition: background var(--t-fast), color var(--t-fast);
+}
+
+.tb-btn:hover { background: var(--hover); color: var(--text); }
+.tb-btn:active { background: var(--hover-strong); }
+.tb-btn[aria-pressed='true'] { color: var(--accent); background: var(--accent-soft); }
+.tb-btn svg { width: 15px; height: 15px; flex: none; }
+.tb-btn.strong { color: var(--text); }
+
+.tb-sep { width: 1px; height: 16px; background: var(--divider); margin: 0 8px; flex: none; }
+.tb-grow { flex: 1 1 auto; }
+
+/* 命令栏内的数值：Fluent 用 pill 承载，不用裸文本 */
+.tb-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 22px;
+    min-width: 46px;
+    padding: 0 8px;
+    border-radius: var(--radius-sm);
+    background: var(--chip-bg);
+    font-size: 11.5px;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    flex: none;
+    white-space: nowrap;
+}
+
+.tb-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11.5px;
+    color: var(--text-3);
+    font-variant-numeric: tabular-nums;
+    flex: none;
+    white-space: nowrap;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    height: 18px;
+    padding: 0 6px;
+    border-radius: var(--radius-sm);
+    background: var(--chip-bg);
+    font-size: 11px;
+    color: var(--text-2);
+    letter-spacing: 0.02em;
+    flex: none;
+    white-space: nowrap;
+}
+
+.chip.accent { background: var(--accent-soft); color: var(--accent); }
+
+/* 标题栏胶囊：10px / 600 / 全大写，与 audio 的格式徽章完全一致 */
+.pill {
+    display: inline-flex;
+    align-items: center;
+    flex: none;
+    height: 18px;
+    padding: 0 6px;
+    border-radius: var(--radius-sm);
+    background: var(--chip-bg);
+    color: var(--pill-text);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    text-transform: uppercase;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.pill.muted { color: var(--text-3); }
+
+
+/* 工具条内的小尺寸下拉箭头：必须同时给宽高，否则会被 .tb-btn svg 的 14px 拉变形 */
+.tb-btn svg.i-xs { width: 9px; height: 9px; }
+
+/* 命令栏内的单行输入框（过滤、样例文本）：用描边而非填充，
+   与只读胶囊 .tb-value 区分开，避免被误读成标签 */
+.tb-input {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 26px;
+    padding: 0 8px;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-2);
+    font-size: 12px;
+    flex: none;
+    max-width: 340px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    transition: border-color var(--t-fast), background var(--t-fast);
+}
+
+.tb-input:hover { background: var(--hover); }
+
+.tb-input .ph { color: var(--text-3); }
+.tb-input svg { width: 12px; height: 12px; flex: none; }
+
+/* 工具条内的只读数值框（字号等） */
+.tb-value {    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 20px;
+    min-width: 30px;
+    padding: 0 6px;
+    border-radius: var(--radius-sm);
+    background: var(--chip-bg);
+    color: var(--text);
+    font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+    flex: none;
+}
+
+/* 颜色色块（阅读底色等） */
+.swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    border: 1px solid rgba(0, 0, 0, 0.16);
+    flex: none;
+    display: inline-block;
+}
+
+html[data-theme='dark'] .swatch { border-color: rgba(255, 255, 255, 0.22); }
+
+/* 原 Footer 20 已取消：状态栏是「老式分栏」观感的主要来源。
+   元信息改由标题栏胶囊承载，见 .hd-pills / .pill。 */
+
+/* Body：与窗口同底色，内容自成一体，不再有上下的横带切割 */
+.bd { flex: 1; min-height: 0; position: relative; background: transparent; overflow: hidden; }
+
+.pv { display: none; flex-direction: column; height: 100%; }
+.pv.on { display: flex; }
+
+/* 滚动条 */
+.scroll { overflow: auto; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.scroll::-webkit-scrollbar-track { background: transparent; }
+
+/* 说明条 */
+.spec {
+    width: 100%;
+    max-width: 1000px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    font-size: 11.5px;
+    color: var(--text-3);
+    line-height: 1.7;
+}
+
+.spec b { color: var(--text-2); font-weight: 600; }
+.spec .k { display: inline-flex; gap: 5px; align-items: baseline; }
+
+/* ============================================================
+   1 · 图片
+   ============================================================ */
+.img-body {
+    height: 100%;
+    display: grid;
+    place-items: center;
+    padding: 4px 16px 16px;
+    position: relative;
+}
+
+.photo {
+    width: 100%;
+    max-height: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 8px 28px rgba(0, 0, 0, 0.16);
+}
+
+.photo svg { display: block; width: 100%; height: 100%; }
+
+.img-capsule {
+    position: absolute;
+    left: 50%;
+    bottom: 14px;
+    transform: translateX(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 24px;
+    padding: 0 10px;
+    border-radius: 12px;
+    background: rgba(20, 20, 20, 0.62);
+    color: #fff;
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    backdrop-filter: blur(10px);
+    opacity: 0;
+    transition: opacity var(--t-base);
+    font-variant-numeric: tabular-nums;
+}
+
+.img-body:hover .img-capsule { opacity: 1; }
+
+/* ============================================================
+   2 · Markdown
+   ============================================================ */
+.md-wrap { position: relative; height: 100%; display: flex; }
+
+.toc {
+    width: 220px;
+    flex: none;
+    padding: 10px 10px 12px 16px;
+    overflow: auto;
+}
+
+.toc .toc-h {
+    font-size: 11px;
+    color: var(--text-3);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0 8px 8px;
+}
+
+.toc a {
+    display: block;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 12.5px;
+    color: var(--text-2);
+    text-decoration: none;
+    line-height: 1.45;
+    border-left: 2px solid transparent;
+}
+
+.toc a.lv3 { padding-left: 22px; font-size: 12px; color: var(--text-3); }
+.toc a:hover { background: var(--hover); color: var(--text); }
+.toc a.cur { color: var(--accent); background: var(--accent-soft); border-left-color: var(--accent); font-weight: 600; }
+
+.md-doc {
+    flex: 1;
+    min-width: 0;
+    overflow: auto;
+    padding: 26px 0 48px;
+}
+
+.md-inner {
+    width: 760px;
+    max-width: calc(100% - 96px);
+    margin: 0 auto;
+    color: var(--text);
+}
+
+.md-inner h1 { font-size: 26px; font-weight: 650; margin: 0 0 6px; letter-spacing: -0.02em; }
+.md-inner .doc-meta { font-size: 12px; color: var(--text-3); margin-bottom: 22px; }
+.md-inner h2 { font-size: 17px; font-weight: 650; margin: 26px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+.md-inner p { font-size: 14.5px; line-height: 1.75; color: var(--text); margin: 0 0 12px; }
+.md-inner li { font-size: 14.5px; line-height: 1.75; margin: 0 0 6px; }
+.md-inner ul { padding-left: 20px; margin: 0 0 12px; }
+
+.md-inner code.inline {
+    font-family: 'Cascadia Mono', Consolas, 'Courier New', monospace;
+    font-size: 12.5px;
+    background: var(--chip-bg);
+    padding: 1.5px 5px;
+    border-radius: 3px;
+    color: var(--text);
+}
+
+.code-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    margin: 0 0 16px;
+    background: var(--code-line);
+}
+
+.code-card .cc-head {
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px 0 10px;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-3);
+    letter-spacing: 0.04em;
+}
+
+.cc-copy {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--text-3);
+    font: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 4px;
+    border-radius: 3px;
+    opacity: 0;
+    transition: opacity var(--t-fast), background var(--t-fast);
+}
+
+.code-card:hover .cc-copy { opacity: 1; }
+.cc-copy:hover { background: var(--hover); color: var(--text); }
+
+.code-card pre {
+    margin: 0;
+    padding: 10px 12px;
+    font-family: 'Cascadia Mono', Consolas, monospace;
+    font-size: 12.5px;
+    line-height: 1.65;
+    overflow: auto;
+    color: var(--text);
+}
+
+.md-quote {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    padding: 10px 14px;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    margin: 0 0 16px;
+    font-size: 13.5px;
+    line-height: 1.7;
+    color: var(--text-2);
+}
+
+.md-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 0 0 16px; }
+.md-table th { text-align: left; font-weight: 600; color: var(--text-2); font-size: 12px; padding: 6px 10px; border-bottom: 1px solid var(--border); background: var(--chip-bg); }
+.md-table td { padding: 7px 10px; border-bottom: 1px solid var(--border); }
+.md-table td.num { font-variant-numeric: tabular-nums; text-align: right; }
+
+/* ============================================================
+   3 · 代码
+   ============================================================ */
+.cd-wrap {
+    height: 100%;
+    display: flex;
+    font-family: 'Cascadia Mono', Consolas, 'Courier New', monospace;
+    font-size: 12.5px;
+    line-height: 20px;
+    overflow: auto;
+}
+
+.cd-lines {
+    flex: none;
+    width: 48px;
+    padding: 14px 0;
+    text-align: right;
+    color: var(--text-3);
+    background: transparent;
+    user-select: none;
+    font-variant-numeric: tabular-nums;
+    position: sticky;
+    left: 0;
+    z-index: 1;
+}
+
+.cd-lines div { padding-right: 10px; height: 20px; }
+.cd-lines div.hl { color: var(--accent); }
+
+.cd-code { flex: 1; padding: 14px 20px 40px; min-width: max-content; }
+.cd-code div { height: 20px; white-space: pre; }
+.cd-code div.hl { background: var(--accent-soft); margin: 0 -20px; padding: 0 20px; }
+
+.tk-k { color: #af00db; }
+.tk-t { color: #267f99; }
+.tk-f { color: #795e26; }
+.tk-s { color: #a31515; }
+.tk-c { color: #6a9955; }
+.tk-n { color: #098658; }
+.tk-p { color: var(--text-2); }
+
+html[data-theme='dark'] .tk-k { color: #c586c0; }
+html[data-theme='dark'] .tk-t { color: #4ec9b0; }
+html[data-theme='dark'] .tk-f { color: #dcdcaa; }
+html[data-theme='dark'] .tk-s { color: #ce9178; }
+html[data-theme='dark'] .tk-c { color: #6a9955; }
+html[data-theme='dark'] .tk-n { color: #b5cea8; }
+
+/* ============================================================
+   4 · 文档（PDF）
+   ============================================================ */
+.pdf-body {
+    height: 100%;
+    overflow: auto;
+    background: transparent;
+    padding: 14px 0 40px;
+}
+
+.page {
+    width: 620px;
+    margin: 0 auto 12px;
+    background: var(--paper);
+    border: 1px solid var(--paper-line);
+    border-radius: 2px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 6px 20px rgba(0, 0, 0, 0.07);
+    padding: 34px 42px 26px;
+    position: relative;
+    color: var(--text);
+}
+
+html[data-theme='dark'] .page { box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
+
+.page .p-eyebrow { font-size: 10px; letter-spacing: 0.14em; color: var(--text-3); text-transform: uppercase; margin-bottom: 14px; }
+.page h3 { font-size: 20px; font-weight: 650; margin: 0 0 4px; letter-spacing: -0.01em; }
+.page .p-sub { font-size: 11.5px; color: var(--text-3); margin-bottom: 18px; }
+.page p { font-size: 11.5px; line-height: 1.9; margin: 0 0 10px; color: var(--text-2); text-align: justify; }
+.page .p-num { position: absolute; bottom: 12px; left: 0; right: 0; text-align: center; font-size: 10px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+
+.page .p-figure {
+    height: 92px;
+    margin: 14px 0 16px;
+    border-radius: 3px;
+    background: linear-gradient(135deg, var(--accent-soft), transparent 72%);
+    border: 1px dashed var(--border);
+    display: grid;
+    place-items: center;
+    font-size: 10.5px;
+    color: var(--text-3);
+}
+
+/* ============================================================
+   5 · 书籍
+   ============================================================ */
+.bk-wrap { position: relative; height: 100%; display: flex; }
+
+.bk-toc {
+    width: 240px;
+    flex: none;
+    padding: 10px 10px 12px 16px;
+    overflow: auto;
+}
+
+.bk-toc .cap { font-size: 11px; color: var(--text-3); padding: 0 8px 8px; letter-spacing: 0.06em; text-transform: uppercase; }
+
+.bk-toc a {
+    display: block;
+    padding: 5px 8px;
+    font-size: 12.5px;
+    color: var(--text-2);
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+    line-height: 1.5;
+}
+
+.bk-toc a.lv2 { padding-left: 20px; font-size: 12px; color: var(--text-3); }
+.bk-toc a.cur { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+
+.bk-read {
+    flex: 1;
+    min-width: 0;
+    overflow: auto;
+    padding: 30px 0 56px;
+    position: relative;
+}
+
+.bk-inner { width: 680px; max-width: calc(100% - 96px); margin: 0 auto; }
+.bk-inner .ch { font-size: 11px; color: var(--text-3); letter-spacing: 0.1em; margin-bottom: 10px; }
+.bk-inner h3 { font-size: 21px; font-weight: 600; margin: 0 0 20px; }
+.bk-inner p { font-size: 15px; line-height: 1.95; margin: 0 0 14px; text-indent: 2em; color: var(--text); }
+.bk-inner p.first { text-indent: 0; }
+.bk-inner p.first::first-letter { font-size: 34px; float: left; line-height: 1; padding: 3px 7px 0 0; color: var(--text); font-weight: 600; }
+
+.bk-bar {
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    bottom: 8px;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--divider);
+}
+
+.bk-bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 42%; background: var(--accent); border-radius: 2px; display: block; }
+
+/* ============================================================
+   6 · 压缩包
+   ============================================================ */
+.ar-wrap { height: 100%; display: flex; flex-direction: column; overflow: hidden; padding-top: 6px; }
+
+.ar-table { flex: 1; min-height: 0; overflow: auto; }
+
+.ar-head, .ar-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 96px 140px;
+    align-items: center;
+    gap: 12px;
+    padding: 0 14px;
+}
+
+.ar-head {
+    height: 26px;
+    position: sticky;
+    top: 0;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--divider);
+    font-size: 11px;
+    color: var(--text-3);
+    letter-spacing: 0.04em;
+    z-index: 1;
+}
+
+.ar-head span:not(:first-child) { text-align: right; }
+
+.ar-row { height: 28px; font-size: 12.5px; color: var(--text); border-bottom: 1px solid transparent; }
+.ar-row:hover { background: var(--hover); }
+
+.ar-name { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.ar-name .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ar-name svg { width: 14px; height: 14px; flex: none; color: var(--text-3); }
+.ar-name .chev { transition: transform var(--t-fast); }
+.ar-row.open .chev { transform: rotate(90deg); }
+
+.ar-row .sz, .ar-row .tm { text-align: right; font-size: 11.5px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+
+.ar-row.dir .nm { font-weight: 600; }
+.ar-row.dir { background: color-mix(in srgb, var(--chip-bg) 60%, transparent); }
+
+
+/* ============================================================
+   7 · 字体
+   ============================================================ */
+.ft-wrap { height: 100%; overflow: auto; padding: 22px 32px 40px; }
+
+.ft-name {
+    font-family: 'Cambria', 'Georgia', 'Times New Roman', serif;
+    font-size: 34px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.1;
+    margin: 0;
+}
+
+.ft-sub { font-size: 12px; color: var(--text-3); margin: 6px 0 20px; display: flex; gap: 10px; align-items: center; }
+
+.ft-scale { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--divider); padding-top: 16px; }
+
+.ft-scale .row { display: grid; grid-template-columns: 34px 1fr; gap: 14px; align-items: baseline; }
+.ft-scale .sz { font-size: 10.5px; color: var(--text-3); font-variant-numeric: tabular-nums; text-align: right; }
+.ft-scale .sp { font-family: 'Cambria', Georgia, serif; color: var(--text); line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.ft-grid-h { font-size: 11px; color: var(--text-3); letter-spacing: 0.06em; text-transform: uppercase; margin: 24px 0 10px; }
+
+.ft-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 1px; background: var(--divider); border: 1px solid var(--divider); border-radius: var(--radius-sm); overflow: hidden; }
+.ft-grid div { background: var(--bg); aspect-ratio: 1.5; display: grid; place-items: center; font-family: 'Cambria', Georgia, serif; font-size: 20px; color: var(--text); }
+.ft-grid div:hover { background: var(--accent-soft); color: var(--accent); }
+
+/* ============================================================
+   8 · 3D 模型
+   ============================================================ */
+/* 3D 画布内缩为圆角卡片：与图片页的照片卡片同一处理，
+   避免深色画布直接顶到浅色标题栏形成「上下两截」的硬边界 */
+.md3-body {
+    position: absolute;
+    inset: 0 12px 12px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: radial-gradient(120% 120% at 50% 0%, #2a2f38 0%, #171a1f 58%, #0f1115 100%);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 8px 28px rgba(0, 0, 0, 0.18);
+}
+
+.md3-body svg.scene { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+.md3-info {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 24px;
+    padding: 0 10px;
+    border-radius: 12px;
+    background: rgba(18, 20, 24, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    font-size: 11px;
+    color: #d8dbe0;
+    font-variant-numeric: tabular-nums;
+}
+
+.md3-info .tag { color: #6fc2ff; font-weight: 600; letter-spacing: 0.04em; }
+
+.gizmo { position: absolute; left: 16px; bottom: 16px; width: 64px; height: 64px; opacity: 0.92; }
+
+/* ============================================================
+   9 · 不支持
+   ============================================================ */
+.na-body { height: 100%; display: grid; place-items: center; }
+
+.na-card {
+    width: 380px;
+    padding: 28px 24px 24px;
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    text-align: center;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+html[data-theme='dark'] .na-card { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
+
+.na-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 14px;
+    border-radius: var(--radius-md);
+    background: var(--chip-bg);
+    display: grid;
+    place-items: center;
+    color: var(--text-3);
+}
+
+.na-card h4 { font-size: 15px; font-weight: 600; margin: 0 0 6px; }
+.na-card .desc { font-size: 12.5px; line-height: 1.6; color: var(--text-3); margin: 0 0 18px; }
+
+.na-acts { display: flex; gap: 8px; justify-content: center; }
+
+.btn {
+    appearance: none;
+    border: 1px solid transparent;
+    height: 30px;
+    padding: 0 14px;
+    border-radius: var(--radius-sm);
+    font: inherit;
+    font-size: 12.5px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast);
+}
+
+.btn svg { width: 13px; height: 13px; }
+
+.btn.primary { background: var(--accent); color: #fff; }
+.btn.primary:hover { background: #106ebe; }
+
+.btn.ghost { background: transparent; border-color: var(--border); color: var(--text-2); }
+.btn.ghost:hover { background: var(--hover); color: var(--text); }
+
+/* 滚动隐藏动画用的空态 */
+@media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+    <aside class="side">
+        <h1>预览类型重设计</h1>
+        <p class="sub">与音频预览同一套 Fluent 语言<br />标题行 · 命令栏 · 内容</p>
+
+        <nav class="nav" id="nav">
+            <button data-go="image" aria-current="true"><span class="idx">01</span>图片</button>
+            <button data-go="md"><span class="idx">02</span>Markdown</button>
+            <button data-go="code"><span class="idx">03</span>代码</button>
+            <button data-go="doc"><span class="idx">04</span>文档 · PDF</button>
+            <button data-go="book"><span class="idx">05</span>书籍 · EPUB</button>
+            <button data-go="archive"><span class="idx">06</span>压缩包</button>
+            <button data-go="font"><span class="idx">07</span>字体</button>
+            <button data-go="model"><span class="idx">08</span>3D 模型</button>
+            <button data-go="na"><span class="idx">09</span>不支持</button>
+        </nav>
+
+        <div class="side-foot">
+            <div class="seg" id="theme">
+                <button data-theme-set="light" aria-pressed="true">浅色</button>
+                <button data-theme-set="dark" aria-pressed="false">深色</button>
+            </div>
+            <p class="hint">窗口按 1000 × 600 等比呈现，随容器缩放。<br />键盘 <kbd>1</kbd>–<kbd>9</kbd> 切换类型，<kbd>D</kbd> 切换主题。</p>
+        </div>
+    </aside>
+
+    <main class="stage" id="stage">
+        <div class="stage-head">
+            <div class="name" id="stageName">图片</div>
+            <div class="meta" id="stageMeta">1000 × 600 · 命令栏 40px</div>
+        </div>
+
+        <div class="frame">
+            <div class="win" id="win">
+
+                <!-- ================= 1 图片 ================= -->
+                <section class="pv on" data-pv="image">
+                    <header class="hd">
+                        <div class="hd-title">山间晨雾.jpg</div>
+                        <div class="hd-acts">
+                            <button class="hd-btn" title="切换主题"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="3.2"/><path d="M8 1.6v1.6M8 12.8v1.6M1.6 8h1.6M12.8 8h1.6M3.5 3.5l1.1 1.1M11.4 11.4l1.1 1.1M12.5 3.5l-1.1 1.1M4.6 11.4l-1.1 1.1"/></svg></button>
+                            <button class="hd-btn" title="置顶"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5 13.5 6.5l-2 1-2.6 2.6-1 2-3.4-3.4 2-1L8.5 4.5z"/><path d="M6.5 9.5 3 13"/></svg></button>
+                            <button class="hd-btn" title="用默认程序打开"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9 3h4v4"/><path d="M13 3 7.5 8.5"/><path d="M12 10.5V12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h1.5"/></svg></button>
+                            <button class="hd-btn" title="打开方式"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2.2" y="2.2" width="5" height="5" rx="1"/><rect x="8.8" y="2.2" width="5" height="5" rx="1"/><rect x="2.2" y="8.8" width="5" height="5" rx="1"/><rect x="8.8" y="8.8" width="5" height="5" rx="1"/></svg></button>
+                            <button class="hd-btn" title="最大化"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="3" y="3" width="10" height="10" rx="1.2"/></svg></button>
+                            <button class="hd-btn close" title="关闭"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button>
+                        </div>
+                    </header>
+
+                    <div class="tb">
+                        <button class="tb-btn" title="缩小"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3.5 8h9"/></svg></button>
+                        <span class="tb-num">100%</span>
+                        <button class="tb-btn" title="放大"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 3.5v9M3.5 8h9"/></svg></button>
+                        <i class="tb-sep"></i>
+                        <button class="tb-btn" aria-pressed="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2.5 6V3.5H5M11 3.5h2.5V6M13.5 10v2.5H11M5 12.5H2.5V10"/></svg>适应窗口</button>
+                        <button class="tb-btn">1:1</button>
+                        <i class="tb-sep"></i>
+                        <button class="tb-btn" title="向左旋转 90°"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 8a5 5 0 1 0 1.5-3.5"/><path d="M3 2.5v3.2h3.2"/></svg></button>
+                        <button class="tb-btn" title="向右旋转 90°"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M13 8a5 5 0 1 1-1.5-3.5"/><path d="M13 2.5v3.2h-3.2"/></svg></button>
+                        <i class="tb-sep"></i>
+                        <button class="tb-btn" title="全屏"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M6 2.5H2.5V6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></svg>全屏</button>
+                        <div class="tb-grow"></div>
+                        <span class="tb-right">3840 × 2160</span>
+                    </div>
+
+                    <div class="bd">
+                        <div class="img-body">
+                            <div class="photo">
+                                <svg viewBox="0 0 640 360" preserveAspectRatio="xMidYMid slice">
+                                    <defs>
+                                        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0" stop-color="#0f2238"/>
+                                            <stop offset="38%" stop-color="#2d5175"/>
+                                            <stop offset="62%" stop-color="#9c7a63"/>
+                                            <stop offset="78%" stop-color="#e0a173"/>
+                                            <stop offset="100%" stop-color="#5d4a44"/>
+                                        </linearGradient>
+                                        <radialGradient id="sun" cx="50%" cy="50%">
+                                            <stop offset="0" stop-color="#ffe6c2" stop-opacity=".95"/>
+                                            <stop offset="60%" stop-color="#ffb87a" stop-opacity=".45"/>
+                                            <stop offset="100%" stop-color="#ffb87a" stop-opacity="0"/>
+                                        </radialGradient>
+                                        <linearGradient id="m1" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0" stop-color="#243746"/>
+                                            <stop offset="100%" stop-color="#16232f"/>
+                                        </linearGradient>
+                                        <linearGradient id="m2" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0" stop-color="#12202b"/>
+                                            <stop offset="100%" stop-color="#0b141c"/>
+                                        </linearGradient>
+                                        <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0" stop-color="#3a4d5c"/>
+                                            <stop offset="100%" stop-color="#1a232c"/>
+                                        </linearGradient>
+                                    </defs>
+                                    <rect width="640" height="360" fill="url(#sky)"/>
+                                    <circle cx="430" cy="196" r="120" fill="url(#sun)"/>
+                                    <circle cx="430" cy="196" r="26" fill="#ffe9cf" opacity=".92"/>
+                                    <path d="M0 232 L96 160 L168 208 L246 148 L332 226 L410 186 L500 240 L580 202 L640 236 V360 H0Z" fill="url(#m1)" opacity=".92"/>
+                                    <path d="M0 268 L78 232 L150 262 L238 214 L318 268 L402 236 L486 274 L560 246 L640 280 V360 H0Z" fill="url(#m2)"/>
+                                    <rect y="282" width="640" height="78" fill="url(#water)"/>
+                                    <g opacity=".2" fill="#ffe9cf">
+                                        <rect x="404" y="292" width="52" height="1.6" rx="1"/>
+                                        <rect x="396" y="302" width="68" height="1.6" rx="1"/>
+                                        <rect x="410" y="312" width="40" height="1.6" rx="1"/>
+                                        <rect x="402" y="322" width="56" height="1.6" rx="1"/>
+                                    </g>
+                                    <rect width="640" height="360" fill="#000" opacity=".08"/>
+                                </svg>
+                            </div>
+                            <div class="img-capsule">3840 × 2160 · 4.2 MB · jpg</div>
+                        </div>
+                    </div>
+
+                    <footer class="ft">
+                        <span>图片</span><i class="dot"></i><span>jpg</span><i class="dot"></i><span>4.2 MB</span>
+                    </footer>
+                </section>
+
+                <!-- ================= 2 Markdown ================= -->
+                <section class="pv" data-pv="md">
+                    <header class="hd">
+                        <div class="hd-title">项目架构说明.md</div>
+                        <div class="hd-acts">
+                            <button class="hd-btn" title="切换主题"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="3.2"/><path d="M8 1.6v1.6M8 12.8v1.6M1.6 8h1.6M12.8 8h1.6M3.5 3.5l1.1 1.1M11.4 11.4l1.1 1.1M12.5 3.5l-1.1 1.1M4.6 11.4l-1.1 1.1"/></svg></button>
+                            <button class="hd-btn" title="置顶"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5 13.5 6.5l-2 1-2.6 2.6-1 2-3.4-3.4 2-1L8.5 4.5z"/><path d="M6.5 9.5 3 13"/></svg></button>
+                            <button class="hd-btn" title="用默认程序打开"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9 3h4v4"/><path d="M13 3 7.5 8.5"/><path d="M12 10.5V12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h1.5"/></svg></button>
+                            <button class="hd-btn" title="打开方式"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2.2" y="2.2" width="5" height="5" rx="1"/><rect x="8.8" y="2.2" width="5" height="5" rx="1"/><rect x="2.2" y="8.8" width="5" height="5" rx="1"/><rect x="8.8" y="8.8" width="5" height="5" rx="1"/></svg></button>
+                            <button class="hd-btn" title="最大化"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="3" y="3" width="10" height="10" rx="1.2"/></svg></button>
+                            <button class="hd-btn close" title="关闭"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button>
+                        </div>
+                    </header>
+
+                    <div class="tb">
+                        <button class="tb-btn" aria-pressed="true" title="目录"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 4.5h10M3 8h10M3 11.5h10"/></svg>目录</button>
+                        <i class="tb-sep"></i>
+                        <button class="tb-btn" aria-pressed="true">预览</button>
+                        <button class="tb-btn">源码</button>
+                        <i class="tb-sep"></i>
+                        <button class="tb-btn" title="减小字号">A−</button>
+                        <button class="tb-btn" title="增大字号">A+</button>
+                        <div class="tb-grow"></div>
+                        <button class="tb-btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="5" y="5" width="8" height="8" rx="1.2"/><path d="M11 5V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h1"/></svg>复制全文</button>
+                    </div>
+
+                    <div class="bd">
+                        <div class="md-wrap">
+                            <nav class="toc scroll">
+                                <div class="toc-h">目录</div>
+                                <a href="#" class="cur">项目架构说明</a>
+                                <a href="#">1. 渲染进程分工</a>
+                                <a href="#" class="lv3">1.1 预览视图注册</a>
+                                <a href="#" class="lv3">1.2 路由与参数</a>
+                                <a href="#">2. 进程间通信</a>
+                                <a href="#" class="lv3">2.1 IPC 命令清单</a>
+                                <a href="#">3. 缓存与生命周期</a>
+                                <a href="#">4. 构建与发布</a>
+                            </nav>
+                            <div class="md-doc scroll">
+                                <div class="md-inner">
+                                    <h1>项目架构说明</h1>
+                                    <div class="doc-meta">最后更新于 2026-11-03 · 约 8 分钟阅读</div>
+                                    <p>QuickLook 采用 Tauri v2 构建，Rust 侧负责文件解析与系统集成，Vue 3 侧负责渲染。两侧通过 <code class="inline">invoke</code> 与事件通道通信，预览窗口在切换文件时复用同一实例。</p>
+
+                                    <h2>1. 渲染进程分工</h2>
+                                    <p>每个预览类型对应一个独立视图，统一挂在 <code class="inline">/preview/:type</code> 路由下。视图只关心内容渲染，窗口尺寸、标题栏与元信息由外层布局组件承担。</p>
+                                    <ul>
+                                        <li>布局层：标题行、命令栏、加载与错误态</li>
+                                        <li>渲染层：按类型分派到具体渲染器</li>
+                                        <li>数据层：通过 IPC 拉取解析结果与缩略图</li>
+                                    </ul>
+
+                                    <div class="code-card">
+                                        <div class="cc-head">
+                                            <span>typescript</span>
+                                            <button class="cc-copy"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="5" y="5" width="8" height="8" rx="1.2"/><path d="M11 5V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h1"/></svg>复制</button>
+                                        </div>
+<pre>const routes = {
+    image: () =&gt; import('./preview/image.vue'),
+    markdown: () =&gt; import('./preview/md.vue'),
+    code: () =&gt; import('./preview/code.vue'),
+}</pre>
+                                    </div>
+
+                                    <div class="md-quote">命令栏只在有类型特有操作时渲染。无操作的类型不留空行，避免挤占内容高度。</div>
+
+                                    <h2>2. 进程间通信</h2>
+                                    <table class="md-table">
+                                        <thead><tr><th>命令</th><th>方向</th><th>说明</th></tr></thead>
+                                        <tbody>
+                                            <tr><td>convert_to_png</td><td>前端 → Rust</td><td>非常规图片格式转码</td></tr>
+                                            <tr><td>get_file_info</td><td>前端 → Rust</td><td>读取元信息</td></tr>
+                                            <tr><td>locale-changed</td><td>Rust → 前端</td><td>语言切换广播</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <footer class="ft">
+                        <span>文档</span><i class="dot"></i><span>md</span><i class="dot"></i><span>12.4 KB</span>
+                    </footer>
+                </section>
+
+                <!-- ================= 3 代码 ================= -->
+                <section class="pv" data-pv="code">
+                    <header class="hd">
+                        <div class="hd-title">window.rs</div>
+                        <div class="hd-acts">
+                            <button class="hd-btn" title="切换主题"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="3.2"/><path d="M8 1.6v1.6M8 12.8v1.6M1.6 8h1.6M12.8 8h1.6M3.5 3.5l1.1 1.1M11.4 11.4l1.1 1.1M12.5 3.5l-1.1 1.1M4.6 11.4l-1.1 1.1"/></svg></button>
+                            <button class="hd-btn" title="置顶"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5 13.5 6.5l-2 1-2.6 2.6-1 2-3.4-3.4 2-1L8.5 4.5z"/><path d="M6.5 9.5 3 13"/></svg></button>
+                            <button class="hd-btn" title="用默认程序打开"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9 3h4v4"/><path d="M13 3 7.5 8.5"/><path d="M12 10.5V12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h1.5"/></svg></button>
+                            <button class="hd-btn" title="打开方式"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2.2" y="2.2" width="5" height="5" rx="1"/><rect x="8.8" y="2.2" width="5" height="5" rx="1"/><rect x="2.2" y="8.8" width="5" height="5" rx="1"/><rect x="8.8" y="8.8" width="5" height="5" rx="1"/></svg></button>
+                            <button class="hd-btn" title="最大化"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="3" y="3" width="10" height="10" rx="1.2"/></svg></button>
+                            <button class="hd-btn close" title="关闭"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button>
+                        </div>
+                    </header>
+
+                    <div class="tb">
+                        <span class="chip accent">Rust</span>
+                        <i class="tb-sep"></i>
+                        <button class="tb-btn" aria-pressed="false" title="自动换行"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2.5 4.5h11M2.5 8h7a2.2 2.2 0 0 1 0 4.4H7"/><path d="M8.4 10.6 7 12.4l1.4 1.6"/></svg>自动换行</button>
+                        <button class="tb-btn" title="减小字号">A−</button>
+                        <button class="tb-btn" title="增大字号">A+</button>
+                        <div class="tb-grow"></div>
+                        <span class="tb-right">Rust · 32 行</span>
+                        <i class="tb-sep"></i>
+                        <button class="tb-btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="5" y="5" width="8" height="8" rx="1.2"/><path d="M11 5V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h1"/></svg>复制</button>
+                    </div>
+
+                    <div class="bd">
+                        <div class="cd-wrap scroll">
+                            <div class="cd-lines">
+                                <div>1</div><div>2</div><div>3</div><div>4</div><div>5</div><div>6</div><div>7</div><div>8</div><div>9</div><div>10</div>
+                                <div>11</div><div>12</div><div class="hl">13</div><div class="hl">14</div><div>15</div><div>16</div><div>17</div><div>18</div><div>19</div><div>20</div>
+                                <div>21</div><div>22</div><div>23</div><div>24</div><div>25</div><div>26</div><div>27</div><div>28</div><div>29</div><div>30</div>
+                            </div>
+                            <div class="cd-code">
+                                <div><span class="tk-k">use</span> tauri::<span class="tk-p">{</span>AppHandle, Manager, WebviewUrl<span class="tk-p">};</span></div>
+                                <div></div>
+                                <div><span class="tk-c">/// 非音频类型统一取屏幕的 80%，再按 DPI 换算。</span></div>
+                                <div><span class="tk-k">fn</span> <span class="tk-f">calc_window_size</span><span class="tk-p">(</span>file_type: <span class="tk-k">&amp;str</span><span class="tk-p">)</span> -&gt; <span class="tk-p">(</span><span class="tk-k">f64</span>, <span class="tk-k">f64</span><span class="tk-p">)</span> <span class="tk-p">{</span></div>
+                                <div>    <span class="tk-k">let</span> info = monitor::<span class="tk-f">get_monitor_info</span><span class="tk-p">();</span></div>
+                                <div>    <span class="tk-k">let mut</span> width = info.width * <span class="tk-n">0.8</span><span class="tk-p">;</span></div>
+                                <div>    <span class="tk-k">let mut</span> height = info.height * <span class="tk-n">0.8</span><span class="tk-p">;</span></div>
+                                <div></div>
+                                <div>    <span class="tk-k">if</span> file_type == <span class="tk-s">"Audio"</span> <span class="tk-p">{</span></div>
+                                <div>        width = <span class="tk-n">560.0</span><span class="tk-p">;</span></div>
+                                <div>        height = <span class="tk-n">360.0</span><span class="tk-p">;</span></div>
+                                <div>    <span class="tk-p">}</span></div>
+                                <div class="hl">    <span class="tk-k">if</span> info.scale &gt; <span class="tk-n">1.0</span> <span class="tk-p">{</span></div>
+                                <div class="hl">        width = get_scaled_size<span class="tk-p">(</span>width, info.scale<span class="tk-p">);</span></div>
+                                <div>        height = get_scaled_size<span class="tk-p">(</span>height, info.scale<span class="tk-p">);</span></div>
+                                <div>    <span class="tk-p">}</span></div>
+                                <div></div>
+                                <div>    log::<span class="tk-f">info</span><span class="tk-p">!(</span><span class="tk-s">"Client Rect: {} × {}, scale {}"</span>, width, height, info.scale<span class="tk-p">);</span></div>
+                                <div>    <span class="tk-p">(</span>width, height<span class="tk-p">)</span></div>
+                                <div><span class="tk-p">}</span></div>
+                                <div></div>
+                                <div><span class="tk-k">pub fn</span> <span class="tk-f">preview_file</span><span class="tk-p">(</span>app: AppHandle<span class="tk-p">)</span> -&gt; <span class="tk-t">Result</span>&lt;<span class="tk-p">()</span>, TauriError&gt; <span class="tk-p">{</span></div>
+                                <div>    <span class="tk-k">let</span> path = Selected::<span class="tk-f">get_selected</span><span class="tk-p">()?;</span></div>
+                                <div>    <span class="tk-k">let</span> info = <span class="tk-f">get_file_info</span><span class="tk-p">(</span><span class="tk-k">&amp;</span>path<span class="tk-p">);</span></div>
+                                <div>    <span class="tk-k">let</span> kind = info.<span class="tk-f">get_file_type</span><span class="tk-p">().</span><span class="tk-f">to_string</span><span class="tk-p">();</span></div>
+                                <div>    <span class="tk-k">let</span> route = WebRoute::<span class="tk-f">get_route</span><span class="tk-p">(</span><span class="tk-k">&amp;</span>kind, info<span class="tk-p">);</span></div>
+                                <div>    <span class="tk-f">show_preview</span><span class="tk-p">(</span>app, route<span class="tk-p">);</span></div>
+                                <div>    <span class="tk-t">Ok</span><span class="tk-p">(())</span></div>
+                                <div><span class="tk-p">}</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <footer class="ft">
+                        <span>代码</span><i class="dot"></i><span>rs</span><i class="dot"></i><span>1.6 KB</span>
+                    </footer>
+                </section>
+
+                <!-- ================= 4 文档 PDF ================= -->
+                <section class="pv" data-pv="doc">
+                    <header class="hd">
+                        <div class="hd-title">2026 年度技术规划.pdf</div>
+                        <div class="hd-acts">
+                            <button class="hd-btn" title="切换主题"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="3.2"/><path d="M8 1.6v1.6M8 12.8v1.6M1.6 8h1.6M12.8 8h1.6M3.5 3.5l1.1 1.1M11.4 11.4l1.1 1.1M12.5 3.5l-1.1 1.1M4.6 11.4l-1.1 1.1"/></svg></button>
+                            <button class="hd-btn" title="置顶"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5 13.5 6.5l-2 1-2.6 2.6-1 2-3.4-3.4 2-1L8.5 4.5z"/><path d="M6.5 9.5 3 13"/></svg></button>
+                            <button class="hd-btn" title="用默认程序打开"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9 3h4v4"/><path d="M13 3 7.5 8.5"/><path d="M12 10.5V12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h1.5"/></svg></button>
+                            <button class="hd-btn" title="打开方式"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2.2" y="2.2" width="5" height="5" rx="1"/><rect x="8.8" y="2.2" width="5" height="5" rx="1"/><rect x="2.2" y="8.8" width="5" height="5" rx="1"/><rect x="8.8" y="8.8" width="5" height="5" rx="1"/></svg></button>
+                            <button class="hd-btn" title="最大化"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="3" y="3" width="10" height="10" rx="1.2"/></svg></button>
+                            <button class="hd-btn close" title="关闭"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button>
+                        </div>
+                    </header>
+
+                    <div class="tb">
+                        <button class="tb-btn" title="上一页"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M10 3.5 5.5 8l4.5 4.5"/></svg></button>
+                        <span class="tb-num">3 / 128</span>
+                        <button class="tb-btn" title="下一页"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M6 3.5 10.5 8 6 12.5"/></svg></button>
+                        <i class="tb-sep"></i>
+                        <button class="tb-btn" title="缩小"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3.5 8h9"/></svg></button>
+                        <span class="tb-num">100%</span>
+                        <button class="tb-btn" title="放大"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 3.5v9M3.5 8h9"/></svg></button>
+                        <button class="tb-btn" aria-pressed="true">适应宽度</button>
+                        <i class="tb-sep"></i>
+                        <button class="tb-btn" title="目录"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 4h4M3 8h4M3 12h4M9 4h4M9 8h4M9 12h4"/></svg>目录</button>
+                        <div class="tb-grow"></div>
+                        <span class="tb-input"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="4.2"/><path d="M10.2 10.2 13.5 13.5"/></svg>搜索</span>
+                        <span class="tb-right">A4 · 128 页</span>
+                    </div>
+
+                    <div class="bd">
+                        <div class="pdf-body scroll">
+                            <div class="page">
+                                <div class="p-eyebrow">QuickLook · Internal</div>
+                                <h3>2026 年度技术规划</h3>
+                                <div class="p-sub">预览引擎重构与渲染管线优化 · 草案 v0.3</div>
+                                <p>本年度的工作重心从「覆盖更多格式」转向「统一渲染管线」。当前 11 种预览类型各自实现了分页、缩放与滚动逻辑，重复代码与体验差异同步增长，已成为维护成本的主要来源。</p>
+                                <div class="p-figure">图 1 · 标题行 + 命令栏外壳示意</div>
+                                <p>统一外壳的目标是让类型差异只体现在命令栏内容与内容渲染器上。标题行与命令栏由布局组件统一承担，渲染器不再关心窗口装饰与元信息呈现。</p>
+                                <p>第二阶段聚焦解析侧的延迟。PDF 首屏依赖页面位图渲染，冷启动延迟约 480 ms；通过预渲染首页缩略图与复用页面缓存，目标降至 200 ms 以内。</p>
+                                <div class="p-num">— 3 —</div>
+                            </div>
+                            <div class="page">
+                                <div class="p-eyebrow">2 · 渲染管线</div>
+                                <h3>分页与缩放的统一坐标系</h3>
+                                <p>缩放比例需同时作用于页面布局尺寸与位图渲染分辨率，否则在 150% 系统缩放下会出现页面偏小、文字模糊的组合问题。</p>
+                                <div class="p-num">— 4 —</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <footer class="ft">
+                        <span>文档</span><i class="dot"></i><span>pdf</span><i class="dot"></i><span>3.8 MB</span>
+                    </footer>
+                </section>
+
+                <!-- ================= 5 书籍 ================= -->
+                <section class="pv" data-pv="book">
+                    <header class="hd">
+                        <div class="hd-title">人类群星闪耀时.epub</div>
+                        <div class="hd-acts">
+                            <button class="hd-btn" title="切换主题"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="3.2"/><path d="M8 1.6v1.6M8 12.8v1.6M1.6 8h1.6M12.8 8h1.6M3.5 3.5l1.1 1.1M11.4 11.4l1.1 1.1M12.5 3.5l-1.1 1.1M4.6 11.4l-1.1 1.1"/></svg></button>
+                            <button class="hd-btn" title="置顶"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5 13.5 6.5l-2 1-2.6 2.6-1 2-3.4-3.4 2-1L8.5 4.5z"/><path d="M6.5 9.5 3 13"/></svg></button>
+                            <button class="hd-btn" title="用默认程序打开"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9 3h4v4"/><path d="M13 3 7.5 8.5"/><path d="M12 10.5V12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h1.5"/></svg></button>
+                            <button class="hd-btn" title="打开方式"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2.2" y="2.2" width="5" height="5" rx="1"/><rect x="8.8" y="2.2" width="5" height="5" rx="1"/><rect x="2.2" y="8.8" width="5" height="5" rx="1"/><rect x="8.8" y="8.8" width="5" height="5" rx="1"/></svg></button>
+                            <button class="hd-btn" title="最大化"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="3" y="3" width="10" height="10" rx="1.2"/></svg></button>
+                            <button class="hd-btn close" title="关闭"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button>
+                        </div>
+                    </header>
+
+                    <div class="tb">
+                        <button class="tb-btn" aria-pressed="true" title="目录"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 4.5h10M3 8h10M3 11.5h10"/></svg>目录</button>
+                        <i class="tb-sep"></i>
+                        <button class="tb-btn" title="减小字号">A−</button>
+                        <span class="tb-value">17</span>
+                        <button class="tb-btn" title="增大字号">A+</button>
+                        <i class="tb-sep"></i>
+                        <button class="tb-btn" aria-pressed="true"><i class="swatch" style="background:#f2e6cf"></i>米黄</button>
+                        <div class="tb-grow"></div>
+                        <span class="tb-right">第 3 章 · 全书 42%</span>
+                    </div>
+
+                    <div class="bd">
+                        <div class="bk-wrap">
+                            <nav class="bk-toc scroll">
+                                <div class="cap">目录</div>
+                                <a href="#">译者序</a>
+                                <a href="#">序言</a>
+                                <a href="#" class="cur">1 · 到不朽的事业中寻求庇护</a>
+                                <a href="#" class="lv2">太平洋的发现</a>
+                                <a href="#" class="lv2">黄金与香料</a>
+                                <a href="#" class="lv2">孤独的守望者</a>
+                                <a href="#">2 · 攻克拜占庭</a>
+                                <a href="#" class="lv2">危城之下</a>
+                                <a href="#">3 · 一夜之间的天才</a>
+                            </nav>
+                            <div class="bk-read scroll">
+                                <div class="bk-inner">
+                                    <div class="ch">第一章</div>
+                                    <h3>到不朽的事业中寻求庇护</h3>
+                                    <p class="first">在人类的历史长河中，总有一些瞬间，命运的齿轮悄然转动。它们往往并不起眼，甚至被当事人自己忽略，却在后世被反复回望，成为整个时代的转折点。</p>
+                                    <p>巴尔沃亚站在山巅，望着眼前那片从未被欧洲人记载过的蔚蓝。他并不知道自己即将成为第一个看见太平洋的欧洲人，他只知道，那片海的另一边，有他渴望的一切。</p>
+                                    <p>风从海面吹来，带着咸涩与潮湿。随行的士兵们沉默着，有人跪倒，有人落泪。在这一刻，个人的野心与历史的进程短暂地重合了。</p>
+                                    <p>这就是所谓的「人类群星闪耀时」——一个渺小的个体，在某一个瞬间，被推到了整个人类命运的支点上。</p>
+                                </div>
+                            </div>
+                            <div class="bk-bar"><i></i></div>
+                        </div>
+                    </div>
+
+                    <footer class="ft">
+                        <span>书籍</span><i class="dot"></i><span>epub</span><i class="dot"></i><span>1.2 MB</span>
+                    </footer>
+                </section>
+
+                <!-- ================= 6 压缩包 ================= -->
+                <section class="pv" data-pv="archive">
+                    <header class="hd">
+                        <div class="hd-title">release-assets.zip</div>
+                        <div class="hd-acts">
+                            <button class="hd-btn" title="切换主题"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="3.2"/><path d="M8 1.6v1.6M8 12.8v1.6M1.6 8h1.6M12.8 8h1.6M3.5 3.5l1.1 1.1M11.4 11.4l1.1 1.1M12.5 3.5l-1.1 1.1M4.6 11.4l-1.1 1.1"/></svg></button>
+                            <button class="hd-btn" title="置顶"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5 13.5 6.5l-2 1-2.6 2.6-1 2-3.4-3.4 2-1L8.5 4.5z"/><path d="M6.5 9.5 3 13"/></svg></button>
+                            <button class="hd-btn" title="用默认程序打开"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9 3h4v4"/><path d="M13 3 7.5 8.5"/><path d="M12 10.5V12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h1.5"/></svg></button>
+                            <button class="hd-btn" title="打开方式"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2.2" y="2.2" width="5" height="5" rx="1"/><rect x="8.8" y="2.2" width="5" height="5" rx="1"/><rect x="2.2" y="8.8" width="5" height="5" rx="1"/><rect x="8.8" y="8.8" width="5" height="5" rx="1"/></svg></button>
+                            <button class="hd-btn" title="最大化"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="3" y="3" width="10" height="10" rx="1.2"/></svg></button>
+                            <button class="hd-btn close" title="关闭"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button>
+                        </div>
+                    </header>
+
+                    <div class="tb">
+                        <span class="tb-input"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="4.2"/><path d="M10.2 10.2 13.5 13.5"/></svg><span class="ph">过滤名称</span></span>
+                        <i class="tb-sep"></i>
+                        <button class="tb-btn">排序：名称<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" class="i-xs"><path d="M5 6.5 8 3.5l3 3M11 9.5 8 12.5l-3-3"/></svg></button>
+                        <button class="tb-btn" title="展开全部"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4 6.5 8 10.5l4-4"/></svg></button>
+                        <button class="tb-btn" title="折叠全部"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4 9.5 8 5.5l4 4"/></svg></button>
+                        <div class="tb-grow"></div>
+                        <span class="tb-right">128 项 · 解压后 2.4 GB</span>
+                    </div>
+
+                    <div class="bd">
+                        <div class="ar-wrap">
+                            <div class="ar-table scroll">
+                                <div class="ar-head"><span>名称</span><span>大小</span><span>修改时间</span></div>
+
+                                <div class="ar-row dir open">
+                                    <div class="ar-name"><svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6.5 4 10.5 8l-4 4"/></svg><svg viewBox="0 0 16 16" fill="currentColor" style="color:#e9b44c"><path d="M1.8 4.2A1.2 1.2 0 0 1 3 3h3.1l1.3 1.6H13a1.2 1.2 0 0 1 1.2 1.2v5.4A1.2 1.2 0 0 1 13 12.4H3a1.2 1.2 0 0 1-1.2-1.2z"/></svg><span class="nm">binaries</span></div>
+                                    <span class="sz">—</span><span class="tm">2026-11-02 09:14</span>
+                                </div>
+                                <div class="ar-row">
+                                    <div class="ar-name" style="padding-left:22px"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4 1.8h5.2L13 5.6v8.6H4z"/><path d="M9 1.8v4h4"/></svg><span class="nm">quicklook_0.26.1_x64-setup.exe</span></div>
+                                    <span class="sz">10.7 MB</span><span class="tm">2026-11-02 09:14</span>
+                                </div>
+                                <div class="ar-row">
+                                    <div class="ar-name" style="padding-left:22px"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4 1.8h5.2L13 5.6v8.6H4z"/><path d="M9 1.8v4h4"/></svg><span class="nm">ffmpeg.exe</span></div>
+                                    <span class="sz">4.3 MB</span><span class="tm">2026-10-28 17:02</span>
+                                </div>
+                                <div class="ar-row">
+                                    <div class="ar-name" style="padding-left:22px"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4 1.8h5.2L13 5.6v8.6H4z"/><path d="M9 1.8v4h4"/></svg><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" style="width:11px;height:11px;color:#8a8a8a"><rect x="3.2" y="6.8" width="9.6" height="6.4" rx="1.2"/><path d="M5.4 6.8V5a2.6 2.6 0 0 1 5.2 0v1.8"/></svg><span class="nm">pdfium.dll</span></div>
+                                    <span class="sz">6.1 MB</span><span class="tm">2026-10-28 17:02</span>
+                                </div>
+
+                                <div class="ar-row dir open">
+                                    <div class="ar-name"><svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6.5 4 10.5 8l-4 4"/></svg><svg viewBox="0 0 16 16" fill="currentColor" style="color:#e9b44c"><path d="M1.8 4.2A1.2 1.2 0 0 1 3 3h3.1l1.3 1.6H13a1.2 1.2 0 0 1 1.2 1.2v5.4A1.2 1.2 0 0 1 13 12.4H3a1.2 1.2 0 0 1-1.2-1.2z"/></svg><span class="nm">resources</span></div>
+                                    <span class="sz">—</span><span class="tm">2026-11-02 09:10</span>
+                                </div>
+                                <div class="ar-row">
+                                    <div class="ar-name" style="padding-left:22px"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4 1.8h5.2L13 5.6v8.6H4z"/><path d="M9 1.8v4h4"/></svg><span class="nm">config.json</span></div>
+                                    <span class="sz">1.4 KB</span><span class="tm">2026-11-02 09:10</span>
+                                </div>
+                                <div class="ar-row">
+                                    <div class="ar-name" style="padding-left:22px"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4 1.8h5.2L13 5.6v8.6H4z"/><path d="M9 1.8v4h4"/></svg><span class="nm">LICENSE-MIT</span></div>
+                                    <span class="sz">1.1 KB</span><span class="tm">2026-10-20 11:33</span>
+                                </div>
+
+                                <div class="ar-row dir">
+                                    <div class="ar-name"><svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6.5 4 10.5 8l-4 4"/></svg><svg viewBox="0 0 16 16" fill="currentColor" style="color:#e9b44c"><path d="M1.8 4.2A1.2 1.2 0 0 1 3 3h3.1l1.3 1.6H13a1.2 1.2 0 0 1 1.2 1.2v5.4A1.2 1.2 0 0 1 13 12.4H3a1.2 1.2 0 0 1-1.2-1.2z"/></svg><span class="nm">docs</span></div>
+                                    <span class="sz">—</span><span class="tm">2026-11-01 15:48</span>
+                                </div>
+                                <div class="ar-row">
+                                    <div class="ar-name" style="padding-left:22px"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4 1.8h5.2L13 5.6v8.6H4z"/><path d="M9 1.8v4h4"/></svg><span class="nm">CHANGELOG.md</span></div>
+                                    <span class="sz">18.2 KB</span><span class="tm">2026-11-01 15:48</span>
+                                </div>
+                                <div class="ar-row">
+                                    <div class="ar-name" style="padding-left:22px"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4 1.8h5.2L13 5.6v8.6H4z"/><path d="M9 1.8v4h4"/></svg><span class="nm">README.md</span></div>
+                                    <span class="sz">9.6 KB</span><span class="tm">2026-11-01 15:48</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <footer class="ft">
+                        <span>压缩包</span><i class="dot"></i><span>zip</span><i class="dot"></i><span>21.4 MB</span>
+                    </footer>
+                </section>
+
+                <!-- ================= 7 字体 ================= -->
+                <section class="pv" data-pv="font">
+                    <header class="hd">
+                        <div class="hd-title">SourceHanSerif-SemiBold.otf</div>
+                        <div class="hd-acts">
+                            <button class="hd-btn" title="切换主题"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="3.2"/><path d="M8 1.6v1.6M8 12.8v1.6M1.6 8h1.6M12.8 8h1.6M3.5 3.5l1.1 1.1M11.4 11.4l1.1 1.1M12.5 3.5l-1.1 1.1M4.6 11.4l-1.1 1.1"/></svg></button>
+                            <button class="hd-btn" title="置顶"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5 13.5 6.5l-2 1-2.6 2.6-1 2-3.4-3.4 2-1L8.5 4.5z"/><path d="M6.5 9.5 3 13"/></svg></button>
+                            <button class="hd-btn" title="用默认程序打开"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9 3h4v4"/><path d="M13 3 7.5 8.5"/><path d="M12 10.5V12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h1.5"/></svg></button>
+                            <button class="hd-btn" title="打开方式"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2.2" y="2.2" width="5" height="5" rx="1"/><rect x="8.8" y="2.2" width="5" height="5" rx="1"/><rect x="2.2" y="8.8" width="5" height="5" rx="1"/><rect x="8.8" y="8.8" width="5" height="5" rx="1"/></svg></button>
+                            <button class="hd-btn" title="最大化"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="3" y="3" width="10" height="10" rx="1.2"/></svg></button>
+                            <button class="hd-btn close" title="关闭"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button>
+                        </div>
+                    </header>
+
+                    <div class="tb">
+                        <span class="tb-input" style="max-width:330px">永和九年，岁在癸丑 · The quick brown fox 0123</span>
+                        <i class="tb-sep"></i>
+                        <button class="tb-btn" title="减小字号">A−</button>
+                        <span class="tb-value">48</span>
+                        <button class="tb-btn" title="增大字号">A+</button>
+                        <i class="tb-sep"></i>
+                        <button class="tb-btn" aria-pressed="true" title="黑底白字"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="5.6"/><path d="M8 2.4v11.2A5.6 5.6 0 0 0 8 2.4z" fill="currentColor" stroke="none"/></svg>反色</button>
+                        <div class="tb-grow"></div>
+                        <button class="tb-btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="5" y="5" width="8" height="8" rx="1.2"/><path d="M11 5V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h1"/></svg>复制字体名</button>
+                    </div>
+
+                    <div class="bd">
+                        <div class="ft-wrap scroll">
+                            <h2 class="ft-name">思源宋体 SemiBold</h2>
+                            <div class="ft-sub"><span>Source Han Serif SC</span><i class="dot"></i><span>OpenType · CFF</span><i class="dot"></i><span>9.2 MB</span><span class="chip">可变字体 · wght 200–900</span></div>
+
+                            <div class="ft-scale">
+                                <div class="row"><span class="sz">48</span><span class="sp" style="font-size:48px">永和九年，岁在癸丑</span></div>
+                                <div class="row"><span class="sz">36</span><span class="sp" style="font-size:36px">暮春之初，会于会稽山阴之兰亭</span></div>
+                                <div class="row"><span class="sz">28</span><span class="sp" style="font-size:28px">群贤毕至，少长咸集。此地有崇山峻岭</span></div>
+                                <div class="row"><span class="sz">20</span><span class="sp" style="font-size:20px">茂林修竹，又有清流激湍，映带左右</span></div>
+                                <div class="row"><span class="sz">16</span><span class="sp" style="font-size:16px">引以为流觞曲水，列坐其次。虽无丝竹管弦之盛</span></div>
+                                <div class="row"><span class="sz">12</span><span class="sp" style="font-size:12px">一觞一咏，亦足以畅叙幽情。是日也，天朗气清，惠风和畅</span></div>
+                            </div>
+
+                            <div class="ft-grid-h">字形 · Glyphs</div>
+                            <div class="ft-grid">
+                                <div>永</div><div>和</div><div>九</div><div>年</div><div>岁</div><div>在</div><div>癸</div><div>丑</div><div>暮</div><div>春</div><div>之</div><div>初</div>
+                                <div>A</div><div>B</div><div>C</div><div>D</div><div>E</div><div>a</div><div>b</div><div>c</div><div>d</div><div>e</div><div>0</div><div>1</div>
+                                <div>—</div><div>「</div><div>」</div><div>·</div><div>§</div><div>%</div><div>@</div><div>&amp;</div><div>?</div><div>!</div><div>×</div><div>→</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <footer class="ft">
+                        <span>字体</span><i class="dot"></i><span>otf</span><i class="dot"></i><span>9.2 MB</span>
+                    </footer>
+                </section>
+
+                <!-- ================= 8 3D 模型 ================= -->
+                <section class="pv" data-pv="model">
+                    <header class="hd">
+                        <div class="hd-title">mechanical-arm.glb</div>
+                        <div class="hd-acts">
+                            <button class="hd-btn" title="切换主题"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="3.2"/><path d="M8 1.6v1.6M8 12.8v1.6M1.6 8h1.6M12.8 8h1.6M3.5 3.5l1.1 1.1M11.4 11.4l1.1 1.1M12.5 3.5l-1.1 1.1M4.6 11.4l-1.1 1.1"/></svg></button>
+                            <button class="hd-btn" title="置顶"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5 13.5 6.5l-2 1-2.6 2.6-1 2-3.4-3.4 2-1L8.5 4.5z"/><path d="M6.5 9.5 3 13"/></svg></button>
+                            <button class="hd-btn" title="用默认程序打开"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9 3h4v4"/><path d="M13 3 7.5 8.5"/><path d="M12 10.5V12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h1.5"/></svg></button>
+                            <button class="hd-btn" title="打开方式"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2.2" y="2.2" width="5" height="5" rx="1"/><rect x="8.8" y="2.2" width="5" height="5" rx="1"/><rect x="2.2" y="8.8" width="5" height="5" rx="1"/><rect x="8.8" y="8.8" width="5" height="5" rx="1"/></svg></button>
+                            <button class="hd-btn" title="最大化"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="3" y="3" width="10" height="10" rx="1.2"/></svg></button>
+                            <button class="hd-btn close" title="关闭"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button>
+                        </div>
+                    </header>
+
+                    <div class="tb">
+                        <button class="tb-btn" aria-pressed="false" title="线框模式"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 5.2 8 2l6 3.2v5.6L8 14l-6-3.2z"/><path d="M2 5.2 8 8.4l6-3.2M8 8.4V14"/></svg>线框</button>
+                        <button class="tb-btn" title="重置视角"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M13 8a5 5 0 1 1-1.5-3.5"/><path d="M13 2.5v3.2h-3.2"/></svg>重置视角</button>
+                        <button class="tb-btn" aria-pressed="true" title="自动旋转"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="5.4" stroke-dasharray="2 2.2"/><path d="M8 5.2 10.6 8 8 10.8z" fill="currentColor" stroke="none"/></svg>自动旋转</button>
+                        <i class="tb-sep"></i>
+                        <button class="tb-btn">背景：深<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" class="i-xs"><path d="M5 6.5 8 3.5l3 3M11 9.5 8 12.5l-3-3"/></svg></button>
+                        <div class="tb-grow"></div>
+                        <span class="tb-right">glTF 2.0 · 24.6 MB</span>
+                    </div>
+
+                    <div class="bd">
+                        <div class="md3-body">
+                            <svg class="scene" viewBox="0 0 1000 544" preserveAspectRatio="xMidYMid slice">
+                                <defs>
+                                    <radialGradient id="vign" cx="50%" cy="42%" r="62%">
+                                        <stop offset="0" stop-color="#39424f" stop-opacity=".55"/>
+                                        <stop offset="100%" stop-color="#0a0c10" stop-opacity="0"/>
+                                    </radialGradient>
+                                    <linearGradient id="grid" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0" stop-color="#4b5768" stop-opacity=".38"/>
+                                        <stop offset="1" stop-color="#4b5768" stop-opacity="0"/>
+                                    </linearGradient>
+                                    <linearGradient id="edge1" x1="0" y1="0" x2="1" y2="1">
+                                        <stop offset="0" stop-color="#7cc4ff"/>
+                                        <stop offset="1" stop-color="#3d7ea8"/>
+                                    </linearGradient>
+                                    <linearGradient id="face1" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0" stop-color="#5f7387" stop-opacity=".55"/>
+                                        <stop offset="1" stop-color="#2c3a48" stop-opacity=".55"/>
+                                    </linearGradient>
+                                </defs>
+                                <rect width="1000" height="544" fill="url(#vign)"/>
+                                <g stroke="url(#grid)" stroke-width="1" fill="none">
+                                    <path d="M0 430h1000M0 462h1000M0 494h1000M0 526h1000"/>
+                                    <path d="M500 360 140 528M500 360 300 528M500 360 460 528M500 360 620 528M500 360 780 528M500 360 940 528" opacity=".8"/>
+                                </g>
+                                <g transform="translate(500 268)">
+                                    <polygon points="0,-118 96,-66 96,58 0,110 -96,58 -96,-66" fill="url(#face1)" stroke="url(#edge1)" stroke-width="1.4"/>
+                                    <polygon points="0,-118 96,-66 0,-14 -96,-66" fill="#7cc4ff" opacity=".1" stroke="url(#edge1)" stroke-width="1.2"/>
+                                    <polygon points="0,-14 96,-66 96,58 0,110" fill="#0e1620" opacity=".55" stroke="url(#edge1)" stroke-width="1.2"/>
+                                    <polygon points="0,-14 -96,-66 -96,58 0,110" fill="#0e1620" opacity=".35" stroke="url(#edge1)" stroke-width="1.2"/>
+                                    <g stroke="#7cc4ff" stroke-width="1" opacity=".55" fill="none">
+                                        <path d="M-96,-66 0,-14 96,-66M0,-14V110M-48,-92 48,-92M-48,-78 48,-78"/>
+                                    </g>
+                                    <ellipse cx="0" cy="118" rx="104" ry="16" fill="#000" opacity=".38"/>
+                                </g>
+                            </svg>
+
+                            <div class="md3-info"><span class="tag">GLB</span><span>顶点 84,312</span><span style="opacity:.45">·</span><span>面 42,108</span></div>
+
+                            <svg class="gizmo" viewBox="0 0 52 52" fill="none">
+                                <circle cx="26" cy="26" r="18" stroke="rgba(255,255,255,.14)"/>
+                                <path d="M26 26V10" stroke="#ff6b6b" stroke-width="1.6"/><path d="M26 26 40 34" stroke="#6bd47f" stroke-width="1.6"/><path d="M26 26 12 34" stroke="#6ba8ff" stroke-width="1.6"/>
+                                <circle cx="26" cy="26" r="2.2" fill="rgba(255,255,255,.7)"/>
+                                <text x="26" y="7.5" font-size="6" fill="#ff6b6b" text-anchor="middle" font-family="Segoe UI">Y</text>
+                                <text x="43" y="38" font-size="6" fill="#6bd47f" text-anchor="middle" font-family="Segoe UI">X</text>
+                                <text x="8" y="38" font-size="6" fill="#6ba8ff" text-anchor="middle" font-family="Segoe UI">Z</text>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <footer class="ft">
+                        <span>3D 模型</span><i class="dot"></i><span>glb</span><i class="dot"></i><span>24.6 MB</span>
+                    </footer>
+                </section>
+
+                <!-- ================= 9 不支持 ================= -->
+                <section class="pv" data-pv="na">
+                    <header class="hd">
+                        <div class="hd-title">backup.db</div>
+                        <div class="hd-acts">
+                            <button class="hd-btn" title="切换主题"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="3.2"/><path d="M8 1.6v1.6M8 12.8v1.6M1.6 8h1.6M12.8 8h1.6M3.5 3.5l1.1 1.1M11.4 11.4l1.1 1.1M12.5 3.5l-1.1 1.1M4.6 11.4l-1.1 1.1"/></svg></button>
+                            <button class="hd-btn" title="置顶"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5 13.5 6.5l-2 1-2.6 2.6-1 2-3.4-3.4 2-1L8.5 4.5z"/><path d="M6.5 9.5 3 13"/></svg></button>
+                            <button class="hd-btn" title="用默认程序打开"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9 3h4v4"/><path d="M13 3 7.5 8.5"/><path d="M12 10.5V12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h1.5"/></svg></button>
+                            <button class="hd-btn" title="打开方式"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2.2" y="2.2" width="5" height="5" rx="1"/><rect x="8.8" y="2.2" width="5" height="5" rx="1"/><rect x="2.2" y="8.8" width="5" height="5" rx="1"/><rect x="8.8" y="8.8" width="5" height="5" rx="1"/></svg></button>
+                            <button class="hd-btn" title="最大化"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="3" y="3" width="10" height="10" rx="1.2"/></svg></button>
+                            <button class="hd-btn close" title="关闭"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button>
+                        </div>
+                    </header>
+
+                    <div class="bd">
+                        <div class="na-body">
+                            <div class="na-card">
+                                <div class="na-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" width="24" height="24"><path d="M5 3.5h8l5.5 5.5v11.5H5z"/><path d="M13 3.5V9h5.5"/><path d="M8.5 17h7" stroke-dasharray="1 2"/></svg>
+                                </div>
+                                <h4>暂不支持预览</h4>
+                                <p class="desc">QuickLook 暂未支持 .db 格式。<br />可使用默认程序打开该文件。</p>
+                                <div class="na-acts">
+                                    <button class="btn primary"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M9 3h4v4"/><path d="M13 3 7.5 8.5"/><path d="M12 10.5V12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h1.5"/></svg>用默认程序打开</button>
+                                    <button class="btn ghost"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1.8 4.2A1.2 1.2 0 0 1 3 3h3.1l1.3 1.6H13a1.2 1.2 0 0 1 1.2 1.2v5.4A1.2 1.2 0 0 1 13 12.4H3a1.2 1.2 0 0 1-1.2-1.2z"/></svg>打开所在文件夹</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <footer class="ft">
+                        <span>未知</span><i class="dot"></i><span>db</span><i class="dot"></i><span>26.8 MB</span>
+                    </footer>
+                </section>
+
+            </div>
+        </div>
+
+        <div class="spec" id="spec"></div>
+    </main>
+</div>
+
+<script>
+(() => {
+    const META = {
+        image: {
+            name: '图片',
+            meta: '1000 × 600 · 命令栏 40px · 沉浸仅在真全屏时启用',
+            spec: [
+                ['缩放', '按钮 ±25%，滚轮连续，10%–800%'],
+                ['默认态', '适应窗口；双击在适应 / 1:1 间切换'],
+                ['旋转', '±90°，仅影响显示'],
+                ['元信息', 'hover 底部胶囊，200ms 淡入'],
+            ],
+        },
+        md: {
+            name: 'Markdown',
+            meta: '1000 × 600 · 目录 220px · 正文 760px',
+            spec: [
+                ['目录', '仅 h2/h3，滚动同步高亮，覆盖式不挤压正文'],
+                ['源码切换', '共用滚动位置'],
+                ['代码块', '语言标签 + hover 显示复制'],
+                ['长文', '超过 8 万字分块渲染'],
+            ],
+        },
+        code: {
+            name: '代码',
+            meta: '1000 × 600 · 行号列 48px · 行高 20px',
+            spec: [
+                ['行号', '右对齐、不可选中、随内容滚动'],
+                ['换行', '默认关闭，代码横向滚动'],
+                ['大文件', '超过 5000 行降级为纯文本'],
+                ['语言', '由扩展名推导，胶囊样式'],
+            ],
+        },
+        doc: {
+            name: '文档 · PDF',
+            meta: '1000 × 600 · 页面 620px · 页间距 12px',
+            spec: [
+                ['页码', '‹ 3 / 128 ›，右区实时同步'],
+                ['缩放', '100% 即适应宽度，>150% 转横向滚动'],
+                ['目录', '复用 220px 抽屉，层级来自后端 outline'],
+                ['同族', 'DOCX / Excel 共用同一条命令栏，按钮按类型显隐'],
+            ],
+        },
+        book: {
+            name: '书籍 · EPUB',
+            meta: '1000 × 600 · 目录 240px · 正文 680px',
+            spec: [
+                ['去重', '删除自带 toolbar 的标题与字号，迁入统一命令栏'],
+                ['字号', '14–24px 六档，独立记忆'],
+                ['底色', '浅 / 米黄 / 深，仅作用于阅读区'],
+                ['进度', '内容底部 3px 横条 + 右区百分比'],
+            ],
+        },
+        archive: {
+            name: '压缩包',
+            meta: '1000 × 600 · 表头 26px · 行高 28px',
+            spec: [
+                ['结构', '表格式树，三列：名称 1fr / 大小 96 / 时间 140'],
+                ['排序', '名称、大小、时间，目录恒置顶'],
+                ['过滤', '就地过滤 200ms 防抖'],
+                ['统计', '右区 128 项 · 解压后 2.4 GB'],
+            ],
+        },
+        font: {
+            name: '字体',
+            meta: '1000 × 600 · 字号阶梯 12–48 · 字形网格 12 列',
+            spec: [
+                ['顶部', '字体名 34px，用该字体自身渲染'],
+                ['阶梯', '六档同一例句，便于横向比较'],
+                ['反色', '仅切换预览区底色，判断笔画细节'],
+                ['可变字体', '存在轴信息时提供滑块（P2）'],
+            ],
+        },
+        model: {
+            name: '3D 模型',
+            meta: '1000 × 600 · 画布圆角内缩 · 中性底色',
+            spec: [
+                ['底色', '不随主题，3D 需要稳定对比'],
+                ['信息', '右上胶囊：格式 · 顶点 · 面数'],
+                ['Gizmo', '左下坐标轴 52px'],
+                ['加载', '顶部 2px 进度条，不可得时为不确定态'],
+            ],
+        },
+        na: {
+            name: '不支持',
+            meta: '1000 × 600 · 空态卡片 380px',
+            spec: [
+                ['结构', '图标 48 + 标题 + 原因 + 主次按钮'],
+                ['主按钮', '用默认程序打开，使用 --btn-primary-*'],
+                ['次按钮', '打开所在文件夹'],
+                ['元信息', '迁入标题行胶囊，不再单独占一条状态栏'],
+            ],
+        },
+    };
+
+    const nav = document.getElementById('nav');
+    const pvs = [...document.querySelectorAll('[data-pv]')];
+    const stageName = document.getElementById('stageName');
+    const stageMeta = document.getElementById('stageMeta');
+    const spec = document.getElementById('spec');
+    let current = 'image';
+
+    /* 元信息迁移：原脚注的「格式 · 大小」转为标题栏胶囊。
+       Fluent 语言里状态栏是多余的一层，元信息应贴着标题，
+       与 audio 的 MP3 / 320k 保持同一规格。 */
+    pvs.forEach(pv => {
+        const ft = pv.querySelector('.ft');
+        const hd = pv.querySelector('.hd');
+        const title = hd && hd.querySelector('.hd-title');
+        if (!ft || !title) return;
+        const items = [...ft.querySelectorAll('span')]
+            .map(s => s.textContent.trim())
+            .filter(Boolean)
+            .slice(1); // 丢开头的类型名，避免与左侧导航重复
+        const box = document.createElement('div');
+        box.className = 'hd-pills';
+        items.forEach((t, i) => {
+            const pill = document.createElement('span');
+            pill.className = i === items.length - 1 ? 'pill muted' : 'pill';
+            pill.textContent = t;
+            box.appendChild(pill);
+        });
+        title.after(box);
+        ft.remove();
+    });
+
+    function go(key) {
+        current = key;
+        pvs.forEach(el => el.classList.toggle('on', el.dataset.pv === key));
+        [...nav.querySelectorAll('button')].forEach(b => {
+            b.setAttribute('aria-current', String(b.dataset.go === key));
+        });
+        const m = META[key];
+        stageName.textContent = m.name;
+        stageMeta.textContent = m.meta;
+        spec.innerHTML = m.spec.map(([k, v]) => `<span class="k"><b>${k}</b>${v}</span>`).join('');
+    }
+
+    nav.addEventListener('click', e => {
+        const btn = e.target.closest('button[data-go]');
+        if (btn) go(btn.dataset.go);
+    });
+
+    // 主题
+    const html = document.documentElement;
+    const themeBox = document.getElementById('theme');
+    function setTheme(t) {
+        html.dataset.theme = t;
+        [...themeBox.querySelectorAll('button')].forEach(b => {
+            b.setAttribute('aria-pressed', String(b.dataset.themeSet === t));
+        });
+    }
+    themeBox.addEventListener('click', e => {
+        const btn = e.target.closest('button[data-theme-set]');
+        if (btn) setTheme(btn.dataset.themeSet);
+    });
+
+    // 工具条按钮的按压态（示意用）
+    document.addEventListener('click', e => {
+        const btn = e.target.closest('.tb-btn[aria-pressed]');
+        if (btn) btn.setAttribute('aria-pressed', btn.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+    });
+
+    // 键盘
+    const ORDER = ['image', 'md', 'code', 'doc', 'book', 'archive', 'font', 'model', 'na'];
+    document.addEventListener('keydown', e => {
+        if (e.metaKey || e.ctrlKey || e.altKey) return;
+        if (e.key >= '1' && e.key <= '9') go(ORDER[Number(e.key) - 1]);
+        if (e.key.toLowerCase() === 'd') setTheme(html.dataset.theme === 'dark' ? 'light' : 'dark');
+    });
+
+    // 等比缩放
+    const stage = document.getElementById('stage');
+    function fit() {
+        const avail = stage.clientWidth - 64;
+        const s = Math.min(1, Math.max(0.45, avail / 1000));
+        document.documentElement.style.setProperty('--fit', String(s));
+    }
+    window.addEventListener('resize', fit);
+
+    fit();
+    const raw = location.hash.slice(1);
+    const [hashType, hashTheme] = raw.split(':');
+    if (hashTheme === 'dark') setTheme('dark');
+    go(ORDER.includes(hashType) ? hashType : 'image');
+})();
+</script>
+</body>
+</html>
