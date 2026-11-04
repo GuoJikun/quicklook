@@ -1,7 +1,8 @@
 :root {
     /* ==== 尺寸 (Sizes) ==== */
-    --layout-header-h: 28px;
-    --layout-footer-h: 20px;
+    /* 预览窗口三层结构：标题行 → 命令栏 → 内容（不再有状态栏） */
+    --layout-header-h: 44px;
+    --layout-toolbar-h: 40px;
 
     /* ==== 圆角 (Radius) ==== */
     --radius-sm: 4px;
@@ -30,6 +31,10 @@
     --line-tight: 1.4;
     --line-base: 1.6;
     --line-loose: 1.8;
+
+    /* ==== 预览窗口 ==== */
+    --preview-scrollbar-w: 8px;
+    --preview-code-line-h: 20px;
 
     /* ==== 层级 (Z-Index) ==== */
     --z-base: 0;

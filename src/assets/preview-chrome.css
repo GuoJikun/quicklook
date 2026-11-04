@@ -1,0 +1,248 @@
+/* ==== 预览窗口的公共 chrome ====
+   标题行与命令栏的控件样式集中在此，供 header.vue 与各预览视图共用，
+   避免每种类型各自复制一套按钮规格（旧版正是因此出现高度与 hover 不一致）。
+
+   约定：
+   - 视觉语言对齐音频预览：单底色、无实线分隔、控件悬浮在内容之上；
+   - 命令栏容器只负责 flex 布局，控件自带 28px 命中区与 4px 圆角；
+   - 图标尺寸必须同时给宽高，只给一侧会被 el-icon / svg 的默认值拉变形。 */
+
+/* ---------- 标题行胶囊：格式、大小 ---------- */
+.pv-pill {
+    display: inline-flex;
+    align-items: center;
+    flex: none;
+    height: 18px;
+    padding: 0 6px;
+    border-radius: 3px;
+    background: var(--color-chip-bg);
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.pv-pill.is-muted {
+    color: var(--color-text-disabled);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+}
+
+/* ---------- 命令栏按钮 ---------- */
+.pv-tb-btn {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--color-text-secondary);
+    height: 28px;
+    min-width: 28px;
+    padding: 0 7px;
+    border-radius: var(--radius-sm);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    font-family: inherit;
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+    flex: none;
+    white-space: nowrap;
+    transition:
+        background-color var(--transition-fast),
+        color var(--transition-fast);
+}
+
+.pv-tb-btn:hover {
+    background: var(--elevation-hover);
+    color: var(--color-text-primary);
+}
+
+.pv-tb-btn:active {
+    background: var(--elevation-hover);
+}
+
+.pv-tb-btn[aria-pressed='true'] {
+    color: var(--color-accent-hi);
+    background: var(--color-accent-soft);
+}
+
+.pv-tb-btn:disabled {
+    color: var(--color-text-disabled);
+    cursor: default;
+    background: transparent;
+}
+
+.pv-tb-btn svg {
+    width: 15px;
+    height: 15px;
+    flex: none;
+}
+
+.pv-tb-btn .el-icon {
+    font-size: 15px;
+}
+
+/* 更小的行内图标（下拉箭头等）：必须同时给宽高 */
+.pv-tb-btn svg.is-xs {
+    width: 9px;
+    height: 9px;
+}
+
+.pv-tb-btn svg.is-sm {
+    width: 12px;
+    height: 12px;
+}
+
+/* 文字型按钮（适应窗口、全屏）略窄于图标按钮即可 */
+.pv-tb-btn.is-text {
+    padding: 0 8px;
+}
+
+/* ---------- 命令栏分隔与占位 ---------- */
+.pv-tb-sep {
+    width: 1px;
+    height: 16px;
+    margin: 0 8px;
+    background: var(--color-divider);
+    flex: none;
+}
+
+.pv-tb-grow {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* ---------- 命令栏内的数值与状态文字 ---------- */
+.pv-tb-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 22px;
+    min-width: 46px;
+    padding: 0 8px;
+    border-radius: var(--radius-sm);
+    background: var(--color-chip-bg);
+    color: var(--color-text-primary);
+    font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    flex: none;
+}
+
+.pv-tb-info {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11.5px;
+    color: var(--color-text-disabled);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    flex: none;
+}
+
+/* ---------- 命令栏内的语言/类型徽章 ---------- */
+.pv-tb-chip {
+    display: inline-flex;
+    align-items: center;
+    flex: none;
+    height: 20px;
+    padding: 0 8px;
+    border-radius: var(--radius-sm);
+    background: var(--color-accent-soft);
+    color: var(--color-accent-hi);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+
+/* ---------- 命令栏内的单行输入框 ----------
+   用描边而非填充，与只读数值胶囊区分，避免被误读成标签。 */
+.pv-tb-input {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 26px;
+    padding: 0 8px;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    border: 1px solid var(--color-border);
+    flex: none;
+    max-width: 260px;
+    transition:
+        border-color var(--transition-fast),
+        background-color var(--transition-fast);
+}
+
+.pv-tb-input:focus-within {
+    border-color: var(--color-accent);
+    background: var(--color-surface);
+}
+
+.pv-tb-input svg {
+    width: 12px;
+    height: 12px;
+    flex: none;
+    color: var(--color-text-disabled);
+}
+
+.pv-tb-input input {
+    appearance: none;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: var(--color-text-primary);
+    font-family: inherit;
+    font-size: 12px;
+    line-height: 1;
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+}
+
+.pv-tb-input input::placeholder {
+    color: var(--color-text-disabled);
+}
+
+/* 清空按钮：仅在有内容时出现 */
+.pv-tb-input .pv-clear {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--color-text-disabled);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    padding: 0;
+    flex: none;
+}
+
+.pv-tb-input .pv-clear:hover {
+    color: var(--color-text-primary);
+}
+
+/* ---------- 统一滚动条 ---------- */
+.pv-scroll {
+    overflow: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+}
+
+.pv-scroll::-webkit-scrollbar {
+    width: var(--preview-scrollbar-w);
+    height: var(--preview-scrollbar-w);
+}
+
+.pv-scroll::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 4px;
+}
+
+.pv-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}

@@ -3,10 +3,17 @@
     --color-bg: #f3f3f3;
     --color-surface: #ffffff;
     --color-accent: #0078d4;
+    /* 深色背景下用更亮的蓝，否则激活态文字与深底对比不足 */
+    --color-accent-hi: #0078d4;
     --color-text-primary: #1a1a1a;
     --color-text-secondary: #555555;
     --color-text-disabled: #999999;
     --color-border: #e1e1e1;
+    /* 发丝分隔线：比 border 更轻，用于标题行/表头等不该割裂画面的场合 */
+    --color-divider: rgba(0, 0, 0, 0.07);
+    /* 胶囊底色：格式徽章、数值框等轻量容器 */
+    --color-chip-bg: rgba(0, 0, 0, 0.05);
+    --color-accent-soft: rgba(0, 120, 212, 0.1);
     --elevation-hover: rgba(0, 0, 0, 0.08);
     --color-hover-bg: #e5f1fb;
 
@@ -48,10 +55,14 @@ html.dark {
     --color-bg: #1c1c1c;
     --color-surface: #2b2b2b;
     --color-accent: #0078d4;
+    --color-accent-hi: #2b95e3;
     --color-text-primary: #ffffff;
     --color-text-secondary: #cccccc;
     --color-text-disabled: #777777;
     --color-border: #3a3a3a;
+    --color-divider: rgba(255, 255, 255, 0.08);
+    --color-chip-bg: rgba(255, 255, 255, 0.06);
+    --color-accent-soft: rgba(0, 120, 212, 0.2);
     --elevation-hover: rgba(255, 255, 255, 0.05);
     --color-hover-bg: rgba(0, 120, 212, 0.2);
 
