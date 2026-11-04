@@ -7,6 +7,8 @@ interface Props {
     loading?: boolean
     /** 沉浸模式：隐藏标题行与命令栏，仅保留内容区，用于图片全屏等场景 */
     immersive?: boolean
+    /** 加载失败等场景下命令栏已无可用操作，整条隐藏而不是留一条空栏 */
+    hideToolbar?: boolean
 }
 
 const props = defineProps<Props>()
@@ -17,7 +19,7 @@ const props = defineProps<Props>()
         <Header v-if="!props.immersive" :file="props.file" />
 
         <!-- 命令栏：仅当视图提供了工具栏内容时才占位，无操作的类型不留空条 -->
-        <div v-if="!props.immersive && $slots.toolbar" class="preview-toolbar">
+        <div v-if="!props.immersive && !props.hideToolbar && $slots.toolbar" class="preview-toolbar">
             <slot name="toolbar"></slot>
         </div>
 
