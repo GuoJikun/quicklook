@@ -15,7 +15,7 @@ crate-type = ["rlib"]
 
 [dependencies]
 serde = { workspace = true }
-calamine = "0.36.0"
+calamine = "0.38.0"
 csv = "1.4.0"
 log = { workspace = true }
 quicklook-cache = { workspace = true }
