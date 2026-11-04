@@ -34,12 +34,6 @@ fn navigate_to(window: &tauri::WebviewWindow, url: &str) {
 
 impl PreviewFile {
     fn calc_window_size(file_type: &str) -> (f64, f64) {
-        // 音频预览固定为设计稿的逻辑尺寸，不参与下面的 DPI 换算：
-        // 换算会把逻辑高度按缩放比压缩，高缩放下 360 只剩 240，展开态放不下歌词
-        if file_type == "Audio" {
-            return (560.0, 360.0);
-        }
-
         let monitor_info = monitor::get_monitor_info();
 
         let scale = monitor_info.scale;
@@ -47,8 +41,14 @@ impl PreviewFile {
         let mut height = 600.0;
 
         if monitor_info.width > 0.0 {
-            width = monitor_info.width * 0.8;
-            height = monitor_info.height * 0.8;
+            if file_type == "Audio" {
+                // 音频窗口设计稿为 560×360，这里同样按物理像素参与下面的缩放换算
+                width = 560.0;
+                height = 360.0;
+            } else {
+                width = monitor_info.width * 0.8;
+                height = monitor_info.height * 0.8;
+            }
         }
 
         if monitor_info.scale > 1.0 {

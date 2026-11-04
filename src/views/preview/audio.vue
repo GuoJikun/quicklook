@@ -487,7 +487,7 @@ onBeforeUnmount(() => {
             <div class="audio-cover" data-tauri-drag-region="false" @mousedown="onDragMouseDown">
                 <img v-if="poster" :src="poster" :alt="t('audio.cover')" draggable="false" />
                 <div v-else class="cover-empty">
-                    <el-icon :size="22">
+                    <el-icon>
                         <MusicNote216Regular />
                     </el-icon>
                 </div>
@@ -556,7 +556,7 @@ onBeforeUnmount(() => {
                     :aria-label="isPlaying ? t('audio.pause') : t('audio.play')"
                     @click="togglePlay"
                 >
-                    <el-icon :size="20">
+                    <el-icon>
                         <Pause16Filled v-if="isPlaying" />
                         <Play16Filled v-else />
                     </el-icon>
@@ -577,7 +577,7 @@ onBeforeUnmount(() => {
                         :aria-label="t('audio.volume')"
                         @click="toggleMute"
                     >
-                        <el-icon :size="16">
+                        <el-icon>
                             <component :is="volumeIcon" />
                         </el-icon>
                     </button>
@@ -616,12 +616,16 @@ onBeforeUnmount(() => {
     /* 设计稿主色（Windows 蓝），与 Element 默认蓝区分 */
     --audio-accent: #0078d4;
     --audio-accent-hi: #2b95e3;
-    --cover-size: 56px;
-    --lyric-h: 150px;
-    --line-h: 30px;
-    --lyric-font: 14px;
-    --lyric-font-current: 22px;
-    --shell-gap: 12px;
+    /* 设计稿按 560×360 逻辑像素绘制。窗口尺寸会随系统缩放比缩小（150% 时只剩
+       373×240 逻辑像素），故几何尺寸统一按 1 设计像素 = 1/360 视口高换算；
+       字号另外设下限，避免高缩放下整块 UI 一起缩到不可读 */
+    --u: 0.2778vh;
+    --cover-size: min(56px, calc(56 * var(--u)));
+    --lyric-h: min(calc(150 * var(--u)), 100%);
+    --line-h: max(22px, calc(30 * var(--u)));
+    --lyric-font: clamp(12px, calc(14 * var(--u)), 14px);
+    --lyric-font-current: clamp(16px, calc(22 * var(--u)), 22px);
+    --shell-gap: calc(12 * var(--u));
 
     position: relative;
     width: 100%;
@@ -660,7 +664,7 @@ onBeforeUnmount(() => {
     box-sizing: border-box;
     display: grid;
     height: 100%;
-    padding: 20px 24px 16px;
+    padding: calc(20 * var(--u)) calc(24 * var(--u)) calc(16 * var(--u));
     grid-template-columns: var(--cover-size) minmax(0, 1fr);
     grid-template-areas:
         'cover meta'
@@ -670,7 +674,7 @@ onBeforeUnmount(() => {
     grid-template-rows: auto 1fr auto auto;
     align-content: stretch;
     column-gap: var(--shell-gap);
-    row-gap: 8px;
+    row-gap: calc(8 * var(--u));
 }
 
 /* ---------- 封面 ---------- */
@@ -702,6 +706,10 @@ onBeforeUnmount(() => {
     width: 100%;
     height: 100%;
     color: rgba(255, 255, 255, 0.5);
+
+    :deep(.el-icon) {
+        font-size: min(22px, calc(22 * var(--u)));
+    }
 }
 
 /* ---------- 元信息 ---------- */
@@ -712,7 +720,7 @@ onBeforeUnmount(() => {
     justify-content: center;
     gap: 3px;
     min-width: 0;
-    padding-right: 44px;
+    padding-right: 40px;
 }
 
 .meta-title-row {
@@ -723,7 +731,7 @@ onBeforeUnmount(() => {
 }
 
 .meta-title {
-    font-size: var(--font-lg);
+    font-size: clamp(13px, calc(15 * var(--u)), var(--font-lg));
     font-weight: 600;
     line-height: 1.3;
     color: var(--color-text-primary);
@@ -746,7 +754,7 @@ onBeforeUnmount(() => {
 }
 
 .meta-sub {
-    font-size: var(--font-xs);
+    font-size: clamp(11px, calc(12 * var(--u)), var(--font-xs));
     line-height: 1.4;
     color: var(--color-text-secondary);
     white-space: nowrap;
@@ -807,14 +815,14 @@ onBeforeUnmount(() => {
     grid-area: progress;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: calc(10 * var(--u));
     min-width: 0;
-    height: 22px;
+    height: calc(22 * var(--u));
 }
 
 .progress-time {
     flex: 0 0 auto;
-    font-size: 11px;
+    font-size: clamp(10px, calc(11 * var(--u)), 11px);
     color: var(--color-text-secondary);
     font-variant-numeric: tabular-nums;
 }
@@ -891,10 +899,10 @@ onBeforeUnmount(() => {
 
 .vol-pop {
     position: absolute;
-    bottom: 30px;
+    bottom: calc(30 * var(--u));
     left: 50%;
     z-index: 5;
-    padding: 8px 0;
+    padding: calc(8 * var(--u)) 0;
     border: 1px solid var(--color-border);
     border-radius: 16px;
     background: var(--color-bg);
@@ -910,8 +918,8 @@ onBeforeUnmount(() => {
 .vol-rail {
     position: relative;
     width: 4px;
-    height: 80px;
-    margin: 0 14px;
+    height: calc(80 * var(--u));
+    margin: 0 calc(14 * var(--u));
     border-radius: 2px;
     background: var(--elevation-hover);
     cursor: pointer;
@@ -944,16 +952,16 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 14px;
-    height: 46px;
+    gap: calc(14 * var(--u));
+    height: calc(46 * var(--u));
 }
 
 .icon-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: min(32px, calc(32 * var(--u)));
+    height: min(32px, calc(32 * var(--u)));
     padding: 0;
     border: none;
     border-radius: var(--radius-sm);
@@ -970,8 +978,12 @@ onBeforeUnmount(() => {
     }
 
     svg {
-        width: 17px;
-        height: 17px;
+        width: min(17px, calc(17 * var(--u)));
+        height: min(17px, calc(17 * var(--u)));
+    }
+
+    :deep(.el-icon) {
+        font-size: min(16px, calc(16 * var(--u)));
     }
 }
 
@@ -979,8 +991,8 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 46px;
-    height: 46px;
+    width: min(46px, calc(46 * var(--u)));
+    height: min(46px, calc(46 * var(--u)));
     padding: 0;
     border: none;
     border-radius: 50%;
@@ -991,6 +1003,10 @@ onBeforeUnmount(() => {
     transition:
         transform var(--transition-fast),
         background var(--transition-fast);
+
+    :deep(.el-icon) {
+        font-size: min(20px, calc(20 * var(--u)));
+    }
 
     &:hover {
         transform: scale(1.06);
@@ -1003,13 +1019,13 @@ onBeforeUnmount(() => {
 }
 
 .rate-btn {
-    min-width: 34px;
-    height: 26px;
+    min-width: calc(34 * var(--u));
+    height: calc(26 * var(--u));
     padding: 0 4px;
     border: none;
     border-radius: var(--radius-sm);
     background: transparent;
-    font-size: var(--font-xs);
+    font-size: clamp(10px, calc(12 * var(--u)), var(--font-xs));
     color: var(--color-text-secondary);
     font-variant-numeric: tabular-nums;
     cursor: pointer;
