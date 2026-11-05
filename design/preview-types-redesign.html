@@ -803,6 +803,11 @@ html[data-theme='dark'] .page { box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
 
 .bk-toc .cap { font-size: 11px; color: var(--text-3); padding: 0 8px 8px; letter-spacing: 0.06em; text-transform: uppercase; }
 
+/* 顶部书名/作者：替代原 toolbar 里重复的标题 */
+.bk-toc-head { padding: 2px 8px 10px; margin-bottom: 6px; border-bottom: 1px solid var(--divider); }
+.bk-toc-head .t { margin: 0; font-size: 12.5px; font-weight: 600; line-height: 1.4; }
+.bk-toc-head .a { margin: 3px 0 0; font-size: 11px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 .bk-toc a {
     display: block;
     padding: 5px 8px;
@@ -1370,10 +1375,12 @@ html[data-theme='dark'] .na-card { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
                         <button class="tb-btn" aria-pressed="true" title="目录"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 4.5h10M3 8h10M3 11.5h10"/></svg>目录</button>
                         <i class="tb-sep"></i>
                         <button class="tb-btn" title="减小字号">A−</button>
-                        <span class="tb-value">17</span>
+                        <span class="tb-value">16</span>
                         <button class="tb-btn" title="增大字号">A+</button>
                         <i class="tb-sep"></i>
-                        <button class="tb-btn" aria-pressed="true"><i class="swatch" style="background:#f2e6cf"></i>米黄</button>
+                        <button class="tb-btn" title="白纸" aria-label="白纸"><i class="swatch" style="background:#ffffff"></i></button>
+                        <button class="tb-btn" title="米黄" aria-label="米黄"><i class="swatch" style="background:#f2e6cf"></i></button>
+                        <button class="tb-btn" aria-pressed="true" title="深色" aria-label="深色"><i class="swatch" style="background:#3a3a41"></i></button>
                         <div class="tb-grow"></div>
                         <span class="tb-right">第 3 章 · 全书 42%</span>
                     </div>
@@ -1381,7 +1388,10 @@ html[data-theme='dark'] .na-card { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
                     <div class="bd">
                         <div class="bk-wrap">
                             <nav class="bk-toc scroll">
-                                <div class="cap">目录</div>
+                                <div class="bk-toc-head">
+                                    <p class="t">人类群星闪耀时</p>
+                                    <p class="a">斯蒂芬·茨威格</p>
+                                </div>
                                 <a href="#">译者序</a>
                                 <a href="#">序言</a>
                                 <a href="#" class="cur">1 · 到不朽的事业中寻求庇护</a>
@@ -1718,9 +1728,10 @@ html[data-theme='dark'] .na-card { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
             meta: '1000 × 600 · 目录 240px · 正文 680px',
             spec: [
                 ['去重', '删除自带 toolbar 的标题与字号，迁入统一命令栏'],
-                ['字号', '14–24px 六档，独立记忆'],
-                ['底色', '浅 / 米黄 / 深，仅作用于阅读区'],
-                ['进度', '内容底部 3px 横条 + 右区百分比'],
+                ['顺序', '目录 → 字号 → 底色，右区只放阅读进度'],
+                ['字号', '14–24px 六档，默认 16，记忆到 config.data'],
+                ['底色', '白纸 / 米黄 / 深色三档色板，仅作用于阅读区，默认跟随主题'],
+                ['进度', '内容底部 3px 横条 + 右区章节与百分比（按 spine 计）'],
             ],
         },
         archive: {
