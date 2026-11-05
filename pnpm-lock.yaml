@@ -47,9 +47,6 @@ importers:
       '@vueuse/core':
         specifier: ^14.3.0
         version: 14.3.0(vue@3.5.40(typescript@6.0.3))
-      '@x18n/core':
-        specifier: ^0.1.8
-        version: 0.1.8(typescript@6.0.3)
       docx-preview:
         specifier: ^0.4.0
         version: 0.4.0
@@ -159,6 +156,9 @@ importers:
       '@vue/tsconfig':
         specifier: ^0.7.0
         version: 0.7.0(typescript@6.0.3)(vue@3.5.40(typescript@6.0.3))
+      '@x18n/core':
+        specifier: ^0.1.8
+        version: 0.1.8(typescript@6.0.3)
       eslint:
         specifier: ^9.16.0
         version: 9.16.0(supports-color@7.2.0)
