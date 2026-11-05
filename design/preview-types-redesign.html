@@ -1158,6 +1158,8 @@ html[data-theme='dark'] .na-card { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
                         <button class="tb-btn" title="减小字号">A−</button>
                         <button class="tb-btn" title="增大字号">A+</button>
                         <div class="tb-grow"></div>
+                        <span class="tb-right">1,284 字</span>
+                        <i class="tb-sep"></i>
                         <button class="tb-btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="5" y="5" width="8" height="8" rx="1.2"/><path d="M11 5V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h1"/></svg>复制全文</button>
                     </div>
 
@@ -1308,19 +1310,20 @@ html[data-theme='dark'] .na-card { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
                     </header>
 
                     <div class="tb">
-                        <button class="tb-btn" title="上一页"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M10 3.5 5.5 8l4.5 4.5"/></svg></button>
-                        <span class="tb-num">3 / 128</span>
-                        <button class="tb-btn" title="下一页"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M6 3.5 10.5 8 6 12.5"/></svg></button>
+                        <!-- 顺序与 Markdown 面板一致：目录 → 视图方式 → 缩放，右区只放页码状态 -->
+                        <button class="tb-btn" aria-pressed="false" title="目录"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 4h4M3 8h4M3 12h4M9 4h4M9 8h4M9 12h4"/></svg>目录</button>
+                        <i class="tb-sep"></i>
+                        <button class="tb-btn" aria-pressed="true">适应宽度</button>
+                        <button class="tb-btn" title="旋转 90°"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M13 8a5 5 0 1 1-1.6-3.7"/><path d="M13.4 2.6v2.8h-2.8"/></svg></button>
                         <i class="tb-sep"></i>
                         <button class="tb-btn" title="缩小"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3.5 8h9"/></svg></button>
                         <span class="tb-num">100%</span>
                         <button class="tb-btn" title="放大"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 3.5v9M3.5 8h9"/></svg></button>
-                        <button class="tb-btn" aria-pressed="true">适应宽度</button>
-                        <i class="tb-sep"></i>
-                        <button class="tb-btn" title="目录"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 4h4M3 8h4M3 12h4M9 4h4M9 8h4M9 12h4"/></svg>目录</button>
                         <div class="tb-grow"></div>
-                        <span class="tb-input"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="4.2"/><path d="M10.2 10.2 13.5 13.5"/></svg>搜索</span>
-                        <span class="tb-right">A4 · 128 页</span>
+                        <button class="tb-btn" title="上一页"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M10 3.5 5.5 8l4.5 4.5"/></svg></button>
+                        <span class="tb-num">3</span>
+                        <span class="tb-right">/ 128</span>
+                        <button class="tb-btn" title="下一页"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M6 3.5 10.5 8 6 12.5"/></svg></button>
                     </div>
 
                     <div class="bd">
@@ -1681,9 +1684,10 @@ html[data-theme='dark'] .na-card { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
             name: 'Markdown',
             meta: '1000 × 600 · 目录 220px · 正文 760px',
             spec: [
-                ['目录', '仅 h2/h3，滚动同步高亮，覆盖式不挤压正文'],
+                ['目录', 'h1–h3 三级，滚动同步高亮；宽窗覆盖式，≤1299px 改挤压'],
                 ['源码切换', '共用滚动位置'],
                 ['代码块', '语言标签 + hover 显示复制'],
+                ['右区', '字数统计，其后为复制全文'],
                 ['长文', '超过 8 万字分块渲染'],
             ],
         },
@@ -1701,9 +1705,11 @@ html[data-theme='dark'] .na-card { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
             name: '文档 · PDF',
             meta: '1000 × 600 · 页面 620px · 页间距 12px',
             spec: [
-                ['页码', '‹ 3 / 128 ›，右区实时同步'],
+                ['顺序', '与 Markdown 一致：目录 → 适应宽度/旋转 → 缩放；右区只放页码'],
+                ['页码', '‹ 3 / 128 ›，右区实时同步，点击数字可跳转'],
                 ['缩放', '100% 即适应宽度，>150% 转横向滚动'],
-                ['目录', '复用 220px 抽屉，层级来自后端 outline'],
+                ['目录', '复用 220px 抽屉，h1–h3 来自后端 outline；PDF 用挤压式避免遮住页面'],
+                ['搜索', '待后端文本抽取与坐标映射，暂不呈现'],
                 ['同族', 'DOCX / Excel 共用同一条命令栏，按钮按类型显隐'],
             ],
         },
