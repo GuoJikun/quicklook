@@ -13,19 +13,14 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     ElAlert: typeof import('element-plus/es')['ElAlert']
-    ElAnchor: typeof import('element-plus/es')['ElAnchor']
-    ElAnchorLink: typeof import('element-plus/es')['ElAnchorLink']
     ElButton: typeof import('element-plus/es')['ElButton']
     ElConfigProvider: typeof import('element-plus/es')['ElConfigProvider']
-    ElDivider: typeof import('element-plus/es')['ElDivider']
     ElIcon: typeof import('element-plus/es')['ElIcon']
     ElInput: typeof import('element-plus/es')['ElInput']
-    ElLink: typeof import('element-plus/es')['ElLink']
+    ElOption: typeof import('element-plus/es')['ElOption']
     ElProgress: typeof import('element-plus/es')['ElProgress']
-    ElRadioButton: typeof import('element-plus/es')['ElRadioButton']
-    ElRadioGroup: typeof import('element-plus/es')['ElRadioGroup']
+    ElSelect: typeof import('element-plus/es')['ElSelect']
     ElSpace: typeof import('element-plus/es')['ElSpace']
-    ElSwitch: typeof import('element-plus/es')['ElSwitch']
     ElTag: typeof import('element-plus/es')['ElTag']
     Excel: typeof import('./src/components/document/excel.vue')['default']
     Header: typeof import('./src/components/header.vue')['default']
@@ -33,7 +28,6 @@ declare module 'vue' {
     MdViewer: typeof import('./src/components/md-viewer/index.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
-    SettingItem: typeof import('./src/components/setting-item.vue')['default']
   }
   export interface GlobalDirectives {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']
@@ -43,19 +37,14 @@ declare module 'vue' {
 // For TSX support
 declare global {
   const ElAlert: typeof import('element-plus/es')['ElAlert']
-  const ElAnchor: typeof import('element-plus/es')['ElAnchor']
-  const ElAnchorLink: typeof import('element-plus/es')['ElAnchorLink']
   const ElButton: typeof import('element-plus/es')['ElButton']
   const ElConfigProvider: typeof import('element-plus/es')['ElConfigProvider']
-  const ElDivider: typeof import('element-plus/es')['ElDivider']
   const ElIcon: typeof import('element-plus/es')['ElIcon']
   const ElInput: typeof import('element-plus/es')['ElInput']
-  const ElLink: typeof import('element-plus/es')['ElLink']
+  const ElOption: typeof import('element-plus/es')['ElOption']
   const ElProgress: typeof import('element-plus/es')['ElProgress']
-  const ElRadioButton: typeof import('element-plus/es')['ElRadioButton']
-  const ElRadioGroup: typeof import('element-plus/es')['ElRadioGroup']
+  const ElSelect: typeof import('element-plus/es')['ElSelect']
   const ElSpace: typeof import('element-plus/es')['ElSpace']
-  const ElSwitch: typeof import('element-plus/es')['ElSwitch']
   const ElTag: typeof import('element-plus/es')['ElTag']
   const Excel: typeof import('./src/components/document/excel.vue')['default']
   const Header: typeof import('./src/components/header.vue')['default']
@@ -63,5 +52,4 @@ declare global {
   const MdViewer: typeof import('./src/components/md-viewer/index.vue')['default']
   const RouterLink: typeof import('vue-router')['RouterLink']
   const RouterView: typeof import('vue-router')['RouterView']
-  const SettingItem: typeof import('./src/components/setting-item.vue')['default']
 }
