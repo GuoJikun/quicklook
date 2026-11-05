@@ -608,7 +608,7 @@ onUnmounted(() => {
     &-icon {
         width: 44px;
         height: 44px;
-        color: var(--color-text-disabled);
+        color: var(--color-text-tertiary);
     }
 
     h3 {

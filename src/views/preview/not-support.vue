@@ -73,7 +73,7 @@ onMounted(() => {
 }
 
 .ns-icon {
-    color: var(--color-text-disabled);
+    color: var(--color-text-tertiary);
 }
 
 .ns-title {

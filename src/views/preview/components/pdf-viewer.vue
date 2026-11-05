@@ -620,7 +620,7 @@ defineExpose({ zoomIn, zoomOut, fitWidth, refit, rotate, goToPage })
     }
 
     &-page-loading {
-        color: var(--color-text-disabled);
+        color: var(--color-text-tertiary);
         font-size: var(--font-xs);
     }
 }

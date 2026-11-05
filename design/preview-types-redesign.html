@@ -20,7 +20,7 @@
     --surface: #ffffff;
     --text: #1a1a1a;
     --text-2: #555555;
-    --text-3: #8a8a8a;
+    --text-3: #616161;          /* NeutralForeground3 */
     --border: #e1e1e1;
     --accent: #0078d4;            /* BrandBackground：仅作实心底 */
     --accent-fg: #0f6cbd;         /* BrandForeground1：文字/图标/描边 */
@@ -31,10 +31,11 @@
     --accent-soft: rgba(15, 108, 189, 0.10);
     --hover: rgba(0, 0, 0, 0.06);
     --hover-strong: rgba(0, 0, 0, 0.1);
+    --pressed: rgba(0, 0, 0, 0.12);   /* SubtleBackgroundPressed */
     --chip-bg: rgba(0, 0, 0, 0.05);
     /* Fluent 分隔：不用 1px 实线，改用低透明度发丝线；层与层之间靠底色与留白 */
     --divider: rgba(0, 0, 0, 0.07);
-    --pill-text: #8a8a8a;
+    --pill-text: #616161;
     --win-border: transparent;
     --shadow-win: 0 1px 2px rgba(0, 0, 0, 0.08), 0 16px 40px rgba(0, 0, 0, 0.14);
     --paper: #ffffff;
@@ -69,11 +70,12 @@ html[data-theme='dark'] {
     --surface: #2b2b2b;
     --text: #ffffff;
     --text-2: #c2c2c2;
-    --text-3: #8f8f8f;
+    --text-3: #adadad;          /* NeutralForeground3 dark */
     --border: #3a3a3a;
     --accent: #0078d4;            /* BrandBackground */
     --accent-fg: #479ef5;         /* BrandForeground1 dark */
     --accent-hover: #0e4775;
+    --pressed: rgba(255, 255, 255, 0.09);
     --selected: #383838;
     --selected-strong: #4a4a4a;
     --danger-fg: #ff99a4;
@@ -338,15 +340,15 @@ html[data-theme='dark'] .seg button[aria-pressed='true'] {
 }
 
 .hd-btn:hover { background: var(--hover); color: var(--text); }
-.hd-btn:active { background: var(--hover-strong); }
+.hd-btn:active { background: var(--pressed); }
 .hd-btn.close { margin-left: 4px; }
 .hd-btn.close:hover { background: #e81123; color: #fff; }
-.hd-btn svg { width: 13px; height: 13px; }
+.hd-btn svg { width: 16px; height: 16px; }
 
-/* 命令栏 40 —— 与窗口同底色，无下边框 */
+/* 命令栏 44 —— 与标题行等高，与窗口同底色，无下边框 */
 .tb {
     flex: none;
-    height: 40px;
+    height: 44px;
     display: flex;
     align-items: center;
     gap: 2px;
@@ -361,10 +363,10 @@ html[data-theme='dark'] .seg button[aria-pressed='true'] {
     border: 0;
     background: transparent;
     color: var(--text-2);
-    height: 28px;
-    min-width: 28px;
-    padding: 0 7px;
-    border-radius: 6px;
+    height: 32px;
+    min-width: 32px;
+    padding: 0 8px;
+    border-radius: var(--radius-sm);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -461,7 +463,7 @@ html[data-theme='dark'] .seg button[aria-pressed='true'] {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    height: 26px;
+    height: 32px;
     padding: 0 8px;
     border-radius: var(--radius-sm);
     background: transparent;

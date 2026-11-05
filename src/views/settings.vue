@@ -762,14 +762,14 @@ onUnmounted(() => {
     flex: none;
     height: 32px;
     margin-bottom: 8px;
-    color: var(--color-text-disabled);
+    color: var(--color-text-tertiary);
     --el-input-bg-color: var(--color-chip-bg);
     --el-input-border-color: transparent;
     --el-input-hover-border-color: transparent;
     --el-input-focus-border-color: var(--color-brand-fg);
     --el-input-border-radius: var(--radius-md);
     --el-input-text-color: var(--color-text-primary);
-    --el-input-placeholder-color: var(--color-text-disabled);
+    --el-input-placeholder-color: var(--color-text-tertiary);
 
     :deep(.el-input__wrapper) {
         min-height: 32px;
@@ -785,7 +785,7 @@ onUnmounted(() => {
         width: 14px;
         height: 14px;
         flex: none;
-        color: var(--color-text-disabled);
+        color: var(--color-text-tertiary);
     }
 }
 
@@ -794,13 +794,13 @@ onUnmounted(() => {
     font-size: var(--font-2xs);
     font-weight: 600;
     letter-spacing: 0.04em;
-    color: var(--color-text-disabled);
+    color: var(--color-text-tertiary);
 }
 
 .st-navitem {
     position: relative;
     flex: none;
-    height: 36px;
+    height: var(--control-md);
     display: flex;
     align-items: center;
     gap: 10px;
@@ -828,6 +828,12 @@ onUnmounted(() => {
         color: var(--color-text-primary);
     }
 
+    /* 选中项不参与按下反馈：它已有 selected-bg + 指示条，再叠一层会糊成一片 */
+    &:active:not(.is-active) {
+        background: var(--elevation-pressed);
+        color: var(--color-text-primary);
+    }
+
     &.is-active {
         background: var(--color-selected-bg);
         color: var(--color-text-primary);
@@ -849,14 +855,14 @@ onUnmounted(() => {
 .st-navempty {
     padding: 8px 12px;
     font-size: var(--font-xs);
-    color: var(--color-text-disabled);
+    color: var(--color-text-tertiary);
 }
 
 .st-navfoot {
     margin-top: auto;
     padding: 12px;
     font-size: var(--font-xs);
-    color: var(--color-text-disabled);
+    color: var(--color-text-tertiary);
     font-variant-numeric: tabular-nums;
 }
 
@@ -898,7 +904,7 @@ onUnmounted(() => {
 
 .st-saved {
     font-size: var(--font-xs);
-    color: var(--color-text-disabled);
+    color: var(--color-text-tertiary);
     white-space: nowrap;
 }
 
@@ -918,7 +924,7 @@ onUnmounted(() => {
 
 .st-stat {
     font-size: var(--font-xs);
-    color: var(--color-text-disabled);
+    color: var(--color-text-tertiary);
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
 }
@@ -965,7 +971,7 @@ onUnmounted(() => {
     margin-left: 6px;
     font-size: var(--font-xs);
     font-weight: 400;
-    color: var(--color-text-disabled);
+    color: var(--color-text-tertiary);
 }
 
 .st-row-d {
@@ -987,13 +993,13 @@ onUnmounted(() => {
     margin: -6px 0 16px;
     padding-left: 2px;
     font-size: var(--font-xs);
-    color: var(--color-text-disabled);
+    color: var(--color-text-tertiary);
 }
 
 .st-muted,
 .st-empty {
     font-size: var(--font-xs);
-    color: var(--color-text-disabled);
+    color: var(--color-text-tertiary);
     font-variant-numeric: tabular-nums;
 }
 
@@ -1024,7 +1030,8 @@ onUnmounted(() => {
 /* ---------- Fluent 控件 ---------- */
 .st-seg {
     display: inline-flex;
-    padding: 2px;
+    /* 4+24+4 = 32，与同排的输入框、图标按钮同高 */
+    padding: 4px;
     gap: 2px;
     border-radius: var(--radius-md);
     background: var(--color-chip-bg);
@@ -1036,7 +1043,9 @@ onUnmounted(() => {
         color: var(--color-text-secondary);
         font: inherit;
         font-size: var(--font-xs);
-        padding: 6px 14px;
+        height: var(--control-sm);
+        padding: 0 12px;
+        line-height: 1;
         border-radius: 6px;
         cursor: pointer;
         transition:
@@ -1045,6 +1054,10 @@ onUnmounted(() => {
 
         &:hover:not(:disabled) {
             color: var(--color-text-primary);
+        }
+
+        &:active:not(:disabled) {
+            background: var(--elevation-pressed);
         }
 
         &[aria-pressed='true'] {
@@ -1060,7 +1073,7 @@ onUnmounted(() => {
     }
 
     &.is-3 button {
-        padding: 6px 10px;
+        padding: 0 8px;
     }
 }
 
@@ -1085,7 +1098,7 @@ onUnmounted(() => {
         width: 12px;
         height: 12px;
         border-radius: 50%;
-        background: var(--color-text-disabled);
+        background: var(--color-text-tertiary);
         transition:
             transform var(--transition-fast),
             background-color var(--transition-fast);
@@ -1109,7 +1122,7 @@ onUnmounted(() => {
     --el-border-radius-base: var(--radius-sm);
     --el-color-primary: var(--color-brand-fg);
     --el-text-color-regular: var(--color-text-primary);
-    --el-select-input-color: var(--color-text-disabled);
+    --el-select-input-color: var(--color-text-tertiary);
 
     :deep(.el-select__wrapper) {
         min-height: 32px;
@@ -1140,7 +1153,7 @@ onUnmounted(() => {
     --el-input-focus-border-color: var(--color-brand-fg);
     --el-input-border-radius: var(--radius-sm);
     --el-input-text-color: var(--color-text-primary);
-    --el-input-placeholder-color: var(--color-text-disabled);
+    --el-input-placeholder-color: var(--color-text-tertiary);
 
     :deep(.el-input__wrapper) {
         min-height: 32px;
@@ -1179,8 +1192,15 @@ onUnmounted(() => {
     }
 
     &:hover:not(:disabled) {
-        background: var(--color-accent-soft);
-        color: var(--color-brand-fg);
+        /* 原先是 accent-soft + 品牌图标：深色下品牌色在浅品牌底上只有 4.07:1，
+           与命令栏按钮的 hover 语言也不一致。统一用中性悬浮底 + 主文字色。 */
+        background: var(--elevation-hover);
+        color: var(--color-text-primary);
+    }
+
+    &:active:not(:disabled) {
+        background: var(--elevation-pressed);
+        color: var(--color-text-primary);
     }
 
     &:disabled {
@@ -1222,7 +1242,7 @@ onUnmounted(() => {
     border: 0;
     border-radius: 3px;
     background: transparent;
-    color: var(--color-text-disabled);
+    color: var(--color-text-tertiary);
     display: grid;
     place-items: center;
     font: inherit;
@@ -1233,6 +1253,10 @@ onUnmounted(() => {
     &:hover:not(:disabled) {
         background: var(--elevation-hover);
         color: var(--color-text-primary);
+    }
+
+    &:active:not(:disabled) {
+        background: var(--elevation-pressed);
     }
 
     &:disabled {
@@ -1255,6 +1279,10 @@ onUnmounted(() => {
 
     &:hover:not(:disabled) {
         background: var(--elevation-hover);
+    }
+
+    &:active:not(:disabled) {
+        background: var(--elevation-pressed);
     }
 
     &.is-danger {
@@ -1336,7 +1364,7 @@ onUnmounted(() => {
     small {
         font-size: var(--font-xs);
         font-weight: 500;
-        color: var(--color-text-disabled);
+        color: var(--color-text-tertiary);
         font-variant-numeric: tabular-nums;
     }
 }
@@ -1451,7 +1479,7 @@ onUnmounted(() => {
     --el-bg-color-overlay: var(--color-surface);
     --el-border-color-light: var(--color-border);
     --el-text-color-regular: var(--color-text-primary);
-    --el-text-color-placeholder: var(--color-text-disabled);
+    --el-text-color-placeholder: var(--color-text-tertiary);
     --el-fill-color-light: var(--color-chip-bg);
     --el-color-primary: var(--color-brand-fg);
     --el-box-shadow-light: 0 6px 20px rgba(0, 0, 0, 0.14);

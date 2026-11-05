@@ -2,7 +2,21 @@
     /* ==== 尺寸 (Sizes) ==== */
     /* 预览窗口三层结构：标题行 → 命令栏 → 内容（不再有状态栏） */
     --layout-header-h: 44px;
-    --layout-toolbar-h: 40px;
+    --layout-toolbar-h: 44px;
+
+    /* ==== 控件尺寸 (Controls) ==== */
+    /* 对齐 Fluent 2 的三档：small 24 / medium 32 / large 40。
+       命令栏、标题行、设置页的按钮与输入框一律取三档之一，
+       禁止再出现 26 / 28 / 30 / 36 这类中间值。 */
+    --control-sm: 24px;
+    --control-md: 32px;
+    --control-lg: 40px;
+
+    /* 图标网格：Fluent System Icons 只有 16 / 20 / 24 三种绘制尺寸，
+       15px 之类会落在非整数像素上，笔画发虚 */
+    --icon-sm: 16px;
+    --icon-md: 20px;
+    --icon-lg: 24px;
 
     /* ==== 圆角 (Radius) ==== */
     --radius-sm: 4px;

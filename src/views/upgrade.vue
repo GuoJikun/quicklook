@@ -214,9 +214,7 @@ onUnmounted(() => {
             <header class="upgrade-header">
                 <div class="upgrade-header-left">
                     <h2 class="upgrade-title">{{ t('upgrade.title') }}</h2>
-                    <el-tag v-if="currentVersion && !checking" size="small" type="info" effect="plain">
-                        v{{ currentVersion }}
-                    </el-tag>
+                    <span v-if="currentVersion && !checking" class="upgrade-version">v{{ currentVersion }}</span>
                 </div>
             </header>
 
@@ -229,7 +227,7 @@ onUnmounted(() => {
 
                 <section v-else-if="!upgradeAvailable" class="state state-latest">
                     <div class="state-icon-wrap success">
-                        <el-icon :size="36"><Check /></el-icon>
+                        <el-icon :size="32"><Check /></el-icon>
                     </div>
                     <p class="state-title">{{ t('upgrade.upToDate') }}</p>
                     <p class="state-desc" v-if="currentVersion">v{{ currentVersion }}</p>
@@ -266,11 +264,9 @@ onUnmounted(() => {
                         </div>
                         <el-progress
                             :percentage="percentage"
-                            :stroke-width="14"
+                            :stroke-width="6"
+                            :show-text="true"
                             :status="phase === 'finished' ? 'success' : undefined"
-                            text-inside
-                            striped
-                            striped-flow
                         />
                     </div>
                 </section>
@@ -278,21 +274,17 @@ onUnmounted(() => {
                 <footer class="upgrade-footer">
                     <el-button @click="doCheck" :disabled="phase === 'downloading'">
                         <el-icon><Refresh /></el-icon>
-                        <span style="margin-left: 4px">{{ t('upgrade.recheck') }}</span>
+                        <span>{{ t('upgrade.recheck') }}</span>
                     </el-button>
                     <template v-if="errMsg">
                         <el-button type="primary" @click="doCheck">{{ t('upgrade.retry') }}</el-button>
                     </template>
                     <template v-else-if="!upgradeAvailable">
-                        <el-button type="primary" plain @click="doCheck">{{ t('upgrade.checkAgain') }}</el-button>
+                        <el-button type="primary" @click="doCheck">{{ t('upgrade.checkAgain') }}</el-button>
                     </template>
                     <template v-else>
-                        <el-button
-                            v-if="phase === 'downloading'"
-                            type="warning"
-                            :icon="CircleClose"
-                            @click="cancelDownload"
-                        >
+                        <!-- 取消不是破坏性操作，Fluent 2 里不用警示色：降为次级按钮即可 -->
+                        <el-button v-if="phase === 'downloading'" :icon="CircleClose" @click="cancelDownload">
                             {{ t('upgrade.cancelDownload') }}
                         </el-button>
                         <el-button
@@ -318,7 +310,8 @@ onUnmounted(() => {
     display: flex;
     justify-content: center;
     align-items: center;
-    background: linear-gradient(135deg, #f5f7fa 0%, #e4ecf7 100%);
+    /* 原先是一条硬编码的浅蓝渐变：深色模式下整页发白，且 Fluent 2 不用装饰性渐变 */
+    background: var(--color-bg);
     padding: var(--space-4);
     box-sizing: border-box;
     overflow: auto;
@@ -326,8 +319,9 @@ onUnmounted(() => {
     &-card {
         width: 100%;
         background: var(--color-surface);
+        /* 边框而非投影：与设置页卡片、空态卡片保持同一种「浮起」语言 */
+        border: 1px solid var(--color-border);
         border-radius: var(--radius-xl);
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
         padding: var(--space-5);
         box-sizing: border-box;
         display: flex;
@@ -367,6 +361,20 @@ onUnmounted(() => {
     }
 }
 
+/* 版本号胶囊：取代 el-tag，避免 Element 自带的 info 蓝底与项目 chip 语言冲突 */
+.upgrade-version {
+    display: inline-flex;
+    align-items: center;
+    height: 20px;
+    padding: 0 8px;
+    border-radius: var(--radius-sm);
+    background: var(--color-chip-bg);
+    color: var(--color-text-secondary);
+    font-size: var(--font-xs);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+}
+
 .state {
     display: flex;
     flex-direction: column;
@@ -378,21 +386,23 @@ onUnmounted(() => {
     flex: 1;
     width: 100%;
     &-icon {
-        color: var(--el-color-danger, #f56c6c);
+        color: var(--color-danger-fg);
     }
 
+    /* 状态图标容器：中性底 + 语义前景色。
+       原先是绿色实心圆加绿色投影 —— Fluent 2 的状态色只作前景，不做彩色底块。 */
     &-icon-wrap {
-        width: 64px;
-        height: 64px;
-        border-radius: 50%;
+        width: 56px;
+        height: 56px;
+        border-radius: var(--radius-xl);
         display: flex;
         align-items: center;
         justify-content: center;
-        color: #fff;
+        background: var(--color-chip-bg);
+        color: var(--color-text-primary);
 
         &.success {
-            background: var(--el-color-success, #67c23a);
-            box-shadow: 0 4px 16px rgba(103, 194, 58, 0.35);
+            color: var(--color-success-fg);
         }
     }
 
@@ -412,20 +422,22 @@ onUnmounted(() => {
     }
 
     &-latest {
+        /* 状态色只用于图标，标题保持主文字色 —— 标题染绿会与「可点击」混淆 */
         .state-title {
-            color: var(--el-color-success, #67c23a);
+            color: var(--color-text-primary);
         }
     }
 }
 
+/* 版本信息条：品牌浅底 + 3px 品牌指示条，与导航选中态同源 */
 .upgrade-banner {
     display: flex;
     flex-direction: column;
     gap: 6px;
     padding: var(--space-3) var(--space-4);
-    background: linear-gradient(135deg, #ecf5ff 0%, #f0f9ff 100%);
+    background: var(--color-accent-soft);
     border-radius: var(--radius-md);
-    border-left: 3px solid var(--color-accent);
+    border-left: 3px solid var(--color-brand-fg);
     width: 100%;
     .banner-row {
         display: flex;
@@ -501,6 +513,68 @@ onUnmounted(() => {
 
 .progress-stats {
     font-variant-numeric: tabular-nums;
+    color: var(--color-text-secondary);
+}
+
+/* ---------- Element 按钮与进度条接入项目 token ----------
+   el-button 默认自带 Element 的蓝色、500 字重与外阴影，与命令栏、设置页的按钮
+   是两套语言。这里只在本窗口内映射：32px 高、4px 圆角、600 字重、无阴影。 */
+.upgrade :deep(.el-button) {
+    height: var(--control-md);
+    padding: 0 14px;
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: var(--font-sm);
+    font-weight: 600;
+    box-shadow: none;
+    --el-button-bg-color: transparent;
+    --el-button-border-color: var(--color-border);
+    --el-button-text-color: var(--color-text-primary);
+    --el-button-hover-bg-color: var(--elevation-hover);
+    --el-button-hover-border-color: var(--color-border);
+    --el-button-hover-text-color: var(--color-text-primary);
+    --el-button-active-bg-color: var(--elevation-pressed);
+    --el-button-active-border-color: var(--color-border);
+    --el-button-active-text-color: var(--color-text-primary);
+}
+
+.upgrade :deep(.el-button--primary) {
+    --el-button-bg-color: var(--btn-primary-bg);
+    --el-button-border-color: var(--btn-primary-bg);
+    --el-button-text-color: var(--btn-primary-text);
+    --el-button-hover-bg-color: var(--btn-primary-hover-bg);
+    --el-button-hover-border-color: var(--btn-primary-hover-bg);
+    --el-button-hover-text-color: var(--btn-primary-text);
+    --el-button-active-bg-color: var(--btn-primary-active-bg);
+    --el-button-active-border-color: var(--btn-primary-active-bg);
+    --el-button-active-text-color: var(--btn-primary-text);
+}
+
+.upgrade :deep(.el-button.is-disabled),
+.upgrade :deep(.el-button.is-disabled:hover) {
+    box-shadow: none;
+    --el-button-disabled-bg-color: var(--color-chip-bg);
+    --el-button-disabled-border-color: var(--color-border);
+    --el-button-disabled-text-color: var(--color-text-disabled);
+}
+
+.upgrade :deep(.el-button .el-icon) {
+    font-size: var(--icon-sm);
+}
+
+/* 图标与文字的间距交给外边距，取代原先写在模板里的内联 style */
+.upgrade :deep(.el-button .el-icon + span) {
+    margin-left: 6px;
+}
+
+/* 进度条：Fluent 2 是细条 + 右侧百分比，不用条纹流动动画与条内文字 */
+.upgrade :deep(.el-progress-bar__outer) {
+    border-radius: 3px;
+    background-color: var(--color-chip-bg);
+}
+
+.upgrade :deep(.el-progress__text) {
+    font-size: var(--font-xs);
     color: var(--color-text-secondary);
 }
 </style>

@@ -34,7 +34,7 @@
         margin: 8px 0 0;
         padding: 0 8px;
         font-size: var(--font-xs);
-        color: var(--color-text-disabled);
+        color: var(--color-text-tertiary);
     }
 
     &-toc-item {
@@ -66,7 +66,7 @@
         &.is-lv3 {
             padding-left: 28px;
             font-size: var(--font-xs);
-            color: var(--color-text-disabled);
+            color: var(--color-text-tertiary);
         }
 
         &.is-active {
@@ -356,7 +356,7 @@
     font-weight: 500;
     line-height: 1;
     letter-spacing: 0.02em;
-    color: var(--color-text-disabled);
+    color: var(--color-text-tertiary);
     text-transform: lowercase;
     user-select: none;
 }
@@ -387,7 +387,7 @@
     border: 0;
     border-radius: 3px;
     background: transparent;
-    color: var(--color-text-disabled);
+    color: var(--color-text-tertiary);
     cursor: pointer;
     opacity: 0;
     transition:

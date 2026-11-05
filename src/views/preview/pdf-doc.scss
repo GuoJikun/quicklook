@@ -61,7 +61,7 @@
     margin: 8px 0 0;
     padding: 0 8px;
     font-size: var(--font-xs);
-    color: var(--color-text-disabled);
+    color: var(--color-text-tertiary);
 }
 
 .pdf-toc-item {
@@ -94,7 +94,7 @@
 .pdf-toc-item.is-lv3 {
     padding-left: 32px;
     font-size: var(--font-xs);
-    color: var(--color-text-disabled);
+    color: var(--color-text-tertiary);
 }
 
 .pdf-toc-item.is-active {

@@ -280,7 +280,7 @@ onBeforeUnmount(() => {
 .ft-card {
     --ft-fg: var(--color-text-primary);
     --ft-fg-2: var(--color-text-secondary);
-    --ft-fg-3: var(--color-text-disabled);
+    --ft-fg-3: var(--color-text-tertiary);
     --ft-line: var(--color-divider);
 
     height: 100%;

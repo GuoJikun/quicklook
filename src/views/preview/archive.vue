@@ -390,7 +390,7 @@ const sortColumns = computed<Array<{ key: SortKey; label: string }>>(() => [
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--color-divider);
     font-size: var(--font-xs);
-    color: var(--color-text-disabled);
+    color: var(--color-text-tertiary);
     letter-spacing: 0.04em;
     user-select: none;
 
@@ -436,7 +436,7 @@ const sortColumns = computed<Array<{ key: SortKey; label: string }>>(() => [
         width: 14px;
         height: 14px;
         flex: none;
-        color: var(--color-text-disabled);
+        color: var(--color-text-tertiary);
         transition: transform var(--transition-fast);
 
         &.is-open {
@@ -453,7 +453,7 @@ const sortColumns = computed<Array<{ key: SortKey; label: string }>>(() => [
         width: 14px;
         height: 14px;
         flex: none;
-        color: var(--color-text-disabled);
+        color: var(--color-text-tertiary);
     }
 
     .ico.folder {
@@ -476,7 +476,7 @@ const sortColumns = computed<Array<{ key: SortKey; label: string }>>(() => [
     padding: 40px 14px;
     text-align: center;
     font-size: var(--font-xs);
-    color: var(--color-text-disabled);
+    color: var(--color-text-tertiary);
 }
 
 .sort-arrow {

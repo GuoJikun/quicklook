@@ -11,6 +11,10 @@
     --color-surface: #ffffff;
     --color-text-primary: #1a1a1a;
     --color-text-secondary: #555555;
+    /* 第三级文字：元信息、说明、空态、三级目录项。
+       对应 Fluent 2 的 NeutralForeground3，不是禁用态 —— 曾经与 disabled 共用一个值，
+       导致命令栏信息跌到 2.57:1，低于 AA 4.5。 */
+    --color-text-tertiary: #616161;
     --color-text-disabled: #999999;
     --color-border: #e1e1e1;
     /* 发丝分隔线：比 border 更轻，用于标题行/表头等不该割裂画面的场合 */
@@ -25,12 +29,16 @@
        selected-bg(#ebebeb) 在 #f3f3f3 工具栏上比 hover(#e0e0e0) 还浅，两者撞色。 */
     --color-selected-strong: #cfcfcf;
     --elevation-hover: rgba(0, 0, 0, 0.08);
+    /* 按下态：必须比 hover 深一档，否则鼠标按下没有反馈 */
+    --elevation-pressed: rgba(0, 0, 0, 0.12);
     --color-hover-bg: #e5f1fb;
 
     /* 危险色：前景用于文字，底色仅用于实心告警块 */
     --color-danger-fg: #a80000;
     --color-danger: #d13438;
     --color-danger-hover: #b52b2f;
+    /* 成功色：StatusSuccessForeground，只作前景（图标/文字），不用实心底 */
+    --color-success-fg: #0e700e;
 
     --btn-primary-bg: var(--color-accent);
     --btn-primary-text: #ffffff;
@@ -72,6 +80,8 @@ html.dark {
     --color-surface: #2b2b2b;
     --color-text-primary: #ffffff;
     --color-text-secondary: #cccccc;
+    /* NeutralForeground3 dark：在 #2b2b2b 上 6.31:1，在 #1c1c1c 上 7.60:1 */
+    --color-text-tertiary: #adadad;
     --color-text-disabled: #777777;
     --color-border: #3a3a3a;
     --color-divider: rgba(255, 255, 255, 0.08);
@@ -81,11 +91,15 @@ html.dark {
     /* 深色下 selected-bg(#383838) 与 hover(#363636) 仅差 2 级，故开关态单独取值 */
     --color-selected-strong: #4a4a4a;
     --elevation-hover: rgba(255, 255, 255, 0.05);
+    /* 深色下 hover 是「变亮」，按下继续提亮一档以保持同向层级 */
+    --elevation-pressed: rgba(255, 255, 255, 0.09);
     --color-hover-bg: rgba(0, 120, 212, 0.2);
 
     --color-danger-fg: #ff99a4;
     --color-danger: #d13438;
     --color-danger-hover: #e8646c;
+    /* 深色 #54b054 在 #2b2b2b 上 5.20:1 */
+    --color-success-fg: #54b054;
 
     --btn-primary-bg: var(--color-accent);
     --btn-primary-text: #ffffff;

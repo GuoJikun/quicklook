@@ -27,25 +27,26 @@
 }
 
 .pv-pill.is-muted {
-    color: var(--color-text-disabled);
+    color: var(--color-text-tertiary);
     font-weight: 500;
     letter-spacing: 0.02em;
 }
 
 /* ---------- 命令栏按钮 ---------- */
+/* 高度取 Fluent 2 的 medium 档（32），不再用 28 这类中间值 */
 .pv-tb-btn {
     appearance: none;
     border: 0;
     background: transparent;
     color: var(--color-text-secondary);
-    height: 28px;
-    min-width: 28px;
-    padding: 0 7px;
+    height: var(--control-md);
+    min-width: var(--control-md);
+    padding: 0 8px;
     border-radius: var(--radius-sm);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 5px;
+    gap: 6px;
     font-family: inherit;
     font-size: var(--font-xs);
     line-height: 1;
@@ -62,8 +63,10 @@
     color: var(--color-text-primary);
 }
 
+/* 按下必须比 hover 深一档，原先与 hover 同值等于没有按下反馈 */
 .pv-tb-btn:active {
-    background: var(--elevation-hover);
+    background: var(--elevation-pressed);
+    color: var(--color-text-primary);
 }
 
 /* 开关类按钮的「已开启」：用比 hover 更深一档的中性底，
@@ -80,13 +83,13 @@
 }
 
 .pv-tb-btn svg {
-    width: 15px;
-    height: 15px;
+    width: var(--icon-sm);
+    height: var(--icon-sm);
     flex: none;
 }
 
 .pv-tb-btn .el-icon {
-    font-size: 15px;
+    font-size: var(--icon-sm);
 }
 
 /* 更小的行内图标（下拉箭头等）：必须同时给宽高 */
@@ -120,12 +123,13 @@
 }
 
 /* ---------- 命令栏内的数值与状态文字 ---------- */
+/* 只读数值是标签不是控件，取 small 档高度，与 32 的按钮形成层次 */
 .pv-tb-num {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    height: 22px;
-    min-width: 46px;
+    height: var(--control-sm);
+    min-width: 48px;
     padding: 0 8px;
     border-radius: var(--radius-sm);
     background: var(--color-chip-bg);
@@ -141,7 +145,7 @@
     align-items: center;
     gap: 8px;
     font-size: var(--font-xs);
-    color: var(--color-text-disabled);
+    color: var(--color-text-tertiary);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
     flex: none;
@@ -174,7 +178,7 @@
     box-sizing: border-box;
     width: 200px;
     max-width: 100%;
-    height: 26px;
+    height: var(--control-md);
     padding: 0 8px;
     border-radius: var(--radius-sm);
     background: transparent;
@@ -191,10 +195,10 @@
 }
 
 .pv-tb-input svg {
-    width: 12px;
-    height: 12px;
+    width: 14px;
+    height: 14px;
     flex: none;
-    color: var(--color-text-disabled);
+    color: var(--color-text-tertiary);
 }
 
 .pv-tb-input input {
@@ -212,7 +216,7 @@
 }
 
 .pv-tb-input input::placeholder {
-    color: var(--color-text-disabled);
+    color: var(--color-text-tertiary);
 }
 
 /* 清空按钮：仅在有内容时出现 */
@@ -220,7 +224,7 @@
     appearance: none;
     border: 0;
     background: transparent;
-    color: var(--color-text-disabled);
+    color: var(--color-text-tertiary);
     cursor: pointer;
     display: inline-flex;
     align-items: center;

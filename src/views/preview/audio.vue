@@ -803,7 +803,7 @@ onBeforeUnmount(() => {
     justify-content: center;
     height: 100%;
     font-size: var(--font-xs);
-    color: var(--color-text-disabled);
+    color: var(--color-text-tertiary);
 }
 
 /* ---------- 进度条 ---------- */

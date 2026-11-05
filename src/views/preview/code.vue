@@ -331,7 +331,7 @@ watch(isDark, async () => {
             top: 0;
             width: 44px;
             text-align: right;
-            color: var(--color-text-disabled);
+            color: var(--color-text-tertiary);
             font-variant-numeric: tabular-nums;
             user-select: none;
             pointer-events: none;

@@ -52,7 +52,7 @@
     &-toc-author {
         margin: 3px 0 0;
         font-size: var(--font-xs);
-        color: var(--color-text-disabled);
+        color: var(--color-text-tertiary);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -62,7 +62,7 @@
         margin: 8px 0 0;
         padding: 0 8px;
         font-size: var(--font-xs);
-        color: var(--color-text-disabled);
+        color: var(--color-text-tertiary);
     }
 
     &-toc-item {
@@ -95,7 +95,7 @@
         &.is-lv3 {
             padding-left: 40px;
             font-size: var(--font-xs);
-            color: var(--color-text-disabled);
+            color: var(--color-text-tertiary);
         }
 
         &.is-active {

@@ -100,28 +100,60 @@ watch(
             </div>
         </div>
         <div class="layout-header-operate no-selected">
-            <div
+            <button
+                type="button"
                 class="layout-header-operate-item"
-                @click="toggle"
                 :title="isDark ? t('header.toLight') : t('header.toDark')"
+                :aria-label="isDark ? t('header.toLight') : t('header.toDark')"
+                @click="toggle"
             >
-                <el-icon :size="15"><WeatherMoon16Regular v-if="isDark" /><WeatherSunny16Regular v-else /></el-icon>
-            </div>
-            <div class="layout-header-operate-item" @click="pin" :title="pined ? t('header.unpin') : t('header.pin')">
-                <el-icon :size="15"><PinOff16Regular v-if="pined" /><Pin16Regular v-else /></el-icon>
-            </div>
-            <div class="layout-header-operate-item" @click="openByDefault" :title="openWithDefaultLabel">
-                <el-icon :size="15"><Open16Regular /></el-icon>
-            </div>
-            <div class="layout-header-operate-item" @click="openWith" :title="t('header.openWithList')">
-                <el-icon :size="15"><Apps16Regular /></el-icon>
-            </div>
-            <div class="layout-header-operate-item" @click="handleMax" :title="t('header.maximize')">
-                <el-icon :size="15"><Maximize16Regular /></el-icon>
-            </div>
-            <div class="layout-header-operate-item is-close" @click="handleClose" :title="t('header.close')">
-                <el-icon :size="15"><Dismiss16Regular /></el-icon>
-            </div>
+                <el-icon><WeatherMoon16Regular v-if="isDark" /><WeatherSunny16Regular v-else /></el-icon>
+            </button>
+            <button
+                type="button"
+                class="layout-header-operate-item"
+                :title="pined ? t('header.unpin') : t('header.pin')"
+                :aria-label="pined ? t('header.unpin') : t('header.pin')"
+                @click="pin"
+            >
+                <el-icon><PinOff16Regular v-if="pined" /><Pin16Regular v-else /></el-icon>
+            </button>
+            <button
+                type="button"
+                class="layout-header-operate-item"
+                :title="openWithDefaultLabel"
+                :aria-label="openWithDefaultLabel"
+                @click="openByDefault"
+            >
+                <el-icon><Open16Regular /></el-icon>
+            </button>
+            <button
+                type="button"
+                class="layout-header-operate-item"
+                :title="t('header.openWithList')"
+                :aria-label="t('header.openWithList')"
+                @click="openWith"
+            >
+                <el-icon><Apps16Regular /></el-icon>
+            </button>
+            <button
+                type="button"
+                class="layout-header-operate-item"
+                :title="t('header.maximize')"
+                :aria-label="t('header.maximize')"
+                @click="handleMax"
+            >
+                <el-icon><Maximize16Regular /></el-icon>
+            </button>
+            <button
+                type="button"
+                class="layout-header-operate-item is-close"
+                :title="t('header.close')"
+                :aria-label="t('header.close')"
+                @click="handleClose"
+            >
+                <el-icon><Dismiss16Regular /></el-icon>
+            </button>
         </div>
     </div>
 </template>
@@ -152,8 +184,8 @@ watch(
 .layout-header-title {
     font-size: var(--font-lg);
     font-weight: 600;
-    letter-spacing: -0.01em;
-    line-height: 1.35;
+    /* 16px 属 Body2，Fluent 2 的负字距只给 ≥20px 的标题，这里不加 */
+    line-height: var(--line-tight);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -171,17 +203,24 @@ watch(
 .layout-header-operate {
     display: inline-flex;
     align-items: center;
-    gap: 1px;
+    gap: 2px;
     margin-left: auto;
     height: 100%;
     flex: none;
 
+    /* 必须是 button：标题行右侧 6 个操作原先用 div，Tab 键整段跳过，
+       WCAG 2.1.1 不通过。键盘可达后焦点环由全局 :focus-visible 提供。 */
     &-item {
+        appearance: none;
         cursor: pointer;
-        width: 34px;
-        height: 30px;
+        width: var(--control-md);
+        height: var(--control-md);
+        padding: 0;
+        border: 0;
         border-radius: var(--radius-sm);
+        background: transparent;
         color: var(--color-text-secondary);
+        font: inherit;
         display: inline-flex;
         justify-content: center;
         align-items: center;
@@ -195,7 +234,7 @@ watch(
         }
 
         &:active {
-            background-color: var(--color-chip-bg);
+            background-color: var(--elevation-pressed);
         }
 
         &.is-close {
@@ -205,11 +244,20 @@ watch(
                 background-color: var(--color-danger);
                 color: #fff;
             }
+
+            &:active {
+                background-color: var(--color-danger-hover);
+                color: #fff;
+            }
         }
 
         :deep(i.el-icon) {
             cursor: pointer;
             pointer-events: none;
+            /* 16 是 Fluent 图标的绘制网格；原先 15px 会落在半像素上发虚 */
+            width: var(--icon-sm);
+            height: var(--icon-sm);
+            font-size: var(--icon-sm);
         }
     }
 }
