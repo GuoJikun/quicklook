@@ -182,6 +182,12 @@ export default {
     book: {
         ebook: 'eBook',
         cover: 'Cover',
+        toc: 'Contents',
+        tocEmpty: 'No chapters',
+        paperLight: 'White',
+        paperSepia: 'Sepia',
+        paperDark: 'Dark',
+        chapterProgress: 'Chapter {n} · {pct}% read',
         fontSmaller: 'Decrease font size (Ctrl+-)',
         fontLarger: 'Increase font size (Ctrl++)',
         empty: 'No content',

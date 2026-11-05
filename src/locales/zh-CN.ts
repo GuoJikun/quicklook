@@ -182,6 +182,12 @@ export default {
     book: {
         ebook: '电子书',
         cover: '封面',
+        toc: '目录',
+        tocEmpty: '暂无章节',
+        paperLight: '白纸',
+        paperSepia: '米黄',
+        paperDark: '深色',
+        chapterProgress: '第 {n} 章 · 全书 {pct}%',
         fontSmaller: '缩小字体 (Ctrl+-)',
         fontLarger: '放大字体 (Ctrl++)',
         empty: '暂无内容',

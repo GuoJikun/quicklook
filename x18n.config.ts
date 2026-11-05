@@ -6,7 +6,7 @@ export default defineConfig({
   // index.ts 是 createI18n 的装配文件，会被 {locale}.{ext} 误当成语言包
   ignoreLocales: ['index'],
   // 这些键通过映射表间接引用（如 nameKey: 'settings.formats.md'），静态扫描看不到
-  ignoreKeys: ['language.*', 'settings.formats.*', 'model.bg*'],
+  ignoreKeys: ['language.*', 'settings.formats.*', 'model.bg*', 'book.paper*'],
   resources: [
     {
       pattern: 'src/locales/{locale}.{ext}'
