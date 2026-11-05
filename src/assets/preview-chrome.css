@@ -162,18 +162,22 @@
 }
 
 /* ---------- 命令栏内的单行输入框 ----------
-   用描边而非填充，与只读数值胶囊区分，避免被误读成标签。 */
+   用描边而非填充，与只读数值胶囊区分，避免被误读成标签。
+   宽度必须是定值：写成 max-width 时盒子按内容收缩，输入后出现的清空按钮
+   会把盒子撑长 15px，整条命令栏跟着抖一下。定宽后清空按钮只挤压输入区。 */
 .pv-tb-input {
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    box-sizing: border-box;
+    width: 200px;
+    max-width: 100%;
     height: 26px;
     padding: 0 8px;
     border-radius: var(--radius-sm);
     background: transparent;
     border: 1px solid var(--color-border);
     flex: none;
-    max-width: 260px;
     transition:
         border-color var(--transition-fast),
         background-color var(--transition-fast);
