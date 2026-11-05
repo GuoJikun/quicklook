@@ -2,6 +2,7 @@
 
 > 范围：除音频（已按 `design/audio-preview-design.md` 重构）与视频（xgplayer 宿主页）之外的 9 种预览类型
 > 关联原型：`design/preview-types-redesign.html`（9 种类型可切换，含浅色/深色，支持 `?theme=dark#archive` 深链）
+> **颜色与字号基准：`design/fluent-baseline.md`**（本稿所有色值、字号以该文件为准）
 > 目标文件：`src/components/layout-preview.vue`、`src/views/preview/{image,md,code,document,book,archive,font,model,not-support}.vue`
 > 本文只做设计，不含实现代码
 
@@ -36,7 +37,7 @@
 
 1. **不做条带切割**。窗口只有一种底色（`--color-bg`），标题行与命令栏**背景透明**，不加 `border-bottom`。区域之间靠留白、圆角、阴影区分，不靠 1px 实线或白底横条。
 2. **控件悬浮，不占条带**。按钮常态无底色；hover 才浮现 `--color-hover-bg`；激活用 `--accent` + `--accent-soft`。图标按钮 28×28、圆角 6px，图标 15px。
-3. **标题即内容第一层**。文件名 15px/600，紧跟其后是 10px/600 全大写胶囊（格式、大小等），与音频页的 `MP3` / `320k` 完全同规格。
+3. **标题即内容第一层**。文件名 16px/600，紧跟其后是 10px/600 全大写胶囊（格式、大小等），与音频页的 `MP3` / `320k` 完全同规格。
 4. **取消状态栏**。原来的 Footer 20px 是「老式分栏」观感的主要来源，元信息改为标题行胶囊承载，不再单独占一条。
 5. **一种内容形态，一套层级**：所有类型共用 `标题行 → 命令栏 → 内容` 三层，类型差异只体现在命令栏内容与内容渲染器上。
 6. **复用既有设计变量**：颜色只用 `--color-bg / --color-surface / --color-accent / --color-text-primary / --color-text-secondary / --color-border / --color-hover-bg`；尺寸只用 `--space-1..6`、`--font-xs..3xl`、`--radius-sm..xl`。禁止新增硬编码色值与 rem 字号。
@@ -64,7 +65,7 @@
 
 | 区块 | 高度 | 背景 | 说明 |
 | --- | --- | --- | --- |
-| 标题行 | `--layout-header-h`（**44px**，原 28px） | 透明 | 文件名 + 元信息胶囊 + 窗口按钮，右侧按钮区 `margin-left: auto` |
+| 标题行 | `--layout-header-h`（**44px**，原 28px） | 透明 | 文件名 16px/600 + 元信息胶囊 + 窗口按钮，右侧按钮区 `margin-left: auto` |
 | 命令栏 | `--layout-toolbar-h`（**新增**，40px） | 透明 | 无操作时不渲染，不留空行 |
 | 内容 | `1fr` | 透明 | 唯一滚动容器，滚动条统一 8px |
 
@@ -112,6 +113,8 @@
 | `--preview-reading-w` | 760px | 阅读类（Markdown/DOCX）单列最大宽度 |
 | `--preview-code-line-h` | 20px | 代码行高基准 |
 
+颜色不在此表新增。品牌强调色按 `design/fluent-baseline.md` §2.1 拆为前景 `--color-brand-fg` 与背景 `--color-accent` 两支：链接、焦点环、选中项的 3px 指示条用 `--color-brand-fg`；命令栏开关按钮的开启态是中性底 + 中性文字（品牌色在 12px 文字上放不进任何候选底，见 `design/fluent-baseline.md` §2.5）；只有实心底（主按钮、进度条、开关轨道）用 `--color-accent`。
+
 
 ### 4.4 空态与错态（统一形态）
 
@@ -120,8 +123,8 @@
 ```
         ┌──────────────────┐
         │      [图标 48]     │
-        │   标题 15px/600    │
-        │  原因 13px/次要色   │
+        │   标题 16px/600    │
+        │  原因 14px/次要色   │
         │  [主按钮] [次按钮]  │
         └──────────────────┘
 ```
@@ -321,3 +324,6 @@ Body   居中卡片 420px：文件类型图标 48
 - [ ] 150% 缩放下三层结构不产生横向溢出，正文最小可用宽度 ≥ 480 逻辑像素
 - [ ] 不新增任何硬编码色值；新增 CSS 变量不超过 §4.3 列出的 4 个
 - [ ] 各类型窗口尺寸策略与 `calc_window_size` 现状一致（除决策 3 另行确认）
+- [ ] 命令栏开关按钮的开启态为 `--color-selected-strong` + `--color-text-primary`，且明显区别于 hover（`--color-selected-bg` 与 hover 撞色，浅色下比 hover 还浅、深色下仅差 2 级）；不使用「品牌浅底 + 品牌文字」叠加（该组合深色仅 4.07:1）
+- [ ] 目录 / 章节树的当前项为中性底 + 品牌 3px 指示条；格式徽章为 `--color-chip-bg` + 次要文字色
+- [ ] 文件名标题 16px/600、元信息胶囊 10px/600、命令栏按钮 12px，均在 Fluent 2 Base 阶梯内；无 13 / 15 / 18 与半像素值

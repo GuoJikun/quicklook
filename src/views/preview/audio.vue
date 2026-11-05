@@ -613,9 +613,10 @@ onBeforeUnmount(() => {
 
 <style scoped lang="scss">
 .audio-wrapper {
-    /* 设计稿主色（Windows 蓝），与 Element 默认蓝区分 */
-    --audio-accent: #0078d4;
-    --audio-accent-hi: #2b95e3;
+    /* 品牌色分两支：accent 作实心底（播放键、进度条），hi 作文字与强调图形。
+       取值来自全局 token，深色模式自动翻转，见 design/fluent-baseline.md §2.1 */
+    --audio-accent: var(--color-accent);
+    --audio-accent-hi: var(--color-brand-fg);
     /* 设计稿按 560×360 逻辑像素绘制。窗口尺寸会随系统缩放比缩小（150% 时只剩
        373×240 逻辑像素），故几何尺寸统一按 1 设计像素 = 1/360 视口高换算；
        字号另外设下限，避免高缩放下整块 UI 一起缩到不可读 */
@@ -624,7 +625,7 @@ onBeforeUnmount(() => {
     --lyric-h: min(calc(150 * var(--u)), 100%);
     --line-h: max(22px, calc(30 * var(--u)));
     --lyric-font: clamp(12px, calc(14 * var(--u)), 14px);
-    --lyric-font-current: clamp(16px, calc(22 * var(--u)), 22px);
+    --lyric-font-current: clamp(16px, calc(20 * var(--u)), 20px);
     --shell-gap: calc(12 * var(--u));
 
     position: relative;
@@ -633,11 +634,6 @@ onBeforeUnmount(() => {
     background-color: var(--color-bg);
     overflow: hidden;
     user-select: none;
-}
-
-:global(html.dark) .audio-wrapper {
-    --audio-accent: #2b95e3;
-    --audio-accent-hi: #4aa8f0;
 }
 
 /* ---------- 展开态背景：封面放大模糊 + 主题蒙版 ---------- */
@@ -745,7 +741,7 @@ onBeforeUnmount(() => {
     padding: 0 4px;
     border-radius: 3px;
     background: var(--elevation-hover);
-    font-size: 10px;
+    font-size: var(--font-2xs);
     font-weight: 600;
     line-height: 14px;
     letter-spacing: 0.2px;
@@ -797,7 +793,7 @@ onBeforeUnmount(() => {
     &.current {
         font-size: var(--lyric-font-current);
         font-weight: 600;
-        color: var(--audio-accent);
+        color: var(--audio-accent-hi);
     }
 }
 

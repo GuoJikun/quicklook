@@ -766,7 +766,7 @@ onUnmounted(() => {
     --el-input-bg-color: var(--color-chip-bg);
     --el-input-border-color: transparent;
     --el-input-hover-border-color: transparent;
-    --el-input-focus-border-color: var(--color-accent);
+    --el-input-focus-border-color: var(--color-brand-fg);
     --el-input-border-radius: var(--radius-md);
     --el-input-text-color: var(--color-text-primary);
     --el-input-placeholder-color: var(--color-text-disabled);
@@ -791,9 +791,9 @@ onUnmounted(() => {
 
 .st-navgroup {
     padding: 12px 12px 4px;
-    font-size: 10px;
+    font-size: var(--font-2xs);
     font-weight: 600;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.04em;
     color: var(--color-text-disabled);
 }
 
@@ -829,8 +829,8 @@ onUnmounted(() => {
     }
 
     &.is-active {
-        background: var(--color-accent-soft);
-        color: var(--color-accent-hi);
+        background: var(--color-selected-bg);
+        color: var(--color-text-primary);
         font-weight: 600;
 
         &::before {
@@ -841,7 +841,7 @@ onUnmounted(() => {
             bottom: 9px;
             width: 3px;
             border-radius: 2px;
-            background: var(--color-accent-hi);
+            background: var(--color-brand-fg);
         }
     }
 }
@@ -855,7 +855,7 @@ onUnmounted(() => {
 .st-navfoot {
     margin-top: auto;
     padding: 12px;
-    font-size: 11px;
+    font-size: var(--font-xs);
     color: var(--color-text-disabled);
     font-variant-numeric: tabular-nums;
 }
@@ -986,7 +986,7 @@ onUnmounted(() => {
 .st-note {
     margin: -6px 0 16px;
     padding-left: 2px;
-    font-size: 11px;
+    font-size: var(--font-xs);
     color: var(--color-text-disabled);
 }
 
@@ -999,11 +999,11 @@ onUnmounted(() => {
 
 .st-inline {
     margin-top: 3px;
-    font-size: 11px;
+    font-size: var(--font-xs);
     color: var(--color-text-secondary);
 
     &.is-error {
-        color: var(--color-danger);
+        color: var(--color-danger-fg);
     }
 }
 
@@ -1107,7 +1107,7 @@ onUnmounted(() => {
     --el-border-color: var(--color-border);
     --el-border-color-hover: var(--color-accent);
     --el-border-radius-base: var(--radius-sm);
-    --el-color-primary: var(--color-accent-hi);
+    --el-color-primary: var(--color-brand-fg);
     --el-text-color-regular: var(--color-text-primary);
     --el-select-input-color: var(--color-text-disabled);
 
@@ -1125,7 +1125,7 @@ onUnmounted(() => {
     }
 
     :deep(.el-select__caret) {
-        font-size: 12px;
+        font-size: var(--font-xs);
     }
 }
 
@@ -1136,8 +1136,8 @@ onUnmounted(() => {
     flex: none;
     --el-input-bg-color: transparent;
     --el-input-border-color: var(--color-border);
-    --el-input-hover-border-color: var(--color-accent);
-    --el-input-focus-border-color: var(--color-accent);
+    --el-input-hover-border-color: var(--color-brand-fg);
+    --el-input-focus-border-color: var(--color-brand-fg);
     --el-input-border-radius: var(--radius-sm);
     --el-input-text-color: var(--color-text-primary);
     --el-input-placeholder-color: var(--color-text-disabled);
@@ -1180,7 +1180,7 @@ onUnmounted(() => {
 
     &:hover:not(:disabled) {
         background: var(--color-accent-soft);
-        color: var(--color-accent-hi);
+        color: var(--color-brand-fg);
     }
 
     &:disabled {
@@ -1205,7 +1205,7 @@ onUnmounted(() => {
     border-radius: 11px;
     background: var(--color-chip-bg);
     color: var(--color-text-secondary);
-    font-size: 11.5px;
+    font-size: var(--font-xs);
     font-variant-numeric: tabular-nums;
 
     &.is-plain {
@@ -1226,7 +1226,7 @@ onUnmounted(() => {
     display: grid;
     place-items: center;
     font: inherit;
-    font-size: 12px;
+    font-size: var(--font-xs);
     line-height: 1;
     cursor: pointer;
 
@@ -1244,7 +1244,7 @@ onUnmounted(() => {
     appearance: none;
     border: 0;
     background: transparent;
-    color: var(--color-accent-hi);
+    color: var(--color-brand-fg);
     font: inherit;
     font-size: var(--font-xs);
     padding: 7px 10px;
@@ -1258,7 +1258,7 @@ onUnmounted(() => {
     }
 
     &.is-danger {
-        color: var(--color-danger);
+        color: var(--color-danger-fg);
     }
 
     &:disabled {
@@ -1281,7 +1281,7 @@ onUnmounted(() => {
         height: 16px;
         flex: none;
         margin-top: 1px;
-        color: var(--color-accent-hi);
+        color: var(--color-brand-fg);
     }
 }
 
@@ -1311,7 +1311,7 @@ onUnmounted(() => {
     flex: none;
     border-radius: var(--radius-md);
     background: var(--color-accent-soft);
-    color: var(--color-accent-hi);
+    color: var(--color-brand-fg);
     display: grid;
     place-items: center;
 
@@ -1355,7 +1355,7 @@ onUnmounted(() => {
 }
 
 .st-link {
-    color: var(--color-accent-hi);
+    color: var(--color-brand-fg);
     font-size: var(--font-xs);
     text-decoration: none;
 
@@ -1420,7 +1420,7 @@ onUnmounted(() => {
         }
     }
     .st-pagehead h2 {
-        font-size: 22px;
+        font-size: var(--font-2xl);
     }
     .st-row {
         flex-wrap: wrap;
@@ -1453,7 +1453,7 @@ onUnmounted(() => {
     --el-text-color-regular: var(--color-text-primary);
     --el-text-color-placeholder: var(--color-text-disabled);
     --el-fill-color-light: var(--color-chip-bg);
-    --el-color-primary: var(--color-accent-hi);
+    --el-color-primary: var(--color-brand-fg);
     --el-box-shadow-light: 0 6px 20px rgba(0, 0, 0, 0.14);
     border-radius: var(--radius-md);
 

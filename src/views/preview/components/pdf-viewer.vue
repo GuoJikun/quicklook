@@ -621,7 +621,7 @@ defineExpose({ zoomIn, zoomOut, fitWidth, refit, rotate, goToPage })
 
     &-page-loading {
         color: var(--color-text-disabled);
-        font-size: 12px;
+        font-size: var(--font-xs);
     }
 }
 </style>

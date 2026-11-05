@@ -442,7 +442,7 @@ onUnmounted(() => {
     .banner-version {
         font-size: var(--font-2xl);
         font-weight: 600;
-        color: var(--color-accent);
+        color: var(--color-brand-fg);
     }
 
     .banner-value {
@@ -495,7 +495,7 @@ onUnmounted(() => {
 
 .progress-speed {
     margin-left: 6px;
-    color: var(--color-accent);
+    color: var(--color-brand-fg);
     font-variant-numeric: tabular-nums;
 }
 

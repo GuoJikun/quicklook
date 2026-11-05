@@ -391,7 +391,7 @@ watch(
         height: 100%;
         overflow: auto;
         padding: 0;
-        font-size: 1.4rem;
+        font-size: var(--font-sm);
         font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
     }
 

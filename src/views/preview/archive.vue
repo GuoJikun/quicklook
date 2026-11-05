@@ -389,7 +389,7 @@ const sortColumns = computed<Array<{ key: SortKey; label: string }>>(() => [
     background: color-mix(in srgb, var(--color-bg) 88%, transparent);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--color-divider);
-    font-size: 11px;
+    font-size: var(--font-xs);
     color: var(--color-text-disabled);
     letter-spacing: 0.04em;
     user-select: none;
@@ -401,7 +401,7 @@ const sortColumns = computed<Array<{ key: SortKey; label: string }>>(() => [
 
 .ar-row {
     height: 28px;
-    font-size: 12.5px;
+    font-size: var(--font-xs);
     color: var(--color-text-primary);
     border-radius: var(--radius-sm);
     cursor: default;
@@ -464,7 +464,7 @@ const sortColumns = computed<Array<{ key: SortKey; label: string }>>(() => [
 .sz,
 .tm {
     text-align: right;
-    font-size: 11.5px;
+    font-size: var(--font-xs);
     color: var(--color-text-secondary);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
@@ -475,7 +475,7 @@ const sortColumns = computed<Array<{ key: SortKey; label: string }>>(() => [
 .ar-empty {
     padding: 40px 14px;
     text-align: center;
-    font-size: 12.5px;
+    font-size: var(--font-xs);
     color: var(--color-text-disabled);
 }
 

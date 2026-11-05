@@ -19,18 +19,23 @@
     --space-6: 32px;
 
     /* ==== 字号 (Font Sizes) ==== */
-    --font-xs: 12px;
-    --font-sm: 13px;
-    --font-md: 14px;
-    --font-lg: 15px;
-    --font-xl: 16px;
-    --font-2xl: 18px;
-    --font-3xl: 24px;
+    /* 对齐 Fluent 2 的 Base 阶梯：10/12/14/16/20/24，配 14/16/20/22/28/32 行高。
+       13px、15px、18px 与全部半像素值已移除，见 design/fluent-baseline.md §3.2。 */
+    --font-2xs: 10px; /* Base100 Caption2 10/14 */
+    --font-xs: 12px; /* Base200 Caption1 12/16 */
+    --font-sm: 14px; /* Base300 Body1 14/20 —— UI 主力 */
+    --font-md: 14px; /* 与 sm 同值，保留兼容既有引用 */
+    --font-lg: 16px; /* Base400 Body2 16/22 —— 标题 */
+    --font-xl: 16px; /* 与 lg 同值，保留兼容既有引用 */
+    --font-2xl: 20px; /* Base500 Subtitle1 20/28 */
+    --font-3xl: 24px; /* Base600 Title3 24/32 */
+    --font-4xl: 32px; /* Hero800 32/40 —— 仅字体样张的家族名 */
 
     /* ==== 行高 ==== */
-    --line-tight: 1.4;
-    --line-base: 1.6;
-    --line-loose: 1.8;
+    /* 与字号成对：10/14、12/16、24/32 用 tight；14/20 用 base；阅读正文用 loose */
+    --line-tight: 1.33;
+    --line-base: 1.43;
+    --line-loose: 1.7;
 
     /* ==== 预览窗口 ==== */
     --preview-scrollbar-w: 8px;

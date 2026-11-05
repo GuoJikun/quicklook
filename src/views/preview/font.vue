@@ -309,7 +309,7 @@ onBeforeUnmount(() => {
 .ft-name {
     margin: 0;
     font-family: var(--ft-font, inherit);
-    font-size: 34px;
+    font-size: var(--font-4xl);
     /* 不做合成加粗：文件是哪个字重就显示哪个字重 */
     font-weight: 400;
     line-height: 1.2;
@@ -344,9 +344,9 @@ onBeforeUnmount(() => {
     display: inline-flex;
     align-items: center;
     border-radius: 9px;
-    background: var(--color-accent-soft);
-    color: var(--color-accent-hi);
-    font-size: 10.5px;
+    background: var(--color-chip-bg);
+    color: var(--color-text-secondary);
+    font-size: var(--font-2xs);
     font-weight: 600;
     flex: none;
 }
@@ -367,7 +367,7 @@ onBeforeUnmount(() => {
 }
 
 .ft-rung-label {
-    font-size: 10.5px;
+    font-size: var(--font-2xs);
     color: var(--ft-fg-3);
     font-variant-numeric: tabular-nums;
     text-align: right;
@@ -384,9 +384,9 @@ onBeforeUnmount(() => {
 
 .ft-grid-head {
     margin: 28px 0 10px;
-    font-size: 10.5px;
+    font-size: var(--font-2xs);
     font-weight: 600;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
     color: var(--ft-fg-3);
 }
@@ -406,7 +406,7 @@ onBeforeUnmount(() => {
         aspect-ratio: 1.6;
         background: var(--color-surface);
         font-family: var(--ft-font, inherit);
-        font-size: 19px;
+        font-size: var(--font-2xl);
         color: var(--ft-fg);
         transition:
             background-color var(--transition-fast),
@@ -414,7 +414,7 @@ onBeforeUnmount(() => {
 
         &:hover {
             background: var(--color-accent-soft);
-            color: var(--color-accent-hi);
+            color: var(--color-brand-fg);
         }
     }
 }

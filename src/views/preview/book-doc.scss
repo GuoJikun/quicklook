@@ -39,7 +39,7 @@
 
     &-toc-title {
         margin: 0;
-        font-size: 12.5px;
+        font-size: var(--font-xs);
         font-weight: 600;
         line-height: 1.4;
         color: var(--color-text-primary);
@@ -71,7 +71,7 @@
         margin-bottom: 1px;
         border-radius: var(--radius-sm);
         border-left: 2px solid transparent;
-        font-size: 12.5px;
+        font-size: var(--font-xs);
         line-height: 1.45;
         color: var(--color-text-secondary);
         text-decoration: none;
@@ -99,9 +99,9 @@
         }
 
         &.is-active {
-            color: var(--color-accent-hi);
-            background: var(--color-accent-soft);
-            border-left-color: var(--color-accent);
+            color: var(--color-text-primary);
+            background: var(--color-selected-bg);
+            border-left-color: var(--color-brand-fg);
             font-weight: 600;
         }
     }
@@ -175,7 +175,7 @@
         &-title {
             font-size: var(--font-lg);
             font-weight: 600;
-            color: var(--color-danger);
+            color: var(--color-danger-fg);
         }
 
         &-detail {
@@ -202,7 +202,7 @@
 
             &:hover {
                 background: var(--elevation-hover);
-                border-color: var(--color-accent);
+                border-color: var(--color-brand-fg);
             }
         }
     }

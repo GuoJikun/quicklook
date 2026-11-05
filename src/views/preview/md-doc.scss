@@ -43,7 +43,7 @@
         margin-bottom: 1px;
         border-radius: var(--radius-sm);
         border-left: 2px solid transparent;
-        font-size: 12.5px;
+        font-size: var(--font-xs);
         line-height: 1.45;
         color: var(--color-text-secondary);
         text-decoration: none;
@@ -70,9 +70,9 @@
         }
 
         &.is-active {
-            color: var(--color-accent-hi);
-            background: var(--color-accent-soft);
-            border-left-color: var(--color-accent);
+            color: var(--color-text-primary);
+            background: var(--color-selected-bg);
+            border-left-color: var(--color-brand-fg);
             font-weight: 600;
         }
     }
@@ -135,7 +135,7 @@
         &-title {
             font-size: var(--font-lg);
             font-weight: 600;
-            color: var(--color-danger);
+            color: var(--color-danger-fg);
         }
 
         &-detail {
@@ -181,7 +181,7 @@
 .md-pv-inner .vp-doc h4,
 .md-pv-inner .vp-doc h5,
 .md-pv-inner .vp-doc h6 {
-    font-weight: 650;
+    font-weight: 600;
     color: var(--color-text-primary);
     line-height: 1.35;
 }
@@ -240,13 +240,13 @@
 }
 
 .md-pv-inner .vp-doc a {
-    color: var(--color-accent-hi);
+    color: var(--color-brand-fg);
     text-decoration: underline;
     text-underline-offset: 2px;
 }
 
 .md-pv-inner .vp-doc a:hover {
-    color: var(--color-accent);
+    color: var(--color-brand-fg);
 }
 
 /* 引用块：左侧强调条 + 淡蓝底，与音频预览的强调色语言一致 */
@@ -407,7 +407,7 @@
 }
 
 .md-pv-inner .vp-doc div[class*='language-'] > button.md-copy.is-copied {
-    color: var(--color-accent-hi);
+    color: var(--color-brand-fg);
 }
 
 .md-pv-inner .vp-doc div[class*='language-'] > button.md-copy svg {

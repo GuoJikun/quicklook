@@ -18,7 +18,7 @@
 }
 
 .pdf-tb-page:focus-within {
-    border-color: var(--color-accent);
+    border-color: var(--color-brand-fg);
 }
 
 .pdf-tb-page-input {
@@ -30,7 +30,7 @@
     background: transparent;
     color: var(--color-text-primary);
     font-family: inherit;
-    font-size: 11.5px;
+    font-size: var(--font-xs);
     font-variant-numeric: tabular-nums;
     text-align: center;
 }
@@ -38,7 +38,7 @@
 .pdf-tb-total {
     margin-left: -2px;
     margin-right: 2px;
-    font-size: 11.5px;
+    font-size: var(--font-xs);
 }
 
 /* ---------- 目录抽屉 ----------
@@ -70,7 +70,7 @@
     margin-bottom: 1px;
     border-radius: var(--radius-sm);
     border-left: 2px solid transparent;
-    font-size: 12.5px;
+    font-size: var(--font-xs);
     line-height: 1.45;
     color: var(--color-text-secondary);
     text-decoration: none;
@@ -98,9 +98,9 @@
 }
 
 .pdf-toc-item.is-active {
-    color: var(--color-accent-hi);
-    background: var(--color-accent-soft);
-    border-left-color: var(--color-accent);
+    color: var(--color-text-primary);
+    background: var(--color-selected-bg);
+    border-left-color: var(--color-brand-fg);
     font-weight: 600;
 }
 
@@ -120,7 +120,7 @@
 .pdf-state-title {
     font-size: var(--font-lg);
     font-weight: 600;
-    color: var(--color-danger);
+    color: var(--color-danger-fg);
 }
 
 .pdf-state-detail {
