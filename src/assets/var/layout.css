@@ -35,6 +35,8 @@
     /* ==== 预览窗口 ==== */
     --preview-scrollbar-w: 8px;
     --preview-code-line-h: 20px;
+    /* 阅读类（Markdown / DOCX）单列正文宽度，不含左右内边距 */
+    --preview-reading-w: 760px;
 
     /* ==== 层级 (Z-Index) ==== */
     --z-base: 0;

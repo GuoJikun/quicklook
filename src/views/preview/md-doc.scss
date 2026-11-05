@@ -1,0 +1,416 @@
+/* ==== Markdown 预览的阅读版式 ====
+   两层职责：
+   1. .md-pv-* 负责预览外壳（目录抽屉、唯一滚动容器、760px 阅读列、统一错态）；
+   2. .md-pv-inner .vp-doc 覆盖 md-viewer 的 VitePress 排版，字号全部改用 em，
+      使命令栏的 A−/A+ 只改一个 --md-fs 即可整篇等比缩放。
+   颜色与间距只用 --color-* / --space-* / --font-* / --radius-* 变量，不新增硬编码色值。 */
+
+.md-pv {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    display: flex;
+    overflow: hidden;
+    color: var(--color-text-primary);
+    font-size: var(--font-md);
+
+    /* ---------- 目录抽屉（覆盖式，不挤压正文） ---------- */
+    &-toc {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 5;
+        width: 220px;
+        padding: 6px 8px 16px 10px;
+        background: color-mix(in srgb, var(--color-bg) 94%, transparent);
+        backdrop-filter: blur(14px);
+        border-right: 1px solid var(--color-divider);
+        box-shadow: 8px 0 18px -10px rgba(0, 0, 0, 0.22);
+    }
+
+    &-toc-empty {
+        margin: 8px 0 0;
+        padding: 0 8px;
+        font-size: var(--font-xs);
+        color: var(--color-text-disabled);
+    }
+
+    &-toc-item {
+        display: block;
+        padding: 4px 8px;
+        margin-bottom: 1px;
+        border-radius: var(--radius-sm);
+        border-left: 2px solid transparent;
+        font-size: 12.5px;
+        line-height: 1.45;
+        color: var(--color-text-secondary);
+        text-decoration: none;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        transition:
+            background-color var(--transition-fast),
+            color var(--transition-fast);
+
+        &:hover {
+            background: var(--elevation-hover);
+            color: var(--color-text-primary);
+        }
+
+        &.is-lv2 {
+            padding-left: 16px;
+        }
+
+        &.is-lv3 {
+            padding-left: 28px;
+            font-size: var(--font-xs);
+            color: var(--color-text-disabled);
+        }
+
+        &.is-active {
+            color: var(--color-accent-hi);
+            background: var(--color-accent-soft);
+            border-left-color: var(--color-accent);
+            font-weight: 600;
+        }
+    }
+
+    /* ---------- 正文滚动容器：唯一的滚动条 ---------- */
+    &-doc {
+        flex: 1;
+        min-width: 0;
+        overflow: auto;
+        padding: 22px 0 56px;
+    }
+
+    /* 1300px 以下正文两侧留白不足 220px，覆盖式抽屉会压住首字，
+       此时改为挤压正文；更宽的窗口里两种做法视觉一致，保留覆盖式即可。 */
+    @media (max-width: 1299px) {
+        &-toc ~ &-doc {
+            padding-left: 220px;
+        }
+    }
+
+    &-inner {
+        width: 100%;
+        max-width: calc(var(--preview-reading-w) + 96px);
+        margin: 0 auto;
+        padding: 0 48px;
+        font-size: var(--md-fs, 15px);
+        line-height: 1.75;
+    }
+
+    /* 超长文档：块级内容按需渲染，标题保持常驻以保证目录跳转定位准确 */
+    &-inner.is-long .vp-doc > *:not(h1):not(h2):not(h3) {
+        content-visibility: auto;
+        contain-intrinsic-size: auto 60px;
+    }
+
+    /* ---------- 源码视图 ---------- */
+    &-source {
+        margin: 0;
+        font-family: 'Cascadia Mono', Consolas, 'Courier New', monospace;
+        font-size: calc(var(--md-fs, 15px) * 0.88);
+        line-height: 1.7;
+        color: var(--color-text-primary);
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        tab-size: 4;
+    }
+
+    /* ---------- 统一错态 ---------- */
+    &-state {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-2);
+        padding: var(--space-5);
+        text-align: center;
+
+        &-title {
+            font-size: var(--font-lg);
+            font-weight: 600;
+            color: var(--color-danger);
+        }
+
+        &-detail {
+            max-width: 460px;
+            font-size: var(--font-sm);
+            color: var(--color-text-secondary);
+            word-break: break-word;
+        }
+
+        &-btn {
+            margin-top: var(--space-2);
+            height: 30px;
+            padding: 0 14px;
+            border: 0;
+            border-radius: var(--radius-sm);
+            background: var(--btn-primary-bg);
+            color: var(--btn-primary-text);
+            font-family: inherit;
+            font-size: var(--font-sm);
+            cursor: pointer;
+
+            &:hover {
+                background: var(--btn-primary-hover-bg);
+            }
+        }
+    }
+}
+
+/* ============================================================
+   阅读排版覆盖：全部以 .md-pv-inner .vp-doc 开头，
+   特异性高于 vp-doc.css 原有规则，且不影响其他使用方。
+   ============================================================ */
+.md-pv-inner .vp-doc {
+    font-size: 1em;
+    line-height: 1.75;
+    color: var(--color-text-primary);
+    word-break: break-word;
+}
+
+.md-pv-inner .vp-doc h1,
+.md-pv-inner .vp-doc h2,
+.md-pv-inner .vp-doc h3,
+.md-pv-inner .vp-doc h4,
+.md-pv-inner .vp-doc h5,
+.md-pv-inner .vp-doc h6 {
+    font-weight: 650;
+    color: var(--color-text-primary);
+    line-height: 1.35;
+}
+
+.md-pv-inner .vp-doc h1 {
+    margin: 0 0 0.5em;
+    font-size: 1.7em;
+    letter-spacing: -0.02em;
+}
+
+.md-pv-inner .vp-doc h2 {
+    margin: 1.7em 0 0.7em;
+    padding: 0 0 0.32em;
+    border-top: 0;
+    border-bottom: 1px solid var(--color-divider);
+    font-size: 1.16em;
+    letter-spacing: -0.01em;
+}
+
+.md-pv-inner .vp-doc h3 {
+    margin: 1.4em 0 0.5em;
+    font-size: 1.06em;
+}
+
+.md-pv-inner .vp-doc h4,
+.md-pv-inner .vp-doc h5,
+.md-pv-inner .vp-doc h6 {
+    margin: 1.2em 0 0.4em;
+    font-size: 1em;
+}
+
+.md-pv-inner .vp-doc h1:first-child {
+    margin-top: 0;
+}
+
+.md-pv-inner .vp-doc p,
+.md-pv-inner .vp-doc summary {
+    margin: 0 0 0.8em;
+    font-size: 1em;
+    line-height: 1.75;
+}
+
+.md-pv-inner .vp-doc ul,
+.md-pv-inner .vp-doc ol {
+    margin: 0 0 0.8em;
+    padding-left: 1.2em;
+}
+
+.md-pv-inner .vp-doc li {
+    font-size: 1em;
+    line-height: 1.75;
+}
+
+.md-pv-inner .vp-doc li + li {
+    margin-top: 0.3em;
+}
+
+.md-pv-inner .vp-doc a {
+    color: var(--color-accent-hi);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.md-pv-inner .vp-doc a:hover {
+    color: var(--color-accent);
+}
+
+/* 引用块：左侧强调条 + 淡蓝底，与音频预览的强调色语言一致 */
+.md-pv-inner .vp-doc blockquote {
+    margin: 1em 0;
+    padding: 0.65em 1em;
+    border-left: 3px solid var(--color-accent);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    background: var(--color-accent-soft);
+    color: var(--color-text-secondary);
+}
+
+.md-pv-inner .vp-doc blockquote > p {
+    margin: 0;
+    font-size: 1em;
+}
+
+.md-pv-inner .vp-doc blockquote > p + p {
+    margin-top: 0.5em;
+}
+
+.md-pv-inner .vp-doc hr {
+    margin: 1.8em 0;
+    border-top: 1px solid var(--color-divider);
+}
+
+.md-pv-inner .vp-doc img {
+    max-width: 100%;
+    border-radius: var(--radius-sm);
+}
+
+/* ---------- 行内代码 ---------- */
+.md-pv-inner .vp-doc :not(pre) > code {
+    padding: 0.12em 0.35em;
+    border-radius: 3px;
+    background: var(--color-chip-bg);
+    color: var(--color-text-primary);
+    font-size: 0.86em;
+    font-family: 'Cascadia Mono', Consolas, 'Courier New', monospace;
+}
+
+/* ---------- 表格：横向滚动 + 表头吸顶 ---------- */
+.md-pv-inner .md-table-wrap {
+    margin: 1em 0;
+    overflow-x: auto;
+    background: var(--color-surface);
+    border: 1px solid var(--color-divider);
+    border-radius: var(--radius-md);
+}
+
+.md-pv-inner .vp-doc .md-table-wrap table {
+    display: table;
+    width: 100%;
+    margin: 0;
+    border-collapse: collapse;
+    overflow: visible;
+}
+
+.md-pv-inner .vp-doc tr,
+.md-pv-inner .vp-doc tr:nth-child(2n) {
+    background: transparent;
+    border: 0;
+}
+
+.md-pv-inner .vp-doc th,
+.md-pv-inner .vp-doc td {
+    border: 0;
+    border-bottom: 1px solid var(--color-divider);
+    padding: 0.45em 0.7em;
+    font-size: 1em;
+    text-align: left;
+}
+
+.md-pv-inner .vp-doc th {
+    /* 表头不吸顶：.md-table-wrap 是 overflow 容器，纵向滚动发生在更外层，
+       在此结构下 position: sticky 不会产生吸顶效果，用底色区分即可。 */
+    background: color-mix(in srgb, var(--color-surface) 88%, var(--color-text-primary));
+    color: var(--color-text-secondary);
+    font-size: 0.82em;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.md-pv-inner .vp-doc tr:last-child td {
+    border-bottom: 0;
+}
+
+/* ---------- 代码块：顶部 24px 语言条 + hover 复制 ---------- */
+.md-pv-inner .vp-doc div[class*='language-'] {
+    position: relative;
+    margin: 1em 0;
+    border: 1px solid var(--color-divider);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    overflow: hidden;
+}
+
+.md-pv-inner .vp-doc div[class*='language-'] > span.lang {
+    position: static;
+    display: flex;
+    align-items: center;
+    height: 24px;
+    padding: 0 10px;
+    border-bottom: 1px solid var(--color-divider);
+    background: var(--color-chip-bg);
+    font-size: 0.8em;
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    color: var(--color-text-disabled);
+    text-transform: lowercase;
+    user-select: none;
+}
+
+.md-pv-inner .vp-doc [class*='language-'] pre {
+    padding: 10px 0;
+    background: transparent;
+}
+
+.md-pv-inner .vp-doc [class*='language-'] code {
+    padding: 0 14px;
+    font-size: 0.86em;
+    font-family: 'Cascadia Mono', Consolas, 'Courier New', monospace;
+    background: transparent;
+}
+
+.md-pv-inner .vp-doc div[class*='language-'] > button.md-copy {
+    position: absolute;
+    top: 3px;
+    right: 6px;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: 0;
+    border-radius: 3px;
+    background: transparent;
+    color: var(--color-text-disabled);
+    cursor: pointer;
+    opacity: 0;
+    transition:
+        opacity var(--transition-fast),
+        background-color var(--transition-fast),
+        color var(--transition-fast);
+}
+
+.md-pv-inner .vp-doc div[class*='language-']:hover > button.md-copy,
+.md-pv-inner .vp-doc div[class*='language-'] > button.md-copy:focus-visible {
+    opacity: 1;
+}
+
+.md-pv-inner .vp-doc div[class*='language-'] > button.md-copy:hover {
+    background: var(--elevation-hover);
+    color: var(--color-text-primary);
+}
+
+.md-pv-inner .vp-doc div[class*='language-'] > button.md-copy.is-copied {
+    color: var(--color-accent-hi);
+}
+
+.md-pv-inner .vp-doc div[class*='language-'] > button.md-copy svg {
+    width: 11px;
+    height: 11px;
+}

@@ -37,7 +37,9 @@ const createMd = async (): Promise<MarkdownIt> => {
     md.use(markdownItEmoji)
     md.use(markdownItIns)
     md.use(markdownItTaskLists)
-    md.use(markdownItTocAndAnchor)
+    // 目录由预览侧栏承担，标题前不再插入 "#" 锚点符号：
+    // 该符号的 class（markdownIt-Anchor）在本仓库没有任何样式，会以裸文本挂在标题前。
+    md.use(markdownItTocAndAnchor, { anchorLink: false })
     containerPlugin(md)
     preWrapperPlugin(md, { codeCopyButtonTitle: '复制', hasSingleTheme: true })
     md.use(markdownItKatex)
