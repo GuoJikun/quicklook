@@ -109,7 +109,7 @@ export default {
         },
     },
     preview: {
-        notSupported: '暂不支持此格式的预览',
+        notSupported: '暂不支持预览',
         notSupportedShort: '暂不支持',
         loadFailed: '文件加载失败',
         retry: '重试',

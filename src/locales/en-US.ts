@@ -109,7 +109,7 @@ export default {
         },
     },
     preview: {
-        notSupported: 'Preview is not supported for this format',
+        notSupported: 'Preview not available',
         notSupportedShort: 'Not supported',
         loadFailed: 'Failed to load file',
         retry: 'Retry',
