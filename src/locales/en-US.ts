@@ -155,6 +155,14 @@ export default {
     pdf: {
         fitWidth: 'Fit width',
         rendering: 'Rendering…',
+        toc: 'Contents',
+        tocEmpty: 'This document has no table of contents',
+        prevPage: 'Previous page',
+        nextPage: 'Next page',
+        goToPage: 'Go to page',
+        zoomIn: 'Zoom in',
+        zoomOut: 'Zoom out',
+        rotate: 'Rotate 90°',
     },
     video: {
         convertFailed: 'ffmpeg conversion failed, falling back to direct playback: {error}',

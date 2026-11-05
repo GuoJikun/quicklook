@@ -155,6 +155,14 @@ export default {
     pdf: {
         fitWidth: '适合宽度',
         rendering: '渲染中…',
+        toc: '目录',
+        tocEmpty: '此文档没有目录',
+        prevPage: '上一页',
+        nextPage: '下一页',
+        goToPage: '跳转到页码',
+        zoomIn: '放大',
+        zoomOut: '缩小',
+        rotate: '旋转 90°',
     },
     video: {
         convertFailed: 'ffmpeg 转换失败，已回退到直接播放：{error}',
