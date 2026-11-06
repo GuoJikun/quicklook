@@ -39,7 +39,6 @@ const progress = ref<DownloadProgress>({
     lastDownloaded: 0,
     speed: 0,
 })
-const mdLoading = ref(false)
 
 const updater = shallowRef<Update | null>(null)
 let md: MarkdownIt | null = null
@@ -64,19 +63,14 @@ const formatDate = (iso: string): string => {
 }
 
 const renderNotes = async (txt: string) => {
-    mdLoading.value = true
-    try {
-        if (md === null) {
-            md = await createMd()
-        }
-        const cleaned = txt
-            .replace(/^"|"$/, '')
-            .replace(/\\r\\n/g, '\n')
-            .replace(/\\n/g, '\n')
-        releaseNotes.value = md.render(cleaned)
-    } finally {
-        mdLoading.value = false
+    if (md === null) {
+        md = await createMd()
     }
+    const cleaned = txt
+        .replace(/^"|"$/, '')
+        .replace(/\\r\\n/g, '\n')
+        .replace(/\\n/g, '\n')
+    releaseNotes.value = md.render(cleaned)
 }
 
 const doCheck = async () => {
@@ -228,7 +222,8 @@ onUnmounted(() => {
                 <p class="uq-status-desc">{{ t('upgrade.checking') }}</p>
             </div>
 
-            <!-- 检查失败：详情可能很长，整块左对齐，不做居中 -->
+            <!-- 检查失败：与「已是最新」是一对并列结果，同样整块居中；
+                 长详情靠 420px 限宽折行，不靠左对齐 -->
             <div v-else-if="errMsg" class="uq-status">
                 <DismissCircle32Regular class="uq-status-icon is-danger" aria-hidden="true" />
                 <p class="uq-status-title">{{ t('upgrade.checkFailed') }}</p>
@@ -257,11 +252,9 @@ onUnmounted(() => {
                     </div>
                 </dl>
 
-                <div v-if="releaseNotes || mdLoading" class="uq-notes">
-                    <div class="uq-notes-head">
-                        <h2>{{ t('upgrade.releaseNotes') }}</h2>
-                        <span v-if="mdLoading" class="uq-ring is-sm" aria-hidden="true"></span>
-                    </div>
+                <!-- 不再加「更新内容」标签：release body 自己就带这一级标题，
+                     外面再套一层等于同一句话说两遍 -->
+                <div v-if="releaseNotes" class="uq-notes">
                     <div class="uq-notes-body">
                         <MdViewer :content="releaseNotes" />
                     </div>
@@ -385,16 +378,19 @@ onUnmounted(() => {
     overflow-y: auto;
 }
 
-/* 状态块：图标 / 标题 / 说明三段左对齐，垂直居中于内容区。
-   有正文内容时左对齐是 Fluent 2 Dialog 的默认排版，长错误文本也能正常读 */
+/* 无内容的三态（检查中 / 已是最新 / 检查失败）整块居中：图标、标题、说明逐段水平居中，
+   整块在内容区垂直居中。这三种状态总共只有一到两行字，若贴左上，右侧与下方会各留一大片空白，
+   画面重心整个塌向一角；居中之后「这一屏只有一个结论」才读得出来。
+   有更新与下载中是内容态，仍从左上起排（键值表 + 清单有明确行序） */
 .uq-status {
     flex: 1;
     min-height: 0;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     justify-content: center;
     gap: var(--space-2);
+    text-align: center;
 }
 
 .uq-status-icon {
@@ -422,7 +418,10 @@ onUnmounted(() => {
 
 .uq-status-desc {
     margin: 0;
-    max-width: 100%;
+
+    /* 居中不等于拉通栏：失败态的错误详情常是 URL + 堆栈，
+       一行铺满 592px 时换行后视线要从行尾跨过半个窗口才回到行首 */
+    max-width: min(100%, 420px);
     font-size: var(--font-sm);
     line-height: var(--line-base);
     color: var(--color-text-secondary);
@@ -430,25 +429,24 @@ onUnmounted(() => {
 }
 
 /* ---------- 版本信息 ---------- */
+/* 标签列用 max-content 而不是定宽：列宽由最长的标签撑开，值列跨行始终对齐。
+   定宽 72px 只在中文下成立（4 字 ≈ 56px），换英文 "Latest version" 要 95px，
+   会折成两行 —— 所以这里不给任何字面量宽度 */
 .uq-meta {
     flex: none;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    margin: 0;
-}
-
-.uq-meta-row {
-    display: flex;
+    display: grid;
+    grid-template-columns: max-content 1fr;
     align-items: baseline;
-    gap: var(--space-3);
+    column-gap: var(--space-3);
+    row-gap: var(--space-1);
+    margin: 0;
 
     dt {
-        flex: none;
-        width: 72px;
         font-size: var(--font-sm);
         line-height: var(--line-base);
         color: var(--color-text-secondary);
+        /* 标签是「一个词」，任何语言下都不该折行 */
+        white-space: nowrap;
     }
 
     dd {
@@ -466,8 +464,15 @@ onUnmounted(() => {
     }
 }
 
-/* ---------- 更新内容 ---------- */
-/* 不加底色与描边：卡片里再套一张卡片是三层嵌套，改用发丝线分区 */
+/* 每行一个 wrapper，但它不参与盒模型：dt / dd 直接落进外层网格，
+   才能让两行的标签列合成同一列 */
+.uq-meta-row {
+    display: contents;
+}
+
+/* ---------- 更新说明 ---------- */
+/* 不加底色与描边：卡片里再套一张卡片是三层嵌套，改用发丝线分区。
+   也不加「更新内容」标签：release body 自带这一级标题，外面再套一层是重复 */
 .uq-notes {
     /* 不撑满内容区：更新说明短时若留出一大片空区，会被误读成「列表没加载出来」。
        长内容交给 .uq-main 整体滚动 —— 500px 高的窗口里嵌套滚动区只会让人滚错层。 */
@@ -475,27 +480,8 @@ onUnmounted(() => {
     min-height: 0;
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
     padding-top: var(--space-3);
     border-top: 1px solid var(--color-divider);
-}
-
-.uq-notes-head {
-    flex: none;
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-
-    /* 小标签语气：它只是内容的容器标签，不该和 changelog 里的
-       「新增 / 修复」抢同一层级（那两级都是 14/600） */
-    h2 {
-        margin: 0;
-        font-size: var(--font-xs);
-        font-weight: 500;
-        line-height: var(--line-base);
-        letter-spacing: 0.02em;
-        color: var(--color-text-secondary);
-    }
 }
 
 .uq-notes-body {
@@ -755,11 +741,6 @@ onUnmounted(() => {
     border-top-color: var(--color-brand-fg);
     border-radius: 50%;
     animation: uq-spin 0.9s linear infinite;
-
-    &.is-sm {
-        width: var(--icon-sm);
-        height: var(--icon-sm);
-    }
 }
 
 @keyframes uq-spin {

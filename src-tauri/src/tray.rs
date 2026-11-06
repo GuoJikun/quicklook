@@ -36,7 +36,7 @@ async fn updater_check(app: AppHandle) -> tauri_plugin_updater::Result<()> {
                 .title(texts.update_window_title)
                 // 640×600：600 宽时中文长句在 552px 的正文列里频繁折行，
                 // 500 高则装不下带进度块的 changelog（几条列表就要滚动）
-                .inner_size(640.0, 600.0)
+                .inner_size(700.0, 600.0)
                 .focused(true)
                 .window_classname("quicklook-upgrade")
                 .auto_resize()

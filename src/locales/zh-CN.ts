@@ -292,7 +292,6 @@ export default {
         upToDate: '当前已经是最新版本',
         latestVersion: '最新版本',
         releaseDate: '发布日期',
-        releaseNotes: '更新内容',
         downloading: '正在下载更新…',
         downloadFinished: '下载完成',
         recheck: '重新检查',

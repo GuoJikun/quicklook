@@ -292,7 +292,6 @@ export default {
         upToDate: 'You are on the latest version',
         latestVersion: 'Latest version',
         releaseDate: 'Release date',
-        releaseNotes: "What's new",
         downloading: 'Downloading update…',
         downloadFinished: 'Download complete',
         recheck: 'Check again',

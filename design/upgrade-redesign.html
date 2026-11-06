@@ -204,10 +204,14 @@ body {
     overflow-y: auto;
 }
 
+/* 无内容的三态（检查中 / 已是最新 / 检查失败）整块居中：图标、标题、说明逐段水平居中，
+   整块在内容区垂直居中。这三种状态总共只有一到两行字，若贴左上，右侧与下方会各留一大片空白，
+   画面重心整个塌向一角；居中之后「这一屏只有一个结论」才读得出来 */
 .uq-status {
     flex: 1; min-height: 0;
-    display: flex; flex-direction: column; align-items: flex-start;
+    display: flex; flex-direction: column; align-items: center;
     justify-content: center; gap: var(--space-2);
+    text-align: center;
 }
 .uq-status-icon { flex: none; width: 32px; height: 32px; }
 .uq-status-icon.is-danger { color: var(--danger-fg); }
@@ -217,32 +221,38 @@ body {
     line-height: var(--line-tight); color: var(--text);
 }
 .uq-status-desc {
-    margin: 0; max-width: 100%;
+    margin: 0;
+    /* 居中不等于拉通栏：失败态的错误详情常是 URL + 堆栈，
+       一行铺满 592px 读起来要来回甩头，限宽后居中折行 */
+    max-width: min(100%, 420px);
     font-size: var(--font-sm); line-height: var(--line-base); color: var(--text-2);
     overflow-wrap: anywhere;
 }
 
 /* ---------- 版本信息 ---------- */
-.uq-meta { flex: none; display: flex; flex-direction: column; gap: var(--space-1); margin: 0; }
-.uq-meta-row { display: flex; align-items: baseline; gap: var(--space-3); }
-.uq-meta-row dt { flex: none; width: 72px; font-size: var(--font-sm); line-height: var(--line-base); color: var(--text-2); }
-.uq-meta-row dd { margin: 0; font-size: var(--font-sm); line-height: var(--line-base); color: var(--text); }
-.uq-meta-row dd.is-version {
+/* 标签列 max-content：列宽由最长标签撑开，中英文都不折行且跨行对齐 */
+.uq-meta {
+    flex: none; display: grid; grid-template-columns: max-content 1fr;
+    align-items: baseline; column-gap: var(--space-3); row-gap: var(--space-1);
+    margin: 0;
+}
+.uq-meta-row { display: contents; }
+.uq-meta dt {
+    font-size: var(--font-sm); line-height: var(--line-base); color: var(--text-2);
+    white-space: nowrap;
+}
+.uq-meta dd { margin: 0; font-size: var(--font-sm); line-height: var(--line-base); color: var(--text); }
+.uq-meta dd.is-version {
     font-size: var(--font-lg); font-weight: 600; line-height: var(--line-tight);
     font-variant-numeric: tabular-nums;
 }
 
-/* ---------- 更新内容 ---------- */
+/* ---------- 更新说明 ---------- */
 .uq-notes {
     flex: 0 1 auto; min-height: 0;
-    display: flex; flex-direction: column; gap: var(--space-2);
+    display: flex; flex-direction: column;
     padding-top: var(--space-3);
     border-top: 1px solid var(--divider);
-}
-.uq-notes-head { flex: none; display: flex; align-items: center; gap: var(--space-2); }
-.uq-notes-head h2 {
-    margin: 0; font-size: var(--font-xs); font-weight: 500;
-    line-height: var(--line-base); letter-spacing: 0.02em; color: var(--text-2);
 }
 .uq-notes-body { min-height: 0; padding-right: var(--space-2); }
 
@@ -368,7 +378,7 @@ body {
         <div class="case-cap">
             <span class="idx">01</span>
             <span class="name">检查中</span>
-            <span class="note">内联进度环，不遮罩整页</span>
+            <span class="note">内联进度环，整块居中，不遮罩整页</span>
         </div>
         <div class="win">
             <div class="uq-page">
@@ -392,7 +402,7 @@ body {
         <div class="case-cap">
             <span class="idx">02</span>
             <span class="name">已是最新</span>
-            <span class="note">状态色只染图标</span>
+            <span class="note">整块居中，状态色只染图标</span>
         </div>
         <div class="win">
             <div class="uq-page">
@@ -423,7 +433,7 @@ body {
         <div class="case-cap">
             <span class="idx">03</span>
             <span class="name">检查失败</span>
-            <span class="note">左对齐，长错误文本可读</span>
+            <span class="note">整块居中，错误详情限宽 420px 折行</span>
         </div>
         <div class="win">
             <div class="uq-page">
@@ -475,7 +485,6 @@ body {
                             </div>
                         </dl>
                         <div class="uq-notes">
-                            <div class="uq-notes-head"><h2>更新内容</h2></div>
                             <div class="uq-notes-body">
                                 <div class="notes-doc">
                                     <h3>新增</h3>
@@ -532,7 +541,6 @@ body {
                             </div>
                         </dl>
                         <div class="uq-notes">
-                            <div class="uq-notes-head"><h2>更新内容</h2></div>
                             <div class="uq-notes-body">
                                 <div class="notes-doc">
                                     <h3>新增</h3>
@@ -590,7 +598,6 @@ body {
                             </div>
                         </dl>
                         <div class="uq-notes">
-                            <div class="uq-notes-head"><h2>更新内容</h2></div>
                             <div class="uq-notes-body">
                                 <div class="notes-doc">
                                     <h3>新增</h3>
@@ -632,6 +639,7 @@ body {
         <span class="k"><b>页脚</b>32px 标准按钮，主操作最右</span>
         <span class="k"><b>进度</b>4px 轨道 · --color-accent · 完成态 --color-success-fg</span>
         <span class="k"><b>状态图标</b>32 网格，成对同尺寸</span>
+        <span class="k"><b>状态块</b>无内容三态整块居中，说明限宽 420px</span>
         <span class="k"><b>描边</b>NeutralStroke1 #d1d1d1 / #666666</span>
     </div>
 

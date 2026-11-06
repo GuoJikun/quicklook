@@ -13,12 +13,10 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     ElAlert: typeof import('element-plus/es')['ElAlert']
-    ElButton: typeof import('element-plus/es')['ElButton']
     ElConfigProvider: typeof import('element-plus/es')['ElConfigProvider']
     ElIcon: typeof import('element-plus/es')['ElIcon']
     ElInput: typeof import('element-plus/es')['ElInput']
     ElOption: typeof import('element-plus/es')['ElOption']
-    ElProgress: typeof import('element-plus/es')['ElProgress']
     ElSelect: typeof import('element-plus/es')['ElSelect']
     ElSpace: typeof import('element-plus/es')['ElSpace']
     Excel: typeof import('./src/components/document/excel.vue')['default']
@@ -36,12 +34,10 @@ declare module 'vue' {
 // For TSX support
 declare global {
   const ElAlert: typeof import('element-plus/es')['ElAlert']
-  const ElButton: typeof import('element-plus/es')['ElButton']
   const ElConfigProvider: typeof import('element-plus/es')['ElConfigProvider']
   const ElIcon: typeof import('element-plus/es')['ElIcon']
   const ElInput: typeof import('element-plus/es')['ElInput']
   const ElOption: typeof import('element-plus/es')['ElOption']
-  const ElProgress: typeof import('element-plus/es')['ElProgress']
   const ElSelect: typeof import('element-plus/es')['ElSelect']
   const ElSpace: typeof import('element-plus/es')['ElSpace']
   const Excel: typeof import('./src/components/document/excel.vue')['default']
