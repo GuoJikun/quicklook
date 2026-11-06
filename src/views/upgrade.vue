@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { check, type Update } from '@tauri-apps/plugin-updater'
+import { Channel, invoke } from '@tauri-apps/api/core'
 import { useI18n } from 'vue-i18n'
 import { currentLocale } from '@/locales'
 import { computed, onMounted, onUnmounted, ref, shallowRef } from 'vue'
@@ -23,6 +24,12 @@ interface DownloadProgress {
     lastDownloaded: number
     speed: number
 }
+
+/** 与 Rust 侧 `DownloadEvent` 同构 */
+type UpdaterEvent =
+    | { event: 'Started'; data?: { contentLength?: number } }
+    | { event: 'Progress'; data?: { chunkLength?: number } }
+    | { event: 'Finished' }
 
 const checking = ref(true)
 const upgradeAvailable = ref(false)
@@ -148,23 +155,25 @@ const startDownload = async () => {
         }
     }, 500)
     try {
-        await u.downloadAndInstall(payload => {
-            const { event } = payload
-            if (event === 'Started') {
+        // 走自研命令而不是 plugin:updater|download_and_install：
+        // 后者无法中止，取消后仍会继续下载并自动安装（详见 src-tauri/src/commands/upgrade.rs）
+        const channel = new Channel<UpdaterEvent>()
+        channel.onmessage = payload => {
+            if (payload.event === 'Started') {
                 progress.value.total = payload.data?.contentLength ?? 0
                 progress.value.lastTick = Date.now()
                 progress.value.lastDownloaded = 0
                 info(`started downloading ${progress.value.total} bytes`)
-            } else if (event === 'Progress') {
-                const chunk = payload.data?.chunkLength ?? 0
-                progress.value.downloaded += chunk
-            } else if (event === 'Finished') {
+            } else if (payload.event === 'Progress') {
+                progress.value.downloaded += payload.data?.chunkLength ?? 0
+            } else if (payload.event === 'Finished') {
                 phase.value = 'finished'
                 progress.value.downloaded = progress.value.total
                 progress.value.speed = 0
                 info('download finished')
             }
-        })
+        }
+        await invoke('upgrade_download_and_install', { rid: u.rid, onEvent: channel })
     } catch (e) {
         if (!downloadCancelled) {
             phase.value = 'idle'
@@ -180,6 +189,8 @@ const startDownload = async () => {
     }
 }
 
+/** 取消下载：先让 Rust 侧真的中止请求，再释放 Update 资源。
+ *  顺序不能反 —— 只 close 资源停不掉下载任务，这正是「界面变了但仍在下载」的根因。 */
 const cancelDownload = async () => {
     downloadCancelled = true
     const u = updater.value
@@ -187,6 +198,11 @@ const cancelDownload = async () => {
     phase.value = 'cancelled'
     progress.value.speed = 0
     ElMessage.info(t('upgrade.cancelled'))
+    try {
+        await invoke('upgrade_cancel_download')
+    } catch (e) {
+        logError(`cancel upgrade download failed: ${e}`)
+    }
     if (u) {
         try {
             await u.close()
