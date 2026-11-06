@@ -30,7 +30,7 @@ const props = defineProps<Props>()
 </template>
 
 <style scoped lang="scss">
-/* 三层结构：标题行 44 → 命令栏 40 → 内容 1fr。
+/* 三层结构：标题行 44 → 命令栏 44 → 内容 1fr（两层高度都取 --layout-*-h）。
    三层同为 --color-bg 底色，没有白底横带与 1px 分隔线，
    视觉衔接靠留白与控件本身的圆角，与音频预览保持同一套语言。 */
 .preview {

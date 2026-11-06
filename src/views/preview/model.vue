@@ -64,6 +64,8 @@ const camera = shallowRef<THREE.PerspectiveCamera>()
 const controls = shallowRef<OrbitControls>()
 const modelGroup = shallowRef<THREE.Group>()
 const grid = shallowRef<THREE.GridHelper>()
+/** 坐标轴底板是独立场景，卸载时要单独清；只在 initScene 里赋值一次 */
+const gizmoScene = shallowRef<THREE.Scene>()
 const gizmoCamera = shallowRef<THREE.OrthographicCamera>()
 
 let animFrameId = 0
@@ -156,10 +158,11 @@ function initScene(container: HTMLDivElement) {
     rebuildGrid()
 
     // 坐标轴指示器：独立场景 + 独立小视口，方向跟随主相机
-    const gizmoScene = new THREE.Scene()
+    const gScene = new THREE.Scene()
+    gizmoScene.value = gScene
     const axes = new THREE.AxesHelper(1)
     ;(axes.material as THREE.Material).depthTest = false
-    gizmoScene.add(axes)
+    gScene.add(axes)
     const gCam = new THREE.OrthographicCamera(-1.2, 1.2, 1.2, -1.2, 0.1, 20)
     gCam.position.set(0, 0, 6)
     gizmoCamera.value = gCam
@@ -175,7 +178,7 @@ function initScene(container: HTMLDivElement) {
         rdr.clearDepth()
         rdr.setViewport(GIZMO_INSET, GIZMO_INSET, GIZMO_SIZE, GIZMO_SIZE)
         gCam.quaternion.copy(cam.quaternion)
-        rdr.render(gizmoScene, gCam)
+        rdr.render(gScene, gCam)
         rdr.setViewport(0, 0, stageW, stageH)
         rdr.autoClear = true
     }
@@ -357,9 +360,14 @@ function cycleBackground() {
     background.value = BACKGROUNDS[next]
 }
 
-function openByDefault() {
+async function openByDefault() {
     const path = fileInfo.value?.path
-    if (path) openPath(path)
+    if (!path) return
+    try {
+        await openPath(path)
+    } catch (e) {
+        ElMessage.error(t('preview.openFailed', { error: String(e) }))
+    }
 }
 
 watch(background, () => rebuildGrid())
@@ -403,10 +411,24 @@ onMounted(async () => {
     }
 })
 
+/** Three.js 的几何体与材质不会被 GC 自动回收显存，必须逐个 dispose */
+function disposeObject3D(root: THREE.Object3D) {
+    root.traverse(child => {
+        // 非 Mesh 的 Object3D（灯光、Group）没有这两项，取出来都可能是 undefined
+        const geometry = (child as THREE.Mesh).geometry as THREE.BufferGeometry | undefined
+        const material = (child as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined
+        geometry?.dispose()
+        if (Array.isArray(material)) material.forEach(item => item.dispose())
+        else material?.dispose()
+    })
+}
+
 onUnmounted(() => {
     cancelAnimationFrame(animFrameId)
     window.removeEventListener('resize', handleResize)
-    grid.value?.geometry.dispose()
+    // 网格、模型与坐标轴一起收：这里原先只 dispose 了网格的几何体，材质留在了显存里
+    if (scene.value) disposeObject3D(scene.value)
+    if (gizmoScene.value) disposeObject3D(gizmoScene.value)
     renderer.value?.dispose()
     controls.value?.dispose()
 })

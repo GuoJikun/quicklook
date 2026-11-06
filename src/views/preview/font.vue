@@ -90,9 +90,14 @@ async function copyName() {
     }
 }
 
-function openByDefault() {
+async function openByDefault() {
     const path = fileInfo.value?.path
-    if (path) openPath(path)
+    if (!path) return
+    try {
+        await openPath(path)
+    } catch (e) {
+        ElMessage.error(t('preview.openFailed', { error: String(e) }))
+    }
 }
 
 /** 元信息读不出不算失败——woff/woff2 的表是压缩存放的，回退到文件名即可 */

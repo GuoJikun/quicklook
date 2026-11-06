@@ -441,8 +441,9 @@ const sortColumns = computed<Array<{ key: SortKey; label: string }>>(() => [
         color: var(--color-text-tertiary);
     }
 
+    /* 目录沿用资源管理器的黄色，与文件行一眼可分；色值收在 --color-folder-fg */
     .ico.folder {
-        color: #e9b44c;
+        color: var(--color-folder-fg);
     }
 }
 

@@ -161,6 +161,7 @@ export default {
         retry: '重试',
         mdParserFailed: '创建 md 解析器失败：{error}',
         mdReadFailed: '读取 md 文件失败：{error}',
+        openFailed: '无法用默认程序打开：{error}',
     },
     md: {
         toc: '目录',

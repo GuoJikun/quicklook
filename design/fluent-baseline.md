@@ -2,7 +2,7 @@
 
 > 适用范围：`design/preview-ui-design.md`、`design/settings-ui-design.md`、`design/audio-preview-design.md` 及其原型
 > 目标代码：`src/assets/var.css`、`src/assets/var/layout.css`、`src/assets/base.css`
-> 版本基线：v1.6.0（§7.2 补标题栏 `window` / `dialog` 两种变体与「对话框不叠第二层标题」：对话框把标题收进 44px 标题行，版本信息归内容区；§7「标题」行同步改为对话框标题并进标题行。v1.5.0 §7.2 新增「标题栏由前端自绘」：三窗口统一 `decorations(false)`，标题栏随 `html.dark` 明暗，拖动与边缘缩放需自补；v1.4.0 §3.3 行高改为按字号档位绑定绝对值并废除统一系数、§8 字重验收与 §3.4 对齐、补录按钮五态与 hover/danger-hover/选区 token、新增 `--badge-h`、收录 `--font-4xl` 与 `--color-close-hover`；v1.3.0 新增 `--color-stroke-control` 与 §7「窗口形态」，更新窗口改为 ContentDialog 结构；v1.2.0 图标来源收敛为 `@vicons/fluent`，新增 `--radius-xs` / `--radius-pill` / `--icon-xs` / `--icon-xl` / `--line-reading` / `--line-code`，清除字面量圆角与行高；v1.1.1 增补三级文字 `--color-text-tertiary`、按下态 `--elevation-pressed`、控件与图标尺寸阶梯；v1.1.0 引入品牌色拆分与字号收敛）
+> 版本基线：v1.7.0（新增 `--color-folder-fg`：目录图标的黄色从 `archive.vue` 的字面量收编为 token，浅深两套同值，属装饰性填充色、不参与对比度验收。v1.6.0 §7.2 补标题栏 `window` / `dialog` 两种变体与「对话框不叠第二层标题」：对话框把标题收进 44px 标题行，版本信息归内容区；§7「标题」行同步改为对话框标题并进标题行。v1.5.0 §7.2 新增「标题栏由前端自绘」：三窗口统一 `decorations(false)`，标题栏随 `html.dark` 明暗，拖动与边缘缩放需自补；v1.4.0 §3.3 行高改为按字号档位绑定绝对值并废除统一系数、§8 字重验收与 §3.4 对齐、补录按钮五态与 hover/danger-hover/选区 token、新增 `--badge-h`、收录 `--font-4xl` 与 `--color-close-hover`；v1.3.0 新增 `--color-stroke-control` 与 §7「窗口形态」，更新窗口改为 ContentDialog 结构；v1.2.0 图标来源收敛为 `@vicons/fluent`，新增 `--radius-xs` / `--radius-pill` / `--icon-xs` / `--icon-xl` / `--line-reading` / `--line-code`，清除字面量圆角与行高；v1.1.1 增补三级文字 `--color-text-tertiary`、按下态 `--elevation-pressed`、控件与图标尺寸阶梯；v1.1.0 引入品牌色拆分与字号收敛）
 >
 > **本文件是三份设计稿的取值来源。** 三份稿件中凡与本文件冲突的字号、色值，以本文件为准。
 > 稿件的布局、间距、控件规格不变。
@@ -59,6 +59,7 @@ Fluent 2 的品牌色不是一个值，而是按「承载什么」分成两组�
 | `--color-brand-fg-hover` | `#115ea3` | `#62abf5` | BrandForeground1Hover | 品牌前景的 hover（链接、品牌图标按钮） |
 | `--color-danger-hover` | `#b52b2f` | `#e8646c` | StatusDangerBackground3Hover | 危险按钮 hover（其上仍为白字） |
 | `--color-close-hover` | `#e81123` | `#e81123` | Windows 标题栏惯例 | **仅**窗口关闭钮 hover 底（其上为白字） |
+| `--color-folder-fg` | `#E9B44C` | `#E9B44C` | Windows 资源管理器惯例 | **仅**目录图标。装饰性填充色，两套同值（深色底约 9:1，无需提亮；浅色底 1.7:1 属装饰豁免），**不参与 §2.3 对比度验收** |
 
 `--color-accent-hi` 已删除，其全部引用改为 `--color-brand-fg`。
 `--color-hover-bg` 已更名为 `--color-selection-bg`——它承载的是「选区」不是「悬浮」，旧名会把人引向 §2.5 的 hover 配方。
@@ -397,6 +398,7 @@ Fluent 2 的焦点环是**双层**：外层 2px 主色、内侧 1px 背景色隔
 | `--line-tight` / `--line-base` | 按所在字号档位取 `--line-2xs … --line-4xl`（内容区 em 相对字号改取 §3.3 系数） | 全局 |
 | `--color-hover-bg` | `--color-selection-bg` | `var.css`、Excel 选区 |
 | `background: #e81123`（关闭钮 hover） | `var(--color-close-hover)` | `audio.vue` |
+| `color: #e9b44c`（目录图标） | `var(--color-folder-fg)` | `archive.vue` |
 | `color: #fff`（实心按钮文字） | `var(--btn-primary-text)` | `audio.vue`、`header.vue` |
 | `font-weight: 700` | `600` | `md-viewer` 内容层 |
 | 标题行高字面量 `40 / 32 / 28 / 24px` | `var(--line-3xl/2xl/…)` | `vp-doc.css` |

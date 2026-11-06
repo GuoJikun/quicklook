@@ -161,6 +161,7 @@ export default {
         retry: 'Retry',
         mdParserFailed: 'Failed to create Markdown parser: {error}',
         mdReadFailed: 'Failed to read Markdown file: {error}',
+        openFailed: 'Failed to open with the default app: {error}',
     },
     md: {
         toc: 'Contents',

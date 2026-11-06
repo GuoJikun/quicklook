@@ -48,9 +48,12 @@ const handleMax = () => {
 
 const openByDefault = async () => {
     const path = props.file?.path
-    if (path) {
-        const result = await openPath(path)
-        console.log(result)
+    if (!path) return
+    try {
+        await openPath(path)
+    } catch (error) {
+        // openPath 返回 Promise<void>，没有可读的失败返回值，失败只表现为 reject
+        ElMessage.error(t('preview.openFailed', { error: String(error) }))
     }
 }
 

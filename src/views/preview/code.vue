@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { createHighlighter } from 'shiki'
 import { ArrowWrap20Regular, Copy16Regular } from '@vicons/fluent'
 import { useRoute } from 'vue-router'
@@ -27,6 +27,8 @@ const FONT_MAX = 18
 const fontSize = ref(13)
 const wrap = ref(false)
 const copied = ref(false)
+/** 「已复制」的回落计时器：连点复制时要先清掉上一颗，否则提示会提前消失 */
+let copyTimer = 0
 
 /** 扩展名 -> shiki 语言 id */
 const getLanguage = (extension: string): string => {
@@ -201,7 +203,8 @@ const copyCode = async () => {
     try {
         await navigator.clipboard.writeText(rawCode.value)
         copied.value = true
-        window.setTimeout(() => (copied.value = false), 1600)
+        window.clearTimeout(copyTimer)
+        copyTimer = window.setTimeout(() => (copied.value = false), 1600)
     } catch (error) {
         ElMessage.error(t('code.copyFailed', { error: String(error) }))
     }
@@ -214,6 +217,10 @@ onMounted(async () => {
 
 watch(isDark, async () => {
     await genHtml()
+})
+
+onUnmounted(() => {
+    window.clearTimeout(copyTimer)
 })
 </script>
 

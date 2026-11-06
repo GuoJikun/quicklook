@@ -47,6 +47,8 @@
     --color-danger-hover: #b52b2f;
     /* 成功色：StatusSuccessForeground，只作前景（图标/文字），不用实心底 */
     --color-success-fg: #0e700e;
+    /* 目录图标：Windows 资源管理器惯例的黄色。装饰性填充色，不参与对比度验收 */
+    --color-folder-fg: #e9b44c;
 
     --btn-primary-bg: var(--color-accent);
     --btn-primary-text: #ffffff;
@@ -110,6 +112,8 @@ html.dark {
     --color-danger-hover: #e8646c;
     /* 深色 #54b054 在 #2b2b2b 上 5.20:1 */
     --color-success-fg: #54b054;
+    /* 与浅色同值：深色底上约 9:1，提亮没有收益 */
+    --color-folder-fg: #e9b44c;
 
     --btn-primary-bg: var(--color-accent);
     --btn-primary-text: #ffffff;
