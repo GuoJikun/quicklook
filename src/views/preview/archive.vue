@@ -367,7 +367,7 @@ const sortColumns = computed<Array<{ key: SortKey; label: string }>>(() => [
 }
 
 .ar-head {
-    height: 26px;
+    height: var(--control-sm);
     position: sticky;
     top: 0;
     z-index: 1;
@@ -385,7 +385,7 @@ const sortColumns = computed<Array<{ key: SortKey; label: string }>>(() => [
 }
 
 .ar-row {
-    height: 28px;
+    height: var(--control-sm);
     font-size: var(--font-xs);
     color: var(--color-text-primary);
     border-radius: var(--radius-sm);

@@ -2,7 +2,7 @@
 
 > 适用范围：`design/preview-ui-design.md`、`design/settings-ui-design.md`、`design/audio-preview-design.md` 及其原型
 > 目标代码：`src/assets/var.css`、`src/assets/var/layout.css`、`src/assets/base.css`
-> 版本基线：v1.3.0（新增 `--color-stroke-control` 与 §7「窗口形态」，更新窗口改为 ContentDialog 结构；v1.2.0 图标来源收敛为 `@vicons/fluent`，新增 `--radius-xs` / `--radius-pill` / `--icon-xs` / `--icon-xl` / `--line-reading` / `--line-code`，清除字面量圆角与行高；v1.1.1 增补三级文字 `--color-text-tertiary`、按下态 `--elevation-pressed`、控件与图标尺寸阶梯；v1.1.0 引入品牌色拆分与字号收敛）
+> 版本基线：v1.4.0（§3.3 行高改为按字号档位绑定绝对值并废除统一系数、§8 字重验收与 §3.4 对齐、补录按钮五态与 hover/danger-hover/选区 token、新增 `--badge-h`、收录 `--font-4xl` 与 `--color-close-hover`；v1.3.0 新增 `--color-stroke-control` 与 §7「窗口形态」，更新窗口改为 ContentDialog 结构；v1.2.0 图标来源收敛为 `@vicons/fluent`，新增 `--radius-xs` / `--radius-pill` / `--icon-xs` / `--icon-xl` / `--line-reading` / `--line-code`，清除字面量圆角与行高；v1.1.1 增补三级文字 `--color-text-tertiary`、按下态 `--elevation-pressed`、控件与图标尺寸阶梯；v1.1.0 引入品牌色拆分与字号收敛）
 >
 > **本文件是三份设计稿的取值来源。** 三份稿件中凡与本文件冲突的字号、色值，以本文件为准。
 > 稿件的布局、间距、控件规格不变。
@@ -55,8 +55,24 @@ Fluent 2 的品牌色不是一个值，而是按「承载什么」分成两组�
 | `--color-chip-bg` | `rgba(0,0,0,.05)` | `rgba(255,255,255,.06)` | NeutralBackground4 | 胶囊底 |
 | `--elevation-hover` | `rgba(0,0,0,.08)` | `rgba(255,255,255,.05)` | SubtleBackgroundHover | 悬浮态 |
 | `--elevation-pressed` | `rgba(0,0,0,.12)` | `rgba(255,255,255,.09)` | SubtleBackgroundPressed | 按下态，必须比 hover 深/亮一档 |
+| `--color-selection-bg` | `#e5f1fb` | `rgba(0,120,212,.20)` | BrandBackground2 近似 | **数据网格选区**（Excel 单元格范围），见 §2.4 |
+| `--color-brand-fg-hover` | `#115ea3` | `#62abf5` | BrandForeground1Hover | 品牌前景的 hover（链接、品牌图标按钮） |
+| `--color-danger-hover` | `#b52b2f` | `#e8646c` | StatusDangerBackground3Hover | 危险按钮 hover（其上仍为白字） |
+| `--color-close-hover` | `#e81123` | `#e81123` | Windows 标题栏惯例 | **仅**窗口关闭钮 hover 底（其上为白字） |
 
 `--color-accent-hi` 已删除，其全部引用改为 `--color-brand-fg`。
+`--color-hover-bg` 已更名为 `--color-selection-bg`——它承载的是「选区」不是「悬浮」，旧名会把人引向 §2.5 的 hover 配方。
+
+按钮五态独立成组（主按钮取 Fluent 2 `BrandBackground1Hover/Pressed`：`#106ebe` / `#005a9e`）：
+
+| 变量组 | 用途 |
+| --- | --- |
+| `--btn-primary-bg` / `--btn-primary-text` | 实心主按钮：底 `= --color-accent`，文字白（4.53:1） |
+| `--btn-primary-hover-bg` / `--btn-primary-active-bg` | 主按钮 hover / 按下 |
+| `--btn-primary-disabled-bg` / `--btn-primary-disabled-text` | 主按钮禁用（豁免 WCAG，但深色下仍须可见） |
+| `--btn-secondary-bg` / `--btn-secondary-border` / `--btn-secondary-text` | 描边次按钮：透明底 + `--color-brand-fg` 描边与文字 |
+| `--btn-secondary-hover-bg` / `--btn-secondary-active-bg` | 次按钮 hover / 按下（品牌浅底，其上只放品牌前景） |
+| `--btn-secondary-disabled-bg` / `--btn-secondary-disabled-text` / `--btn-secondary-disabled-border` | 次按钮禁用 |
 
 ### 2.3 对比度验收矩阵
 
@@ -104,6 +120,12 @@ hover    --elevation-hover + 文字转 --color-text-primary
 ```
 
 浅色 `#EBEBEB` + `#1a1a1a` = 14.60:1；深色 `#383838` + `#ffffff` = 11.73:1。
+
+**数据网格是另一种选中，不是同一种语言的两个色。** Excel 选区表达「正在框选的数据范围」，列表/导航选中表达「已选定的条目」——前者要在密集单元格里一眼可辨，中性 `#EBEBEB` 压在白底单元格上几乎看不见；后者要安静，品牌调浅底会把每一行都吵成高亮。故网格选区用 `--color-selection-bg`（品牌调浅底）+ `--color-brand-fg` 选区描边（Handsontable `--ht-selection-*` 两个变量就是这对组合），并且：
+
+- 网格选区**不要**换成 `--color-selected-bg`，列表/导航**不要**借用 `--color-selection-bg`；
+- 网格选区内文字仍用 `--color-text-primary`（浅色 `#e5f1fb` + `#1a1a1a` ≈ 15.2:1，深色选区叠加后 + `#ffffff` ≈ 11.7:1），品牌色只出现在选区描边上；
+- 判断口诀：**「框出来的范围」用 selection-bg，「选中的条目」用 selected-bg + 指示条。**
 
 ### 2.5 开关按钮配方（命令栏的目录 / 预览 / 源码 / 自动换行等）
 
@@ -157,7 +179,7 @@ font-family:
 
 ### 3.2 字号阶梯
 
-Fluent 2 只有 10 / 12 / 14 / 16 / 20 / 24 / 28 / 32 / 40 / 68 十档。项目用前六档：
+Fluent 2 只有 10 / 12 / 14 / 16 / 20 / 24 / 28 / 32 / 40 / 68 十档。项目用其中七档（10–24 与 32）：
 
 | 变量 | 字号 | 行高 | Fluent 2 token | 用途 |
 | --- | --- | --- | --- | --- |
@@ -169,26 +191,40 @@ Fluent 2 只有 10 / 12 / 14 / 16 / 20 / 24 / 28 / 32 / 40 / 68 十档。项目�
 | `--font-xl` | 16px | 22px | Body2 | 与 `lg` 同值，保留兼容既有引用 |
 | `--font-2xl` | 20px | 28px | Subtitle1 | 身份卡名称、抽屉标题 |
 | `--font-3xl` | 24px | 32px | Title3 | 页面标题 |
+| `--font-4xl` | 32px | 40px | Hero800 | **仅**字体样张家族名（设置页「字体」样张），界面其余部分不得使用 |
 
 **被删除的档位**：13px、15px、18px、以及全部半像素值（12.5 / 11.5 / 10.5）。新代码不得写入上表以外的字号。
 
-**例外一：阅读正文。** Markdown / EPUB / DOCX 的正文与代码字号属于「内容排版」而非 UI 文本，由用户可调的阅读字号控制（EPUB 14–24 六档、Markdown 15px 基准），不受本表约束。命令栏、目录、状态文字等 UI 部件仍须遵守上表。
+**例外一：阅读正文。** Markdown / EPUB / DOCX 的正文、标题与代码字号属于「内容排版」而非 UI 文本，由用户可调的阅读字号控制（EPUB 14–24 六档、Markdown 15px 基准），不受本表约束。命令栏、目录、状态文字等 UI 部件仍须遵守上表。
 
 **例外二：音频沉浸视图。** 该形态按窗口尺寸连续缩放（`--u` 系数），字号由 `clamp()` 在 10–20px 之间插值（`clamp(var(--font-sm), calc(15 * var(--u)), var(--font-lg))` 这类写法），插值过程中必然出现 13 / 15 这类非阶梯值。上下界本身必须写成变量，让边界始终落在阶梯上——这样改阶梯时缩放区不会掉队。这是「连续缩放区」的固有行为，不算违规；但插值的上下界必须落在本表内，且该区之外的任何 UI 文本不得借用这个例外。
 
 ### 3.3 行高
 
-按档位绑定固定系数，样式里不直接写字面量：
+UI 行高与字号**成对绑定**——Fluent 2 type ramp 的做法是每个档位一个绝对行高，不是一条统一系数。样式里不直接写字面量：
+
+| 变量 | 值 | 绑定字号 | 适用范围 |
+| --- | --- | --- | --- |
+| `--line-2xs` | 14px | 10px | 全大写分组标签、序号 |
+| `--line-xs` | 16px | 12px | 描述、元信息、表头、徽章 |
+| `--line-sm` | 20px | 14px | **UI 默认**：按钮、导航、说明文字、目录项 |
+| `--line-md` | 20px | 14px | 与 `sm` 同值，对应 `--font-md` |
+| `--line-lg` | 22px | 16px | 文件名标题、命令栏标题 |
+| `--line-xl` | 22px | 16px | 与 `lg` 同值，对应 `--font-xl` |
+| `--line-2xl` | 28px | 20px | 身份卡名称、抽屉标题、对话框标题 |
+| `--line-3xl` | 32px | 24px | 页面标题 |
+| `--line-4xl` | 40px | 32px | 字体样张家族名 |
+
+**为什么废除统一系数**：v1.3.0 前的 `--line-tight: 1.33` / `--line-base: 1.43` 想用一个系数同时产出 10/14、12/16、14/20、16/22 四组配对，数学上不成立（1.33 × 10 = 13.3 ≠ 14，1.43 × 16 = 22.9 ≠ 22）。实现被逼出 `line-height: 14px` 这类字面量——值是对的，形式违规，根子在基准自身。现在每个档位一个绝对值，与字号变量同后缀一一对应：`font-size: var(--font-xs)` 必配 `line-height: var(--line-xs)`。
+
+内容区因字号可调（EPUB 14–24 六档、Markdown 15px 基准），无法绑定绝对值，仍用系数，且**只允许在内容区与多尺度展示区使用**，UI 部件不得借用：
 
 | 变量 | 值 | 适用范围 |
 | --- | --- | --- |
-| `--line-tight` | 1.33 | 单行 UI：标题、导航项、12px 表头、10/14 与 12/16 的组合 |
-| `--line-base` | 1.43 | **UI 默认**：14/20 的说明文字、卡片正文、目录项 |
 | `--line-reading` | 1.75 | 阅读正文（Markdown / EPUB / 纯文本） |
-| `--line-code` | 1.5 | 代码块与源码视图，等宽字体需要比正文更紧 |
+| `--line-code` | 1.5 | 代码块与源码视图 |
 | `--line-loose` | 1.7 | 阅读区的宽松行：源码视图、长段落说明 |
-
-原 1.6 的全局行高偏松（Fluent 2 的 UI 文本在 1.33–1.43），改为 1.43。
+| `--line-sample` | 1.35 | **多尺度展示区**：字体样张的阶梯行（12–48px 同屏）、音频沉浸视图的插值文本、Markdown 阅读区的 em 标题组（随 `--md-fs` 缩放）——字号跨档/连续变化，绑单一绝对值会随档位漂移 |
 
 v1.2.0 起 EPUB 正文由 1.8 收到 `--line-reading`：同一个工具里的 Markdown 与 EPUB 正文不该有两套呼吸感，2.8% 的差值肉眼不可辨，但把「阅读密度」收敛成了一个值。
 
@@ -211,7 +247,17 @@ Fluent 2 的控件高度只有三档，项目不得出现中间值：
 | `--control-md` | 32px | medium | **默认**：命令栏按钮、标题行按钮、输入框、下拉、图标按钮、导航项 |
 | `--control-lg` | 40px | large | 对话框底部主按钮（当前未使用） |
 
-v1.0.0 的实现里同时存在 22 / 26 / 28 / 30 / 34 / 36 六种高度，同一排控件高度互不一致。v1.1.0 收敛为：命令栏按钮 28 → 32，标题行按钮 34×30 → 32×32，命令栏输入框 26 → 32，只读数值胶囊 22 → 24，设置页导航项 36 → 32。命令栏容器高度随之 40 → 44，与标题行等高。
+v1.0.0 的实现里同时存在 22 / 26 / 28 / 30 / 34 / 36 六种高度，同一排控件高度互不一致。v1.1.0 收敛为：命令栏按钮 28 → 32，标题行按钮 34×30 → 32×32，命令栏输入框 26 → 32，只读数值胶囊 22 → 24，设置页导航项 36 → 32。命令栏容器高度随之 40 → 44，与标题行等高。v1.4.0 清掉残余的 26 / 28 / 30 中间值（见 §6.6）。
+
+**徽章 / chip 不走控件阶梯**，单独一档：
+
+| 变量 | 值 | 用途 |
+| --- | --- | --- |
+| `--badge-h` | 22px | 纯标签：格式徽章、大小、语言、类型、筛选键 |
+
+判断标准：**数值胶囊**（页码、字号值、缩放比，可编辑或只读）走 `--control-sm`（24，即 §3.5 表中的「只读数值胶囊」档）；**纯标签**（格式、大小、语言、类型、筛选键）是徽章 → `--badge-h`（22）。v1.3.0 前同类元素有 18 / 20 / 22 / 24 四种高度并存，现收敛为两档且各归其位。
+
+**例外：音频沉浸视图的规格胶囊**（MP3 / 320k）。该形态整体按 §3.2 例外二缩放，胶囊高度随 10/14 行对走（14px），不套 `--badge-h`——560×360 的顶部行按 56px 封面高度排版，22px 徽章会撑破该行节奏。其余窗口的标题行胶囊一律 `--badge-h`。
 
 ### 3.6 图标体系与尺寸
 
@@ -337,6 +383,25 @@ Fluent 2 的焦点环是**双层**：外层 2px 主色、内侧 1px 背景色隔
 | `line-height: 1.75 / 1.8`（阅读正文） | `var(--line-reading)` | `md-doc.scss`、`book.vue` |
 | `line-height: 1.5`（代码块） | `var(--line-code)` | `book.vue` |
 
+### 6.6 控件高度、徽章、行高与 token 收口（v1.4.0 增补）
+
+| 原写法 | 新写法 | 涉及 |
+| --- | --- | --- |
+| `height: 26px` / `28px`（播放按钮、归档行） | `var(--control-sm)` | `audio.vue`、`archive.vue` |
+| `height: 30px`（状态按钮、下拉项） | `var(--control-md)` | `book-doc.scss`、`model.vue`、`pdf-doc.scss`、`md-doc.scss`、`font.vue`、`settings.vue` |
+| `height: 20px`（PDF 页码输入） | `var(--control-sm)` | `pdf-doc.scss` |
+| `width/height: 14px`（chip 关闭图标） | `var(--icon-xs)` | `settings.vue` |
+| `.pv-tb-btn svg.is-sm` 错映 `--icon-xs` | `--icon-sm` | `preview-chrome.css` |
+| `height: 18px / 20px`（pill、chip 徽章） | `var(--badge-h)` | `preview-chrome.css` |
+| `line-height: 22px / 30px / 14px`（字面量） | `var(--line-lg)` / `var(--line-sm)` / `var(--line-2xs)` | `settings.vue`、`audio.vue` |
+| `--line-tight` / `--line-base` | 按所在字号档位取 `--line-2xs … --line-4xl`（内容区 em 相对字号改取 §3.3 系数） | 全局 |
+| `--color-hover-bg` | `--color-selection-bg` | `var.css`、Excel 选区 |
+| `background: #e81123`（关闭钮 hover） | `var(--color-close-hover)` | `audio.vue` |
+| `color: #fff`（实心按钮文字） | `var(--btn-primary-text)` | `audio.vue`、`header.vue` |
+| `font-weight: 700` | `600` | `md-viewer` 内容层 |
+| 标题行高字面量 `40 / 32 / 28 / 24px` | `var(--line-3xl/2xl/…)` | `vp-doc.css` |
+| 标题字距 `-0.02em` / 18px 标题的负字距 | `-0.01em` / 去掉 | `vp-doc.css`、`md-doc.scss` |
+
 ## 7. 窗口形态：页面 vs 对话框
 
 同一个应用里有两种窗口，Fluent 2 对它们的组织方式不同。判断标准只有一条：**这个窗口是一个会被反复访问的场所，还是一次性的任务？**
@@ -378,13 +443,14 @@ Fluent 2 的焦点环是**双层**：外层 2px 主色、内侧 1px 背景色隔
 - [ ] 全局不存在 `--color-accent-hi`
 - [ ] 深色模式下任一品牌色文字在其实心底上实测 ≥ 4.5:1
 - [ ] `--color-text-disabled` 只出现在 `:disabled` / `.is-disabled` / `--el-disabled-*` 上，不承载常显信息
-- [ ] 全局 CSS 中不存在 13 / 15 / 18px 及任何 `.5px` 字号
+- [ ] UI 区 CSS 中不存在 13 / 15 / 18px 及任何 `.5px` 字号（内容区例外见 §3.2 例外一）
 - [ ] `font-family` 首位为 `Segoe UI Variable`，无 `Inter`
-- [ ] `font-weight` 只出现 400 / 600
+- [ ] `font-weight` 只出现 400 / 500 / 600，其中 500 仅限 ≤12px 徽章与表头（§3.4）
 - [ ] 浅色 / 深色切换后，导航激活项、危险文字、焦点环三处对比度与上表一致
 - [ ] 所有可点击元素是 `<button>` / `<a>`，或带 `role` + `tabindex`，Tab 键可遍历且焦点环可见
 - [ ] 每个可点击元素都有 `hover` 与 `:active`，且两者视觉可区分
-- [ ] 控件高度只取 `--control-sm/md/lg`（24 / 32 / 40）三档
+- [ ] 控件高度只取 `--control-sm/md/lg`（24 / 32 / 40）三档；只读标签高度一律 `var(--badge-h)`（22）
+- [ ] UI 行高按 §3.3 档位绑定绝对值（`--line-2xs … --line-4xl`），内容区系数（`--line-reading/code/loose`）不出现在 UI 部件上
 - [ ] 图标只取 `--icon-xs/sm/md/lg/xl`（12 / 16 / 20 / 24 / 32）五档，且同时给了宽与高
 - [ ] 界面图标全部来自 `@vicons/fluent`：全局无手绘的界面 `<svg>`，无 `@element-plus/icons-vue` 引入
 - [ ] 空态 / 错态的状态图形成对同尺寸，不出现一大一小

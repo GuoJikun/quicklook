@@ -347,7 +347,7 @@ onUnmounted(() => {
     margin: 0;
     font-size: var(--font-2xl);
     font-weight: 600;
-    line-height: var(--line-tight);
+    line-height: var(--line-2xl);
     color: var(--color-text-primary);
 }
 
@@ -412,7 +412,7 @@ onUnmounted(() => {
     margin: var(--space-1) 0 0;
     font-size: var(--font-lg);
     font-weight: 600;
-    line-height: var(--line-tight);
+    line-height: var(--line-lg);
     color: var(--color-text-primary);
 }
 
@@ -423,7 +423,7 @@ onUnmounted(() => {
        一行铺满 592px 时换行后视线要从行尾跨过半个窗口才回到行首 */
     max-width: min(100%, 420px);
     font-size: var(--font-sm);
-    line-height: var(--line-base);
+    line-height: var(--line-sm);
     color: var(--color-text-secondary);
     overflow-wrap: anywhere;
 }
@@ -443,7 +443,7 @@ onUnmounted(() => {
 
     dt {
         font-size: var(--font-sm);
-        line-height: var(--line-base);
+        line-height: var(--line-sm);
         color: var(--color-text-secondary);
         /* 标签是「一个词」，任何语言下都不该折行 */
         white-space: nowrap;
@@ -452,14 +452,14 @@ onUnmounted(() => {
     dd {
         margin: 0;
         font-size: var(--font-sm);
-        line-height: var(--line-base);
+        line-height: var(--line-sm);
         color: var(--color-text-primary);
     }
 
     dd.is-version {
         font-size: var(--font-lg);
         font-weight: 600;
-        line-height: var(--line-tight);
+        line-height: var(--line-lg);
         font-variant-numeric: tabular-nums;
     }
 }
@@ -491,11 +491,11 @@ onUnmounted(() => {
 
     /* md-viewer 默认是「阅读器」排版（h3 20px、列表上下各 16px、正文 1.75 行高），
        那是给 760px 阅读列用的。同一份 changelog 放进 600px 的对话框，两条变更
-       就会撑满整屏。这里按 UI 正文（Body1 14/1.43）压一档，标题与列表的
+       就会撑满整屏。这里按 UI 正文（Body1 14/20）压一档，标题与列表的
        间距收到 4–12px —— 更新说明是清单，不是长文。 */
     :deep(.vp-doc) {
         font-size: var(--font-sm);
-        line-height: var(--line-base);
+        line-height: var(--line-sm);
         color: var(--color-text-primary);
         word-break: break-word;
 
@@ -510,7 +510,7 @@ onUnmounted(() => {
             border: 0;
             font-size: var(--font-sm);
             font-weight: 600;
-            line-height: var(--line-base);
+            line-height: var(--line-sm);
             letter-spacing: normal;
             color: var(--color-text-primary);
         }
@@ -525,6 +525,8 @@ onUnmounted(() => {
 
         p {
             margin: var(--space-1) 0;
+            /* 覆盖 vp-doc 的 1.75 阅读行高，真正落到 Body1 14/20 */
+            line-height: var(--line-sm);
         }
 
         ul,
@@ -613,7 +615,7 @@ onUnmounted(() => {
     justify-content: space-between;
     gap: var(--space-3);
     font-size: var(--font-sm);
-    line-height: var(--line-base);
+    line-height: var(--line-sm);
 }
 
 .uq-progress-label {
@@ -649,7 +651,7 @@ onUnmounted(() => {
 
 .uq-progress-meta {
     font-size: var(--font-xs);
-    line-height: var(--line-base);
+    line-height: var(--line-xs);
     color: var(--color-text-tertiary);
     font-variant-numeric: tabular-nums;
 }

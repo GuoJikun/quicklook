@@ -51,6 +51,33 @@
     --t-fast: 0.15s ease;
     --t-base: 0.2s ease;
     --t-med: 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    /* 控件/徽章/图标/行高阶梯：fluent-baseline.md §3 */
+    --control-sm: 24px;
+    --control-md: 32px;
+    --control-lg: 40px;
+    --icon-xs: 12px;
+    --icon-sm: 16px;
+    --icon-md: 20px;
+    --icon-lg: 24px;
+    --icon-xl: 32px;
+    --badge-h: 22px;
+    --line-2xs: 14px;
+    --line-xs: 16px;
+    --line-sm: 20px;
+    --line-md: 20px;
+    --line-lg: 22px;
+    --line-xl: 22px;
+    --line-2xl: 28px;
+    --line-3xl: 32px;
+    --line-4xl: 40px;
+    --line-reading: 1.75;
+    --line-code: 1.5;
+    --line-loose: 1.7;
+    /* 歌词行几何（560×360 设计值，随 --u 缩放），不是文本行高 */
+    --line-h: 30px;
+    --line-h-cur: 34px;
+    --btn-primary-text: #ffffff;
+    --close-hover: #e81123;
 }
 
 html[data-theme='dark'] {
@@ -116,7 +143,7 @@ body {
     margin: 0;
     font-size: var(--font-sm);
     color: var(--text-2);
-    line-height: 1.7;
+    line-height: var(--line-reading);
     max-width: 860px;
 }
 .head-tools { display: flex; align-items: center; gap: 8px; }
@@ -147,9 +174,9 @@ body {
 .seg button:hover { background: var(--hover); }
 .seg button[aria-pressed='true'] {
     background: var(--accent);
-    color: #fff;
+    color: var(--btn-primary-text);
 }
-.seg svg { width: 14px; height: 14px; }
+.seg svg { width: var(--icon-sm); height: var(--icon-sm); }
 
 .grid {
     max-width: 1224px;
@@ -200,7 +227,7 @@ body {
     display: grid;
     place-items: center;
     cursor: pointer;
-    color: #fff;
+    color: var(--btn-primary-text);
     background: color-mix(in srgb, var(--accent) 92%, #000);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
     transition: transform var(--t-fast), background var(--t-fast);
@@ -321,10 +348,10 @@ body {
     z-index: 3;
 }
 .win:hover .win-actions { opacity: 1; }
-.win-actions .icon-btn { width: 26px; height: 26px; background: color-mix(in srgb, var(--bg) 72%, transparent); backdrop-filter: blur(8px); }
+.win-actions .icon-btn { width: var(--control-md); height: var(--control-md); background: color-mix(in srgb, var(--bg) 72%, transparent); backdrop-filter: blur(8px); }
 .win-actions .icon-btn:hover { background: var(--hover); }
-.win-actions .icon-btn.close:hover { background: #e81123; color: #fff; }
-.win-actions .icon-btn svg { width: 12px; height: 12px; }
+.win-actions .icon-btn.close:hover { background: var(--close-hover); color: var(--btn-primary-text); }
+.win-actions .icon-btn svg { width: var(--icon-sm); height: var(--icon-sm); }
 
 /* 顶部拖拽提示区（等同于 Tauri 的 data-tauri-drag-region） */
 .drag-strip { position: absolute; inset: 0 0 auto 0; height: 22px; z-index: 0; }
@@ -432,7 +459,7 @@ body {
 .imm-title {
     font-size: var(--font-lg);
     font-weight: 600;
-    line-height: 1.35;
+    line-height: var(--line-lg);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -460,7 +487,7 @@ body {
 .imm-lyric .line {
     flex: 0 0 auto;
     font-size: var(--font-md);
-    line-height: 30px;
+    line-height: var(--line-h);
     color: var(--text-3);
     white-space: nowrap;
     overflow: hidden;
@@ -470,7 +497,7 @@ body {
 .imm-lyric .line.near { color: var(--text-2); }
 .imm-lyric .line.current {
     font-size: 20px;
-    line-height: 34px;
+    line-height: var(--line-h-cur);
     font-weight: 600;
     color: var(--accent-fg);
     letter-spacing: -0.3px;
@@ -492,10 +519,10 @@ body {
 .note h3 { margin: 0 0 10px; font-size: var(--font-sm); font-weight: 600; display: flex; align-items: center; gap: 7px; }
 .note h3 i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); display: inline-block; }
 .note ul { margin: 0; padding-left: 16px; }
-.note li { font-size: var(--font-xs); line-height: 1.9; color: var(--text-2); }
+.note li { font-size: var(--font-xs); line-height: var(--line-reading); color: var(--text-2); }
 .note code { font-family: 'Cascadia Code', Consolas, monospace; font-size: 12px; background: var(--hover); padding: 1px 5px; border-radius: var(--radius-xs); color: var(--text); }
-.note .bad { color: #c33; }
-html[data-theme='dark'] .note .bad { color: #ff8b81; }
+.note .bad { color: var(--danger-fg); }
+html[data-theme='dark'] .note .bad { color: var(--danger-fg); }
 </style>
 </head>
 <body>

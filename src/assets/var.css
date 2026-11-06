@@ -34,7 +34,12 @@
     --elevation-hover: rgba(0, 0, 0, 0.08);
     /* 按下态：必须比 hover 深一档，否则鼠标按下没有反馈 */
     --elevation-pressed: rgba(0, 0, 0, 0.12);
-    --color-hover-bg: #e5f1fb;
+    /* 数据网格选区（Excel 单元格范围）：品牌调浅底 + brand-fg 描边，
+       与导航/列表的中性 selected-bg 是两种场景，见 baseline §2.4。
+       旧名 --color-hover-bg（它不是悬浮态，名字会误导）。 */
+    --color-selection-bg: #e5f1fb;
+    /* 窗口关闭钮 hover 底：Windows 标题栏惯例色，仅此一处 */
+    --color-close-hover: #e81123;
 
     /* 危险色：前景用于文字，底色仅用于实心告警块 */
     --color-danger-fg: #a80000;
@@ -65,7 +70,7 @@
     --ht-header-background-color: var(--color-bg);
     --ht-header-color: var(--color-text-secondary);
     --ht-header-border-color: var(--color-border);
-    --ht-selection-background-color: var(--color-hover-bg);
+    --ht-selection-background-color: var(--color-selection-bg);
     --ht-selection-border-color: var(--color-brand-fg);
     --ht-scrollbar-track-color: transparent;
     --ht-scrollbar-thumb-color: var(--color-border);
@@ -97,7 +102,8 @@ html.dark {
     --elevation-hover: rgba(255, 255, 255, 0.05);
     /* 深色下 hover 是「变亮」，按下继续提亮一档以保持同向层级 */
     --elevation-pressed: rgba(255, 255, 255, 0.09);
-    --color-hover-bg: rgba(0, 120, 212, 0.2);
+    --color-selection-bg: rgba(0, 120, 212, 0.2);
+    --color-close-hover: #e81123;
 
     --color-danger-fg: #ff99a4;
     --color-danger: #d13438;
@@ -128,7 +134,7 @@ html.dark {
     --ht-header-background-color: var(--color-bg);
     --ht-header-color: var(--color-text-secondary);
     --ht-header-border-color: var(--color-border);
-    --ht-selection-background-color: var(--color-hover-bg);
+    --ht-selection-background-color: var(--color-selection-bg);
     --ht-selection-border-color: var(--color-brand-fg);
     --ht-scrollbar-track-color: transparent;
     --ht-scrollbar-thumb-color: var(--color-border);

@@ -324,7 +324,7 @@
  * -------------------------------------------------------------------------- */
 
 :root {
-    --vp-code-line-height: 1.7;
+    --vp-code-line-height: var(--line-loose);
     --vp-code-font-size: 0.875em;
     --vp-code-color: var(--vp-c-brand-1);
     --vp-code-link-color: var(--vp-c-brand-1);

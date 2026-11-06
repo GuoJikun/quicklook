@@ -254,12 +254,8 @@ const jumpTo = (id: string) => {
     const scroller = scrollerRef.value
     if (!scroller || !findHeading(id)) return
     activeId.value = id
-    // 抽屉是覆盖式的：窄窗口下会压住正文，选中后直接收起
-    if (tocOpen.value && scroller.clientWidth < 900) {
-        tocOpen.value = false
-        void persist(STORE_TOC, false)
-    }
-    // 抽屉开合会改变正文可用宽度，等布局稳定再按最终位置定位
+    // 目录是分栏式，跳转时不会遮住正文，无需自动收起；
+    // 但开合会改变正文可用宽度，仍需等布局稳定后按最终位置定位
     void nextTick().then(() => {
         const box = scrollerRef.value
         const target = findHeading(id)

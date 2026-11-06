@@ -58,6 +58,27 @@
     --font-md: 14px;
     --font-lg: 16px;
     --font-xl: 16px;
+    /* 控件/徽章/图标/行高阶梯：fluent-baseline.md §3 */
+    --control-sm: 24px;
+    --control-md: 32px;
+    --control-lg: 40px;
+    --icon-xs: 12px;
+    --icon-sm: 16px;
+    --icon-md: 20px;
+    --icon-lg: 24px;
+    --icon-xl: 32px;
+    --badge-h: 22px;
+    --line-2xs: 14px;
+    --line-xs: 16px;
+    --line-sm: 20px;
+    --line-md: 20px;
+    --line-lg: 22px;
+    --line-xl: 22px;
+    --line-2xl: 28px;
+    --line-3xl: 32px;
+    --line-4xl: 40px;
+    --btn-primary-text: #ffffff;
+    --close-hover: #e81123;
     --t-fast: 0.15s ease;
     --t-med: 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
     --fit: 1;
@@ -121,7 +142,7 @@ body {
     gap: 18px;
 }
 .side h1 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: 0.01em; }
-.side .sub { margin: -12px 0 0; font-size: 12px; line-height: 1.5; color: var(--text-3); }
+.side .sub { margin: -12px 0 0; font-size: 12px; line-height: var(--line-xs); color: var(--text-3); }
 
 .nav { display: flex; flex-direction: column; gap: 1px; }
 .nav button {
@@ -159,7 +180,7 @@ body {
 }
 .seg button[aria-pressed='true'] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12); }
 html[data-theme='dark'] .seg button[aria-pressed='true'] { background: rgba(255, 255, 255, 0.14); box-shadow: none; }
-.hint { font-size: 12px; line-height: 1.6; color: var(--text-3); }
+.hint { font-size: 12px; line-height: var(--line-xs); color: var(--text-3); }
 .hint kbd { font: inherit; font-size: 10px; padding: 1px 4px; border-radius: var(--radius-xs); background: var(--chip-bg); border: 1px solid var(--border); }
 
 .stage { padding: 26px 32px 56px; display: flex; flex-direction: column; align-items: center; gap: 14px; min-width: 0; }
@@ -171,7 +192,7 @@ html[data-theme='dark'] .seg button[aria-pressed='true'] { background: rgba(255,
 .spec {
     width: 100%; max-width: 1000px; margin-top: 4px;
     display: flex; flex-wrap: wrap; gap: 8px 18px;
-    font-size: 12px; color: var(--text-2); line-height: 1.6;
+    font-size: 12px; color: var(--text-2); line-height: var(--line-xs);
 }
 .spec .k { display: inline-flex; gap: 6px; align-items: baseline; }
 .spec .k b { color: var(--text-3); font-weight: 600; white-space: nowrap; }
@@ -198,18 +219,18 @@ html[data-theme='dark'] .seg button[aria-pressed='true'] { background: rgba(255,
     flex: none; height: 44px; display: flex; align-items: center; gap: 10px;
     padding: 0 6px 0 16px; background: transparent; user-select: none;
 }
-.hd-title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.35; }
+.hd-title { font-size: 16px; font-weight: 600; line-height: var(--line-lg); }
 /* 标题行只放「设置」与窗口按钮；软件名 / 版本交给「关于」分组，不重复占位 */
 .hd-acts { display: flex; align-items: center; gap: 1px; margin-left: auto; flex: none; }
 .hd-btn {
     appearance: none; border: 0; background: transparent; color: var(--text-3);
-    width: 34px; height: 30px; border-radius: var(--radius-sm);
+    width: var(--control-md); height: var(--control-md); border-radius: var(--radius-sm);
     display: grid; place-items: center; cursor: pointer;
     transition: background var(--t-fast), color var(--t-fast);
 }
 .hd-btn:hover { background: var(--hover); color: var(--text); }
 .hd-btn.close { margin-left: 4px; }
-.hd-btn.close:hover { background: #e81123; color: #fff; }
+.hd-btn.close:hover { background: var(--close-hover); color: var(--btn-primary-text); }
 .hd-btn svg { width: 13px; height: 13px; }
 
 .body { flex: 1; min-height: 0; display: flex; }
@@ -229,7 +250,7 @@ html[data-theme='dark'] .seg button[aria-pressed='true'] { background: rgba(255,
     background: var(--chip-bg); color: var(--text-3); font-size: 12px;
     margin-bottom: 8px;
 }
-.search svg { width: 14px; height: 14px; flex: none; }
+.search svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; }
 .search input {
     appearance: none; border: 0; outline: none; background: transparent;
     color: var(--text); font: inherit; font-size: 12px; width: 100%; min-width: 0; padding: 0;
@@ -264,7 +285,7 @@ html[data-theme='dark'] .seg button[aria-pressed='true'] { background: rgba(255,
 .pane.on { display: block; }
 .ph h2 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
 .ph p {
-    margin: 6px 0 24px; font-size: 14px; line-height: 1.5; color: var(--text-2);
+    margin: 6px 0 24px; font-size: 14px; line-height: var(--line-sm); color: var(--text-2);
     display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
 }
 .ph p .stat { font-size: 12px; color: var(--text-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -281,7 +302,7 @@ html[data-theme='dark'] .seg button[aria-pressed='true'] { background: rgba(255,
 .row:last-child { border-bottom: 0; }
 .row .txt { flex: 1; min-width: 0; }
 .row .t { font-size: 14px; font-weight: 600; color: var(--text); }
-.row .d { font-size: 12px; line-height: 1.5; color: var(--text-2); margin-top: 3px; }
+.row .d { font-size: 12px; line-height: var(--line-xs); color: var(--text-2); margin-top: 3px; }
 .row .ctl { margin-left: auto; flex: none; display: flex; align-items: center; gap: 8px; }
 .row.is-dep { transition: opacity var(--t-fast); }
 .win.ffmpeg-off .row.is-dep { opacity: 0.45; pointer-events: none; }
@@ -329,17 +350,17 @@ html[data-theme='dark'] .seg2 button[aria-pressed='true'] { background: rgba(255
     cursor: pointer; transition: background var(--t-fast), color var(--t-fast);
 }
 .iconbtn:hover { background: var(--accent-soft); color: var(--accent-fg); }
-.iconbtn svg { width: 14px; height: 14px; }
+.iconbtn svg { width: var(--icon-sm); height: var(--icon-sm); }
 
 .pills { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; max-width: 420px; }
 .chip {
-    height: 22px; display: inline-flex; align-items: center; gap: 5px;
+    height: var(--badge-h); display: inline-flex; align-items: center; gap: 5px;
     padding: 0 6px 0 9px; border-radius: var(--radius-pill); background: var(--chip-bg);
     color: var(--text-2); font-size: 12px; font-variant-numeric: tabular-nums;
 }
 .chip .x {
     appearance: none; border: 0; background: transparent; color: var(--text-3);
-    width: 14px; height: 14px; padding: 0; border-radius: var(--radius-xs); cursor: pointer;
+    width: var(--icon-sm); height: var(--icon-sm); padding: 0; border-radius: var(--radius-xs); cursor: pointer;
     display: grid; place-items: center; font-size: 12px; line-height: 1;
 }
 .chip .x:hover { background: var(--hover-strong); color: var(--text); }
@@ -351,10 +372,10 @@ html[data-theme='dark'] .seg2 button[aria-pressed='true'] { background: rgba(255
     cursor: pointer; transition: background var(--t-fast);
 }
 .subtle:hover { background: var(--hover); }
-.subtle.is-danger { color: var(--danger); }
+.subtle.is-danger { color: var(--danger-fg); }
 .subtle.is-danger:hover { background: var(--hover-strong); }
 .accentbtn {
-    appearance: none; border: 0; background: var(--accent); color: #fff;
+    appearance: none; border: 0; background: var(--accent); color: var(--btn-primary-text);
     font: inherit; font-size: 12px; font-weight: 600; height: 32px;
     padding: 0 14px; border-radius: var(--radius-sm); cursor: pointer;
 }
@@ -370,7 +391,7 @@ html[data-theme='dark'] .seg2 button[aria-pressed='true'] { background: rgba(255
 }
 .infobar svg { width: 16px; height: 16px; flex: none; color: var(--accent-fg); margin-top: 1px; }
 .infobar .it { font-size: 14px; font-weight: 600; color: var(--text); }
-.infobar .id { font-size: 12px; line-height: 1.5; color: var(--text-2); margin-top: 2px; }
+.infobar .id { font-size: 12px; line-height: var(--line-xs); color: var(--text-2); margin-top: 2px; }
 .win.ffmpeg-off .infobar { display: none; }
 
 /* 关于：身份卡，非行式 */

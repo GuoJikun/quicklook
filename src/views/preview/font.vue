@@ -307,7 +307,7 @@ onBeforeUnmount(() => {
     font-size: var(--font-4xl);
     /* 不做合成加粗：文件是哪个字重就显示哪个字重 */
     font-weight: 400;
-    line-height: var(--line-tight);
+    line-height: var(--line-4xl);
     letter-spacing: -0.01em;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -334,7 +334,7 @@ onBeforeUnmount(() => {
 }
 
 .ft-tag {
-    height: 18px;
+    height: var(--badge-h);
     padding: 0 7px;
     display: inline-flex;
     align-items: center;
@@ -371,7 +371,8 @@ onBeforeUnmount(() => {
 .ft-rung-text {
     font-family: var(--ft-font, inherit);
     color: var(--ft-fg);
-    line-height: var(--line-tight);
+    /* 阶梯行字号 12–48px 连续变化，行高用系数跟随（§3.3 多尺度展示区） */
+    line-height: var(--line-sample);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -446,7 +447,7 @@ onBeforeUnmount(() => {
         margin: 0;
         max-width: 460px;
         font-size: var(--font-sm);
-        line-height: var(--line-base);
+        line-height: var(--line-sm);
         color: var(--ft-fg-3);
         word-break: break-word;
     }
@@ -454,7 +455,7 @@ onBeforeUnmount(() => {
 
 .ft-primary {
     margin-top: 8px;
-    height: 30px;
+    height: var(--control-md);
     padding: 0 14px;
     border: 0;
     border-radius: var(--radius-sm);

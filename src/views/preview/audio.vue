@@ -725,7 +725,8 @@ onBeforeUnmount(() => {
 .meta-title {
     font-size: clamp(var(--font-sm), calc(15 * var(--u)), var(--font-lg));
     font-weight: 600;
-    line-height: var(--line-tight);
+    /* clamp 插值文本的行高用系数跟随（§3.3 多尺度展示区），不绑绝对档 */
+    line-height: var(--line-sample);
     color: var(--color-text-primary);
     white-space: nowrap;
     overflow: hidden;
@@ -739,7 +740,7 @@ onBeforeUnmount(() => {
     background: var(--elevation-hover);
     font-size: var(--font-2xs);
     font-weight: 600;
-    line-height: 14px;
+    line-height: var(--line-2xs);
     letter-spacing: 0.2px;
     color: var(--color-text-secondary);
     text-transform: uppercase;
@@ -747,7 +748,7 @@ onBeforeUnmount(() => {
 
 .meta-sub {
     font-size: var(--font-xs);
-    line-height: var(--line-base);
+    line-height: var(--line-xs);
     color: var(--color-text-secondary);
     white-space: nowrap;
     overflow: hidden;
@@ -989,7 +990,7 @@ onBeforeUnmount(() => {
     border: none;
     border-radius: 50%;
     background: var(--audio-accent);
-    color: #fff;
+    color: var(--btn-primary-text);
     cursor: pointer;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
     transition:
@@ -1052,8 +1053,9 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 26px;
-    height: 26px;
+    /* 标题行图标按钮 32×32（§3.5），沉浸形态随 --u 缩小、以 32 封顶 */
+    width: min(var(--control-md), calc(32 * var(--u)));
+    height: min(var(--control-md), calc(32 * var(--u)));
     padding: 0;
     border: none;
     border-radius: var(--radius-sm);
@@ -1071,8 +1073,8 @@ onBeforeUnmount(() => {
     }
 
     &.close:hover {
-        color: #fff;
-        background: #e81123;
+        color: var(--btn-primary-text);
+        background: var(--color-close-hover);
     }
 }
 </style>

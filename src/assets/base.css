@@ -18,7 +18,7 @@ body {
     height: 100%;
     color: var(--color-text-primary);
     background: var(--color-bg);
-    line-height: var(--line-base);
+    line-height: var(--line-sm);
     /* Fluent 2 字体栈：Segoe UI Variable 为 Windows 11 可变字体，缺失回落 Segoe UI。
        不得前置 Inter —— 它不是系统字体，安装后会整体偏离 Fluent 字形。 */
     font-family:

@@ -74,7 +74,7 @@
 
 | 区块 | 尺寸 | 背景 | 说明 |
 | --- | --- | --- | --- |
-| 标题行 | 44px，与 `--layout-header-h` 一致 | **透明** | **只放标题「设置」16px/600**，不放软件名与版本胶囊（与「关于」分组重复，且会把标题行读成文件预览的元信息行）；右侧窗口按钮 34×30、hover 才浮底；关闭 hover 转红 |
+| 标题行 | 44px，与 `--layout-header-h` 一致 | **透明** | **只放标题「设置」16px/600**，不放软件名与版本胶囊（与「关于」分组重复，且会把标题行读成文件预览的元信息行）；右侧窗口按钮 32×32、hover 才浮底；关闭 hover 转红（`--color-close-hover`） |
 | 左导航 | 240px，`flex: none` | `--color-surface` 60% + 12px blur（亚克力） | 与内容区的分界只用 1px `--color-divider`，不加投影 |
 | 内容 | 1fr，`max-width: 720px` 内容列 | `--color-bg` | 唯一滚动容器；滚动条 8px、细样式，与预览窗口一致 |
 
@@ -117,7 +117,7 @@
 | Segmented | 高 32px，`--color-chip-bg` 底，选中片 `--color-surface` + 1px 细边 + 文字主色 | 语言（2 项）、主题（3 项） |
 | ComboBox（`el-select`） | 高 32px，1px `--color-border` + 透明底，右侧箭头 | 日志级别（6 项，_segmented 太宽_） |
 | TextBox（`el-input`）+ 图标按钮 | 输入框**定宽 200px**、高 32px；右侧仅一个 32×32 的 `+` 图标按钮 | 自定义扩展名 |
-| Pill / Chip | 高 22px，`--color-chip-bg` 底、无描边、右侧 12px ×；hover 才显 `--elevation-hover` | 扩展名标签、格式扩展名 |
+| Pill / Chip | 高 `--badge-h` 22px，`--color-chip-bg` 底、无描边、右侧 12px ×（`--icon-xs`）；hover 才显 `--elevation-hover` | 扩展名标签、格式扩展名 |
 | SubtleButton | 高 32px，无边框无底色，文字 14px；hover `--elevation-hover` | 清理缓存、打开链接 |
 | AccentButton | `--btn-primary-*`，高 32px，圆角 `--radius-sm` | 仅「检查更新」一个（身份卡右侧） |
 | InfoBar | `--color-accent-soft` 底、左侧 16px `--color-brand-fg` 状态图标、标题 14px/600 + 描述 12px（均为中性文字色）、无边框、无关闭按钮 | ffmpeg 检测三态 |
@@ -335,11 +335,11 @@ InfoBar    （仅开关打开时）检测中 / 可用 / 不可用，图标随态
 - [ ] 清理缓存按钮无红色描边，执行中有内联 loading、完成后有内联结果
 - [ ] 关于页身份卡右侧「检查更新」是整页唯一的 AccentButton（32px 高、`--radius-sm`），点击打开更新窗口；窗口已开时前置而不是报错
 - [ ] 760px / 520px 两个断点无横向溢出、无控件被裁
-- [ ] 控件颜色全部来自既有 `--color-*` 变量；例外只允许与既有原型相同的两处（关闭按钮 hover 红、ToggleSwitch 滑块/主按钮前景白）
+- [ ] 控件颜色全部来自既有 `--color-*` / `--btn-*` 变量；关闭按钮 hover 用 `--color-close-hover`、实心按钮前景用 `--btn-primary-text`（两处均已是 token，不再硬编码）
 - [ ] 搜索框 / 扩展名输入框 / 日志级别下拉使用 `el-input` / `el-select`，浅深色下与自绘控件视觉一致；下拉浮层随主题变色，↑/↓ 不抢下拉焦点
 - [ ] 导航激活项为 `--color-selected-bg` 中性底 + `--color-text-primary` 文字 + `--color-brand-fg` 3px 指示条；浅色 / 深色下实测均 ≥ 4.5:1
 - [ ] 品牌色只用于实心底（开关轨道、主按钮）与前景（图标、链接、描边、焦点环），不存在「品牌浅底 + 品牌文字」的叠加组合
-- [ ] 全站字号落在 10 / 12 / 14 / 16 / 20 / 24 六档，无 13 / 15 / 18 与任何半像素值；行高只用 `--line-tight` / `--line-base` / `--line-reading` / `--line-code` / `--line-loose` 五档
+- [ ] 全站字号落在 10 / 12 / 14 / 16 / 20 / 24 / 32 档，无 13 / 15 / 18 与任何半像素值；UI 行高按 `fluent-baseline.md` §3.3 档位绑定（`--line-2xs … --line-4xl`），内容区系数只用 `--line-reading` / `--line-code` / `--line-loose`
 - [ ] 界面图标全部来自 `@vicons/fluent`，尺寸只取 `--icon-xs/sm/md/lg/xl`；无手绘 `<svg>`、无 `@element-plus/icons-vue`
 - [ ] 圆角只用 `--radius-xs/sm/md/lg/xl/pill`，样式里无字面量（`50%` 与 `0` 除外）
 - [ ] 重复扩展名提示、清理缓存失败提示使用 `--color-danger-fg`，不使用 `--color-danger`（后者仅作实心底）

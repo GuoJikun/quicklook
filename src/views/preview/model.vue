@@ -625,7 +625,7 @@ onUnmounted(() => {
         margin: 0;
         max-width: 460px;
         font-size: var(--font-sm);
-        line-height: var(--line-base);
+        line-height: var(--line-sm);
         color: var(--color-text-secondary);
         word-break: break-word;
     }
@@ -633,7 +633,7 @@ onUnmounted(() => {
 
 .md-primary {
     margin-top: 8px;
-    height: 30px;
+    height: var(--control-md);
     padding: 0 14px;
     border: 0;
     border-radius: var(--radius-sm);

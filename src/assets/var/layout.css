@@ -11,6 +11,9 @@
     --control-sm: 24px;
     --control-md: 32px;
     --control-lg: 40px;
+    /* 徽章/纯标签（只读标签）高度：格式、大小、语言、类型、筛选键。
+       可点击的数值胶囊属控件，用 --control-sm；音频沉浸视图的规格胶囊例外（§3.5）。 */
+    --badge-h: 22px;
 
     /* 图标网格：Fluent System Icons 只有 16 / 20 / 24 三种绘制尺寸，
        15px 之类会落在非整数像素上，笔画发虚。
@@ -56,14 +59,24 @@
     --font-4xl: 32px; /* Hero800 32/40 —— 仅字体样张的家族名 */
 
     /* ==== 行高 ==== */
-    /* UI 文本只用 tight / base 两档：10/14、12/16、16/22、24/32 用 tight，
-       14/20 的正文型 UI 用 base。阅读区（Markdown / EPUB / PDF 正文）用
-       reading，代码块与源码视图用 code —— 这两档不参与 UI 阶梯。 */
-    --line-tight: 1.33;
-    --line-base: 1.43;
+    /* UI 行高与字号档位一一绑定的绝对值（Fluent type ramp），
+       font-size: var(--font-xs) 必配 line-height: var(--line-xs)。
+       见 design/fluent-baseline.md §3.3 —— v1.4.0 废除统一系数
+       （旧 --line-tight: 1.33 / --line-base: 1.43 无法同时产出 10/14 与 16/22 配对）。
+       内容区与多尺度展示区仍用系数：reading / code / loose / sample。 */
+    --line-2xs: 14px;
+    --line-xs: 16px;
+    --line-sm: 20px;
+    --line-md: 20px;
+    --line-lg: 22px;
+    --line-xl: 22px;
+    --line-2xl: 28px;
+    --line-3xl: 32px;
+    --line-4xl: 40px;
     --line-reading: 1.75;
     --line-code: 1.5;
     --line-loose: 1.7;
+    --line-sample: 1.35;
 
     /* ==== 预览窗口 ==== */
     --preview-scrollbar-w: 8px;

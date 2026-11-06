@@ -12,14 +12,14 @@
     font-weight: 600;
     outline: none;
     margin: 0;
-    line-height: 24px;
+    line-height: var(--line-lg);
     font-size: 16px;
     font-weight: 400;
 }
 
 .vp-doc h1 {
-    letter-spacing: -0.02em;
-    line-height: 40px;
+    letter-spacing: -0.01em;
+    line-height: var(--line-4xl);
     font-size: 28px;
 }
 
@@ -27,22 +27,22 @@
     margin: 48px 0 16px;
     border-top: 1px solid var(--vp-c-divider);
     padding-top: 24px;
-    letter-spacing: -0.02em;
-    line-height: 32px;
+    letter-spacing: -0.01em;
+    line-height: var(--line-3xl);
     font-size: 24px;
 }
 
 .vp-doc h3 {
     margin: 32px 0 0;
     letter-spacing: -0.01em;
-    line-height: 28px;
+    line-height: var(--line-2xl);
     font-size: 20px;
 }
 
 .vp-doc h4 {
     margin: 24px 0 0;
-    letter-spacing: -0.01em;
-    line-height: 24px;
+    /* 18px < 20px：§3.4 不给负字距 */
+    line-height: var(--line-lg);
     font-size: 18px;
 }
 
@@ -81,8 +81,8 @@
 
 @media (min-width: 768px) {
     .vp-doc h1 {
-        letter-spacing: -0.02em;
-        line-height: 40px;
+        letter-spacing: -0.01em;
+        line-height: var(--line-4xl);
         font-size: 32px;
     }
 }
@@ -101,7 +101,7 @@
 }
 
 .vp-doc p {
-    line-height: 28px;
+    line-height: var(--line-reading);
 }
 
 .vp-doc blockquote {
@@ -222,7 +222,7 @@
 
 .vp-doc .custom-block p {
     margin: 8px 0;
-    line-height: 24px;
+    line-height: var(--line-loose);
 }
 
 .vp-doc .custom-block p:first-child {

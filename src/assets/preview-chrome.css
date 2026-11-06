@@ -12,7 +12,7 @@
     display: inline-flex;
     align-items: center;
     flex: none;
-    height: 18px;
+    height: var(--badge-h);
     padding: 0 6px;
     border-radius: var(--radius-xs);
     background: var(--color-chip-bg);
@@ -99,8 +99,8 @@
 }
 
 .pv-tb-btn svg.is-sm {
-    width: var(--icon-xs);
-    height: var(--icon-xs);
+    width: var(--icon-sm);
+    height: var(--icon-sm);
 }
 
 /* 文字型按钮（适应窗口、全屏）略窄于图标按钮即可 */
@@ -123,7 +123,8 @@
 }
 
 /* ---------- 命令栏内的数值与状态文字 ---------- */
-/* 只读数值是标签不是控件，取 small 档高度，与 32 的按钮形成层次 */
+/* 数值胶囊（只读数值）取 small 档高度（--control-sm 24），与 32 的按钮形成层次；
+   纯标签徽章走 --badge-h，见 baseline §3.5 */
 .pv-tb-num {
     display: inline-flex;
     align-items: center;
@@ -156,7 +157,7 @@
     display: inline-flex;
     align-items: center;
     flex: none;
-    height: 20px;
+    height: var(--badge-h);
     padding: 0 8px;
     border-radius: var(--radius-sm);
     background: var(--color-chip-bg);

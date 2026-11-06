@@ -58,9 +58,29 @@
     --font-sm: 14px;
     --font-lg: 16px;
     --font-2xl: 20px;
-    --line-tight: 1.33;
-    --line-base: 1.43;
+    /* 行高按字号档位绑定绝对值（fluent-baseline.md §3.3） */
+    --line-2xs: 14px;
+    --line-xs: 16px;
+    --line-sm: 20px;
+    --line-md: 20px;
+    --line-lg: 22px;
+    --line-xl: 22px;
+    --line-2xl: 28px;
+    --line-3xl: 32px;
+    --line-4xl: 40px;
     --line-reading: 1.75;
+    --line-code: 1.5;
+    --line-loose: 1.7;
+    /* 控件/徽章/图标阶梯 */
+    --control-sm: 24px;
+    --control-md: 32px;
+    --control-lg: 40px;
+    --icon-xs: 12px;
+    --icon-sm: 16px;
+    --icon-md: 20px;
+    --icon-lg: 24px;
+    --icon-xl: 32px;
+    --badge-h: 22px;
     --t-fast: 0.15s ease;
     --t-med: 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
@@ -185,7 +205,7 @@ body {
 }
 .uq-title {
     margin: 0; font-size: var(--font-2xl); font-weight: 600;
-    line-height: var(--line-tight); color: var(--text);
+    line-height: var(--line-2xl); color: var(--text);
 }
 .uq-chip {
     flex: none; display: inline-flex; align-items: center;
@@ -218,14 +238,14 @@ body {
 .uq-status-icon.is-success { color: var(--success-fg); }
 .uq-status-title {
     margin: var(--space-1) 0 0; font-size: var(--font-lg); font-weight: 600;
-    line-height: var(--line-tight); color: var(--text);
+    line-height: var(--line-lg); color: var(--text);
 }
 .uq-status-desc {
     margin: 0;
     /* 居中不等于拉通栏：失败态的错误详情常是 URL + 堆栈，
        一行铺满 592px 读起来要来回甩头，限宽后居中折行 */
     max-width: min(100%, 420px);
-    font-size: var(--font-sm); line-height: var(--line-base); color: var(--text-2);
+    font-size: var(--font-sm); line-height: var(--line-sm); color: var(--text-2);
     overflow-wrap: anywhere;
 }
 
@@ -238,12 +258,12 @@ body {
 }
 .uq-meta-row { display: contents; }
 .uq-meta dt {
-    font-size: var(--font-sm); line-height: var(--line-base); color: var(--text-2);
+    font-size: var(--font-sm); line-height: var(--line-sm); color: var(--text-2);
     white-space: nowrap;
 }
-.uq-meta dd { margin: 0; font-size: var(--font-sm); line-height: var(--line-base); color: var(--text); }
+.uq-meta dd { margin: 0; font-size: var(--font-sm); line-height: var(--line-sm); color: var(--text); }
 .uq-meta dd.is-version {
-    font-size: var(--font-lg); font-weight: 600; line-height: var(--line-tight);
+    font-size: var(--font-lg); font-weight: 600; line-height: var(--line-lg);
     font-variant-numeric: tabular-nums;
 }
 
@@ -257,11 +277,11 @@ body {
 .uq-notes-body { min-height: 0; padding-right: var(--space-2); }
 
 /* 更新内容的正文排版：等价于 md-viewer 输出 */
-.notes-doc { font-size: var(--font-sm); line-height: var(--line-base); color: var(--text); }
+.notes-doc { font-size: var(--font-sm); line-height: var(--line-sm); color: var(--text); }
 .notes-doc p { margin: var(--space-1) 0; }
 .notes-doc h3 {
     margin: var(--space-3) 0 var(--space-1);
-    font-size: var(--font-sm); font-weight: 600; line-height: var(--line-base); color: var(--text);
+    font-size: var(--font-sm); font-weight: 600; line-height: var(--line-sm); color: var(--text);
 }
 .notes-doc > :first-child { margin-top: 0; }
 .notes-doc p:last-child { margin-bottom: 0; }
@@ -288,7 +308,7 @@ body {
 }
 .uq-progress-head {
     display: flex; align-items: baseline; justify-content: space-between;
-    gap: var(--space-3); font-size: var(--font-sm); line-height: var(--line-base);
+    gap: var(--space-3); font-size: var(--font-sm); line-height: var(--line-sm);
 }
 .uq-progress-label { font-weight: 600; color: var(--text); }
 .uq-progress-pct { flex: none; font-size: var(--font-xs); color: var(--text-2); font-variant-numeric: tabular-nums; }
@@ -298,7 +318,7 @@ body {
 }
 .uq-progress-bar { height: 100%; border-radius: var(--radius-xs); background: var(--accent); }
 .uq-progress-bar.is-done { background: var(--success-fg); }
-.uq-progress-meta { font-size: var(--font-xs); line-height: var(--line-base); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.uq-progress-meta { font-size: var(--font-xs); line-height: var(--line-xs); color: var(--text-3); font-variant-numeric: tabular-nums; }
 
 /* ---------- 页脚 ---------- */
 .uq-foot {
@@ -354,7 +374,7 @@ body {
 .spec {
     grid-column: 1 / -1;
     display: flex; flex-wrap: wrap; gap: 6px 20px;
-    font-size: 12px; color: var(--text-2); line-height: 1.7;
+    font-size: 12px; color: var(--text-2); line-height: var(--line-xs);
     border-top: 1px solid var(--divider); padding-top: 14px;
 }
 .spec .k { display: inline-flex; gap: 6px; align-items: baseline; }

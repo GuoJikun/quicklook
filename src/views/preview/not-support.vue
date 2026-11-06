@@ -80,7 +80,7 @@ onMounted(() => {
     margin: 12px 0 0;
     font-size: var(--font-lg);
     font-weight: 600;
-    line-height: var(--line-tight);
+    line-height: var(--line-lg);
     color: var(--color-text-primary);
 }
 

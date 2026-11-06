@@ -15,14 +15,15 @@
     color: var(--color-text-primary);
     font-size: var(--font-md);
 
-    /* ---------- 目录抽屉（覆盖式，不挤压正文） ---------- */
+    /* ---------- 目录栏（挤压式：占一列宽，正文在剩余区域内居中） ----------
+       曾经做成绝对定位的覆盖抽屉：正文按整窗居中，目录又压掉左留白的一角，
+       于是正文相对「可见区域」明显偏左。目录是常驻开关（状态会被记忆），
+       按列布局才能让正文始终落在剩余区域的中线上。 */
     &-toc {
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        left: 0;
-        z-index: 5;
+        position: relative;
+        flex: none;
         width: 220px;
+        height: 100%;
         padding: 6px 8px 16px 10px;
         background: color-mix(in srgb, var(--color-bg) 94%, transparent);
         backdrop-filter: blur(14px);
@@ -44,7 +45,7 @@
         border-radius: var(--radius-sm);
         border-left: 2px solid transparent;
         font-size: var(--font-xs);
-        line-height: var(--line-base);
+        line-height: var(--line-xs);
         color: var(--color-text-secondary);
         text-decoration: none;
         white-space: nowrap;
@@ -83,14 +84,6 @@
         min-width: 0;
         overflow: auto;
         padding: 22px 0 56px;
-    }
-
-    /* 1300px 以下正文两侧留白不足 220px，覆盖式抽屉会压住首字，
-       此时改为挤压正文；更宽的窗口里两种做法视觉一致，保留覆盖式即可。 */
-    @media (max-width: 1299px) {
-        &-toc ~ &-doc {
-            padding-left: 220px;
-        }
     }
 
     &-inner {
@@ -147,7 +140,7 @@
 
         &-btn {
             margin-top: var(--space-2);
-            height: 30px;
+            height: var(--control-md);
             padding: 0 14px;
             border: 0;
             border-radius: var(--radius-sm);
@@ -183,13 +176,14 @@
 .md-pv-inner .vp-doc h6 {
     font-weight: 600;
     color: var(--color-text-primary);
-    line-height: var(--line-tight);
+    /* em 标题随 --md-fs 等比缩放，行高用系数跟随（§3.3 多尺度展示区） */
+    line-height: var(--line-sample);
 }
 
 .md-pv-inner .vp-doc h1 {
     margin: 0 0 0.5em;
     font-size: 1.7em;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.01em;
 }
 
 .md-pv-inner .vp-doc h2 {
@@ -198,7 +192,6 @@
     border-top: 0;
     border-bottom: 1px solid var(--color-divider);
     font-size: 1.16em;
-    letter-spacing: -0.01em;
 }
 
 .md-pv-inner .vp-doc h3 {
@@ -381,8 +374,9 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 18px;
-    height: 18px;
+    /* 微按钮盒：24px 语言条内 3px 偏移放不下 24 控件盒，取 --icon-sm 盒 + --icon-xs 图标 */
+    width: var(--icon-sm);
+    height: var(--icon-sm);
     padding: 0;
     border: 0;
     border-radius: var(--radius-xs);

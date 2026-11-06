@@ -934,7 +934,7 @@ onUnmounted(() => {
         font-size: var(--font-3xl);
         font-weight: 600;
         letter-spacing: -0.01em;
-        line-height: var(--line-tight);
+        line-height: var(--line-3xl);
     }
 }
 
@@ -947,7 +947,7 @@ onUnmounted(() => {
 .st-subtitle {
     margin: 6px 0 24px;
     font-size: var(--font-sm);
-    line-height: var(--line-base);
+    line-height: var(--line-sm);
     color: var(--color-text-secondary);
 
     &-row {
@@ -1013,7 +1013,7 @@ onUnmounted(() => {
 .st-row-d {
     margin-top: 3px;
     font-size: var(--font-xs);
-    line-height: var(--line-base);
+    line-height: var(--line-xs);
     color: var(--color-text-secondary);
 }
 
@@ -1165,7 +1165,7 @@ onUnmounted(() => {
         padding: 4px 10px;
         gap: 4px;
         font-size: var(--font-xs);
-        line-height: 22px;
+        line-height: var(--line-xs);
     }
 
     :deep(.el-select__placeholder),
@@ -1253,7 +1253,7 @@ onUnmounted(() => {
 }
 
 .st-chip {
-    height: 22px;
+    height: var(--badge-h);
     display: inline-flex;
     align-items: center;
     gap: 5px;
@@ -1272,8 +1272,9 @@ onUnmounted(() => {
 
 .st-chip-x {
     appearance: none;
-    width: 14px;
-    height: 14px;
+    /* 微按钮盒：22px 徽章内放不下 24 控件盒，取 --icon-sm 盒 + 12px 字形 */
+    width: var(--icon-sm);
+    height: var(--icon-sm);
     padding: 0;
     border: 0;
     border-radius: var(--radius-xs);
@@ -1357,7 +1358,7 @@ onUnmounted(() => {
 .st-info-desc {
     margin-top: 2px;
     font-size: var(--font-xs);
-    line-height: var(--line-base);
+    line-height: var(--line-xs);
     color: var(--color-text-secondary);
 }
 
@@ -1567,8 +1568,9 @@ onUnmounted(() => {
     }
 
     .el-select-dropdown__item {
-        height: 30px;
-        line-height: 30px;
+        height: var(--control-md);
+        /* 单行居中：行高等于控件高（EP 默认 34/34 同机制），不写字面量 */
+        line-height: var(--control-md);
         padding: 0 10px;
         font-size: var(--font-xs);
     }

@@ -185,7 +185,7 @@ watch(
     font-size: var(--font-lg);
     font-weight: 600;
     /* 16px 属 Body2，Fluent 2 的负字距只给 ≥20px 的标题，这里不加 */
-    line-height: var(--line-tight);
+    line-height: var(--line-lg);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -242,12 +242,12 @@ watch(
 
             &:hover {
                 background-color: var(--color-danger);
-                color: #fff;
+                color: var(--btn-primary-text);
             }
 
             &:active {
                 background-color: var(--color-danger-hover);
-                color: #fff;
+                color: var(--btn-primary-text);
             }
         }
 
