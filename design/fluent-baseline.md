@@ -2,7 +2,7 @@
 
 > 适用范围：`design/preview-ui-design.md`、`design/settings-ui-design.md`、`design/audio-preview-design.md` 及其原型
 > 目标代码：`src/assets/var.css`、`src/assets/var/layout.css`、`src/assets/base.css`
-> 版本基线：v1.2.0（图标来源收敛为 `@vicons/fluent`，新增 `--radius-xs` / `--radius-pill` / `--icon-xs` / `--icon-xl` / `--line-reading` / `--line-code`，清除字面量圆角与行高；v1.1.1 增补三级文字 `--color-text-tertiary`、按下态 `--elevation-pressed`、控件与图标尺寸阶梯；v1.1.0 引入品牌色拆分与字号收敛）
+> 版本基线：v1.3.0（新增 `--color-stroke-control` 与 §7「窗口形态」，更新窗口改为 ContentDialog 结构；v1.2.0 图标来源收敛为 `@vicons/fluent`，新增 `--radius-xs` / `--radius-pill` / `--icon-xs` / `--icon-xl` / `--line-reading` / `--line-code`，清除字面量圆角与行高；v1.1.1 增补三级文字 `--color-text-tertiary`、按下态 `--elevation-pressed`、控件与图标尺寸阶梯；v1.1.0 引入品牌色拆分与字号收敛）
 >
 > **本文件是三份设计稿的取值来源。** 三份稿件中凡与本文件冲突的字号、色值，以本文件为准。
 > 稿件的布局、间距、控件规格不变。
@@ -50,6 +50,7 @@ Fluent 2 的品牌色不是一个值，而是按「承载什么」分成两组�
 | `--color-danger` | `#D13438` | `#D13438` | StatusDangerBackground3 | 危险色底（极少用） |
 | `--color-success-fg` | `#0E700E` | `#54B054` | StatusSuccessForeground | 成功态**前景**（图标/文字），不做实心底 |
 | `--color-border` | `#e1e1e1` | `#3a3a3a` | NeutralStroke2 | 容器边界 |
+| `--color-stroke-control` | `#d1d1d1` | `#666666` | NeutralStroke1 | **控件描边**：带边框的标准按钮 |
 | `--color-divider` | `rgba(0,0,0,.07)` | `rgba(255,255,255,.08)` | NeutralStroke3 | 发丝线 |
 | `--color-chip-bg` | `rgba(0,0,0,.05)` | `rgba(255,255,255,.06)` | NeutralBackground4 | 胶囊底 |
 | `--elevation-hover` | `rgba(0,0,0,.08)` | `rgba(255,255,255,.05)` | SubtleBackgroundHover | 悬浮态 |
@@ -336,7 +337,29 @@ Fluent 2 的焦点环是**双层**：外层 2px 主色、内侧 1px 背景色隔
 | `line-height: 1.75 / 1.8`（阅读正文） | `var(--line-reading)` | `md-doc.scss`、`book.vue` |
 | `line-height: 1.5`（代码块） | `var(--line-code)` | `book.vue` |
 
-## 7. 验收清单
+## 7. 窗口形态：页面 vs 对话框
+
+同一个应用里有两种窗口，Fluent 2 对它们的组织方式不同。判断标准只有一条：**这个窗口是一个会被反复访问的场所，还是一次性的任务？**
+
+| | 页面型（设置、预览） | 对话框型（更新） |
+| --- | --- | --- |
+| 客户区底 | `--color-bg` | `--color-surface` |
+| 内容组织 | 卡片：`--color-surface` + 1px `--color-border` + `--radius-lg` | 三段式：标题区 / 内容区 / 页脚，直接铺在客户区 |
+| 分区手段 | 卡片之间的留白 | `--color-divider` 发丝线 |
+| 嵌套 | 卡片内再用 divider 分设置行 | **不再嵌套**：不叠第二层底色与描边 |
+| 标题 | 页面标题 24/32 · 600，左上 | 对话框标题 20/28 · 600，与内容同宽 |
+| 页脚 | 无，内容自己到底 | 固定底部，主操作最右 |
+
+判断错的两个方向都要避免：
+
+- **对话框套页面**：灰底 + 白卡片 + 四周 16px 边距。600px 宽的窗口里，16px 页边加 24px 卡内边距 = 40px 双重留白，内容被压扁，看起来像「网页里放了一张卡片」。
+- **页面套对话框**：整窗 surface、无卡片。设置页有几十行、8 个分组，失去卡片边界就没有分组感。
+
+更新窗口按对话框处理（见 `design/upgrade-ui-design.md`），设置窗口与预览窗口按页面处理。
+
+描边也分两档：容器边界用 `--color-border`（NeutralStroke2），**带边框的标准按钮**用 `--color-stroke-control`（NeutralStroke1）。差别在浅色下尤其明显——`#e1e1e1` 画在 surface 上几乎只剩一道影子。
+
+## 8. 验收清单
 
 - [ ] 全局不存在 `color: var(--color-accent)`（仅允许 `background` / `border` 使用）
 - [ ] 全局不存在 `--color-accent-hi`
@@ -355,3 +378,6 @@ Fluent 2 的焦点环是**双层**：外层 2px 主色、内侧 1px 背景色隔
 - [ ] 样式里无字面量 `border-radius`（`50%` 与 `0` 除外），胶囊一律 `--radius-pill`
 - [ ] 样式里无字面量 `line-height`（单行控件的 `1` 除外）
 - [ ] 页面背景不含硬编码渐变，深色模式下无浅色残留
+- [ ] 窗口形态与用途相符：页面型窗口用 `--color-bg` + 卡片，对话框型窗口整窗 `--color-surface`（见 §7）
+- [ ] 对话框内无嵌套卡片：分区用 `--color-divider` 发丝线，不叠第二层底色与描边
+- [ ] 带边框的标准按钮用 `--color-stroke-control`，容器边界才用 `--color-border`

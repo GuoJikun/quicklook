@@ -17,6 +17,9 @@
     --color-text-tertiary: #616161;
     --color-text-disabled: #999999;
     --color-border: #e1e1e1;
+    /* 控件描边：NeutralStroke1。--color-border 是 NeutralStroke2，只够画容器边界；
+       描边的标准按钮需要更深一档，否则在 surface 上几乎看不出形状 */
+    --color-stroke-control: #d1d1d1;
     /* 发丝分隔线：比 border 更轻，用于标题行/表头等不该割裂画面的场合 */
     --color-divider: rgba(0, 0, 0, 0.07);
     /* 胶囊底色：格式徽章、数值框等轻量容器 */
@@ -84,6 +87,7 @@ html.dark {
     --color-text-tertiary: #adadad;
     --color-text-disabled: #777777;
     --color-border: #3a3a3a;
+    --color-stroke-control: #666666;
     --color-divider: rgba(255, 255, 255, 0.08);
     --color-chip-bg: rgba(255, 255, 255, 0.06);
     --color-accent-soft: rgba(71, 158, 245, 0.14);
@@ -106,7 +110,8 @@ html.dark {
     --btn-primary-hover-bg: #106ebe;
     --btn-primary-active-bg: #005a9e;
     --btn-primary-disabled-bg: #333333;
-    --btn-primary-disabled-text: #555555;
+    /* 深色下 #555 压在 #333 上只有 1.9:1，禁用态虽豁免 WCAG 也不该看不见 */
+    --btn-primary-disabled-text: #999999;
 
     --btn-secondary-bg: transparent;
     --btn-secondary-border: var(--color-brand-fg);
