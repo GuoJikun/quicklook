@@ -214,12 +214,13 @@ html[data-theme='dark'] .seg button[aria-pressed='true'] { background: rgba(255,
     transition: background var(--t-med);
 }
 
-/* 标题行 44 —— 与预览窗口同规格，透明 */
+/* 标题行 44 —— 与预览、更新窗口同规格，透明底，明暗随 html.dark */
 .hd {
     flex: none; height: 44px; display: flex; align-items: center; gap: 10px;
     padding: 0 6px 0 16px; background: transparent; user-select: none;
 }
-.hd-title { font-size: 16px; font-weight: 600; line-height: var(--line-lg); }
+/* Fluent 2 的 TitleBar 标题是 Caption：12/16、常规字重、次要色。16px/600 会与内容区的一级标题抢视线 */
+.hd-title { font-size: var(--font-xs); font-weight: 400; line-height: var(--line-xs); color: var(--text-2); }
 /* 标题行只放「设置」与窗口按钮；软件名 / 版本交给「关于」分组，不重复占位 */
 .hd-acts { display: flex; align-items: center; gap: 1px; margin-left: auto; flex: none; }
 .hd-btn {
@@ -449,11 +450,13 @@ html[data-theme='dark'] .seg2 button[aria-pressed='true'] { background: rgba(255
 
         <div class="frame">
             <div class="win" id="win">
-                <!-- 标题行 44：与预览窗口同规格；保留系统标题栏时本行省略 -->
+                <!-- 标题行 44：三个窗口（预览 / 设置 / 更新）统一自绘，不再保留系统标题栏。
+                     自绘的收益是明暗随 html.dark 自动切换，不需要再调 setTheme 对齐系统主题 -->
                 <div class="hd">
                     <span class="hd-title">设置</span>
                     <div class="hd-acts">
                         <button class="hd-btn" title="最小化"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M3 8h10"/></svg></button>
+                        <button class="hd-btn" title="最大化"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3.5" y="3.5" width="9" height="9" rx="1"/></svg></button>
                         <button class="hd-btn close" title="关闭"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
                     </div>
                 </div>

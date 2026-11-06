@@ -25,6 +25,8 @@ declare module 'vue' {
     MdViewer: typeof import('./src/components/md-viewer/index.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    WindowResizeHandles: typeof import('./src/components/window-resize-handles.vue')['default']
+    WindowTitlebar: typeof import('./src/components/window-titlebar.vue')['default']
   }
   export interface GlobalDirectives {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']
@@ -46,4 +48,6 @@ declare global {
   const MdViewer: typeof import('./src/components/md-viewer/index.vue')['default']
   const RouterLink: typeof import('vue-router')['RouterLink']
   const RouterView: typeof import('vue-router')['RouterView']
+  const WindowResizeHandles: typeof import('./src/components/window-resize-handles.vue')['default']
+  const WindowTitlebar: typeof import('./src/components/window-titlebar.vue')['default']
 }

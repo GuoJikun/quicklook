@@ -2,7 +2,7 @@
 
 > 适用范围：`design/preview-ui-design.md`、`design/settings-ui-design.md`、`design/audio-preview-design.md` 及其原型
 > 目标代码：`src/assets/var.css`、`src/assets/var/layout.css`、`src/assets/base.css`
-> 版本基线：v1.4.0（§3.3 行高改为按字号档位绑定绝对值并废除统一系数、§8 字重验收与 §3.4 对齐、补录按钮五态与 hover/danger-hover/选区 token、新增 `--badge-h`、收录 `--font-4xl` 与 `--color-close-hover`；v1.3.0 新增 `--color-stroke-control` 与 §7「窗口形态」，更新窗口改为 ContentDialog 结构；v1.2.0 图标来源收敛为 `@vicons/fluent`，新增 `--radius-xs` / `--radius-pill` / `--icon-xs` / `--icon-xl` / `--line-reading` / `--line-code`，清除字面量圆角与行高；v1.1.1 增补三级文字 `--color-text-tertiary`、按下态 `--elevation-pressed`、控件与图标尺寸阶梯；v1.1.0 引入品牌色拆分与字号收敛）
+> 版本基线：v1.6.0（§7.2 补标题栏 `window` / `dialog` 两种变体与「对话框不叠第二层标题」：对话框把标题收进 44px 标题行，版本信息归内容区；§7「标题」行同步改为对话框标题并进标题行。v1.5.0 §7.2 新增「标题栏由前端自绘」：三窗口统一 `decorations(false)`，标题栏随 `html.dark` 明暗，拖动与边缘缩放需自补；v1.4.0 §3.3 行高改为按字号档位绑定绝对值并废除统一系数、§8 字重验收与 §3.4 对齐、补录按钮五态与 hover/danger-hover/选区 token、新增 `--badge-h`、收录 `--font-4xl` 与 `--color-close-hover`；v1.3.0 新增 `--color-stroke-control` 与 §7「窗口形态」，更新窗口改为 ContentDialog 结构；v1.2.0 图标来源收敛为 `@vicons/fluent`，新增 `--radius-xs` / `--radius-pill` / `--icon-xs` / `--icon-xl` / `--line-reading` / `--line-code`，清除字面量圆角与行高；v1.1.1 增补三级文字 `--color-text-tertiary`、按下态 `--elevation-pressed`、控件与图标尺寸阶梯；v1.1.0 引入品牌色拆分与字号收敛）
 >
 > **本文件是三份设计稿的取值来源。** 三份稿件中凡与本文件冲突的字号、色值，以本文件为准。
 > 稿件的布局、间距、控件规格不变。
@@ -412,7 +412,7 @@ Fluent 2 的焦点环是**双层**：外层 2px 主色、内侧 1px 背景色隔
 | 内容组织 | 卡片：`--color-surface` + 1px `--color-border` + `--radius-lg` | 三段式：标题区 / 内容区 / 页脚，直接铺在客户区 |
 | 分区手段 | 卡片之间的留白 | `--color-divider` 发丝线 |
 | 嵌套 | 卡片内再用 divider 分设置行 | **不再嵌套**：不叠第二层底色与描边 |
-| 标题 | 页面标题 24/32 · 600，左上 | 对话框标题 20/28 · 600，与内容同宽 |
+| 标题 | 页面标题 24/32 · 600，左上 | 对话框标题并入 44px 标题行（16/22 · 600），不另起标题区 |
 | 页脚 | 无，内容自己到底 | 固定底部，主操作最右 |
 
 判断错的两个方向都要避免：
@@ -436,6 +436,32 @@ Fluent 2 的焦点环是**双层**：外层 2px 主色、内侧 1px 背景色隔
 **居中也要限宽**。420px 是居中文本的单行上限，再宽，换行后视线要从行尾跨过半个窗口才回到行首。所以长错误详情仍然居中，只是收窄到这个宽度折行，而不是退回左对齐——左对齐解决的是「行首对不齐，看不出层级」，不是「一行太长」。
 
 描边也分两档：容器边界用 `--color-border`（NeutralStroke2），**带边框的标准按钮**用 `--color-stroke-control`（NeutralStroke1）。差别在浅色下尤其明显——`#e1e1e1` 画在 surface 上几乎只剩一道影子。
+
+### 7.2 标题栏由前端自绘
+
+三个窗口（预览 / 设置 / 更新）统一 `decorations(false)`，标题栏共用 `window-titlebar.vue`：44px 高、透明底、右侧 32×32 控件（最小化 / 最大化 / 关闭，关闭钮 hover 实心红）。固定尺寸的对话框只给关闭钮。
+
+标题栏有两种变体，差别只在左侧那段字：
+
+| 变体 | 用在哪 | 左侧文字 |
+| --- | --- | --- |
+| `window`（默认） | 页面型窗口 | 窗口名，12/16 · 400 次要色——只标明「这是哪个窗口」，不参与内容层级 |
+| `dialog` | 对话框 | 唯一标题，16/22 · 600 主色、左缩进 24——它就是内容标题，下方不再另起标题区 |
+
+**对话框不要「空标题栏 + 大标题」两层。** 无边框窗口的标题栏也由前端画：若它只放一颗关闭钮，顶部会先出现一条 44px 空带、紧接着再出现一行 20px 大标题，两层抢同一个位置，空带既无信息又白占 40px。判断标准很简单——标题栏里有没有字：有字就是页面型窗口（窗口名与内容标题各司其职），没字就该把内容标题收进这一行。
+
+| 部位 | 绘制方 | 约束 |
+| --- | --- | --- |
+| 标题栏 | webview | 随 `html.dark` 自动明暗，**不需要** `setTheme` 去对齐系统主题 |
+| 拖动 | webview | `data-tauri-drag-region`（自带双击最大化） |
+| 边缘缩放 | webview | 8 条透明热区 → `startResizeDragging`；最大化时热区失效 |
+| 系统投影 / 圆角 | OS | 无边框窗口没有。`shadow(true)` 在 Windows 会给窗口加 1px 白边，深色下更刺眼，故不启用 |
+
+自绘的收益就是一句话：**标题栏在 webview 里，明暗跟着 `html.dark` 走**，「应用内切深色、系统是浅色」不会再出现深页面配浅标题栏。
+
+代价要认：拖动与缩放都得自己补，弹窗也不再带系统投影。所以只在三个常驻窗口里统一，临时对话框（原生 `MessageDialog`）仍交给 OS。
+
+主题初始化仍须**每窗口各一次**：Tauri 每个窗口是独立 webview、各有独立 `document`，初始化收敛在 `src/hooks/theme.ts` 的模块作用域（由 `main.ts` 副作用导入，早于 `app.mount`，避免首帧白闪）。不要指望「页面自己调 `useTheme()` 来完成初始化」——没有调用它的窗口（如更新页）会直接停在浅色，这正是曾经的故障形态。
 
 ## 8. 验收清单
 

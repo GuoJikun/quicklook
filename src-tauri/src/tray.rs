@@ -13,6 +13,31 @@ use crate::i18n::{self, Locale};
 /// 托盘图标 id，重建菜单时按此取回托盘实例
 const TRAY_ID: &str = "tray";
 
+/// 打开设置窗口。与更新窗口一样自绘标题栏 —— decorations(false) 之后，标题栏明暗
+/// 完全由 webview 里的 `html.dark` 决定，不必再和系统主题对齐。
+pub fn open_settings_window(app: &AppHandle) -> tauri::Result<()> {
+    let texts = i18n::current_locale(app).tray_texts();
+
+    // 已存在就前置，而不是再建一个：同 label 重复 build 会失败
+    if let Some(window) = app.get_webview_window("settings") {
+        let _ = window.set_title(texts.settings);
+        let _ = window.show();
+        let _ = window.set_focus();
+        return Ok(());
+    }
+
+    // 尺寸沿用系统标题栏时期的 800×600，min 项只防被拖到无法阅读
+    WebviewWindowBuilder::new(app, "settings", WebviewUrl::App("/settings".into()))
+        .center()
+        .title(texts.settings)
+        .inner_size(800.0, 600.0)
+        .min_inner_size(640.0, 480.0)
+        .decorations(false)
+        .build()?;
+
+    Ok(())
+}
+
 /// 打开更新窗口。标题、尺寸、窗口类名集中在这里，托盘菜单与设置页共用，
 /// 免得两个入口各写一遍、日后改尺寸只改一处。
 ///
@@ -35,6 +60,8 @@ pub fn open_upgrade_window(app: &AppHandle) -> tauri::Result<()> {
         .center()
         .title(texts.update_window_title)
         .inner_size(700.0, 600.0)
+        .resizable(false)
+        .decorations(false)
         .focused(true)
         .window_classname("quicklook-upgrade")
         .auto_resize()
@@ -163,13 +190,9 @@ pub fn create_tray(app: &mut App) -> tauri::Result<()> {
             },
             "setting" => {
                 log::debug!("Setting");
-                let texts = i18n::current_locale(app).tray_texts();
                 // 打开设置窗口
-                if let Ok(webview_window) =
-                    crate::helper::get_webview_window(app, "settings", "/settings")
-                {
-                    let _ = webview_window.set_title(texts.settings);
-                    let _ = webview_window.show();
+                if let Err(e) = open_settings_window(app) {
+                    log::error!("打开设置窗口失败: {}", e);
                 }
             },
             "auto_start" => {

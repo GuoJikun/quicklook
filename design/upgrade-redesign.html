@@ -150,7 +150,7 @@ body {
 
 .stage {
     display: grid;
-    grid-template-columns: repeat(2, 640px);
+    grid-template-columns: repeat(2, 700px);
     gap: 28px 32px;
     padding: 8px 32px 64px;
     justify-content: center;
@@ -165,11 +165,13 @@ body {
 .case-cap .name { font-size: 14px; font-weight: 600; }
 .case-cap .note { font-size: 12px; color: var(--text-3); }
 
-/* ---------- 窗口外壳（600×500，系统标题栏由 OS 绘制，此处不模拟） ---------- */
+/* ---------- 窗口外壳（700×600，含自绘 44px 标题栏） ---------- */
 .win {
-    width: 640px;
+    width: 700px;
     height: 600px;
-    /* 对话框形态：客户区整块 surface，灰的标题栏由 OS 绘制（原型不模拟） */
+    /* 对话框形态：客户区整块 surface；标题栏自绘，见 .wtb */
+    display: flex;
+    flex-direction: column;
     background: var(--surface);
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-win);
@@ -179,7 +181,8 @@ body {
 
 /* ---------- 整窗 surface：三段直接铺开 ---------- */
 .uq-page {
-    height: 100%;
+    flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     background: var(--surface);
@@ -187,6 +190,44 @@ body {
     font-family: inherit;
     overflow: hidden;
 }
+
+/* 自绘标题栏 44：与设置、预览窗口同规格。它住在 webview 里，明暗随 html.dark，
+   「应用内深色 + 系统浅色」不会再出现深页面配浅标题栏 */
+.wtb {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 44px;
+    padding: 0 6px 0 24px;
+}
+/* 对话框的标题就住在这条里：16/600 主色，左缩进与内容区同为 24 —— 同一条左基准线。
+   不再「空标题栏 + 下面再排一个大标题」，顶部只留一条。 */
+.wtb-title {
+    margin-right: auto;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 22px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.wtb-btn {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-2);
+    cursor: default;
+}
+.wtb-btn svg { width: 16px; height: 16px; }
+.wtb-btn:hover { background: var(--hover); color: var(--text); }
 
 /* 原型保留这一层以对应 SFC 里的 section，视觉上无样式 */
 .uq-card {
@@ -197,30 +238,11 @@ body {
     overflow: hidden;
 }
 
-/* ---------- 标题区 ---------- */
-.uq-head {
-    flex: none; display: flex; align-items: center; justify-content: space-between;
-    gap: var(--space-3);
-    padding: var(--space-5) var(--space-5) var(--space-3);
-}
-.uq-title {
-    margin: 0; font-size: var(--font-2xl); font-weight: 600;
-    line-height: var(--line-2xl); color: var(--text);
-}
-.uq-chip {
-    flex: none; display: inline-flex; align-items: center;
-    height: 24px; padding: 0 var(--space-2);
-    border-radius: var(--radius-sm);
-    background: var(--chip-bg); color: var(--text-2);
-    font-size: var(--font-xs); line-height: 1;
-    font-variant-numeric: tabular-nums;
-}
-
 /* ---------- 内容区 ---------- */
 .uq-main {
     flex: 1; min-height: 0;
     display: flex; flex-direction: column; gap: var(--space-4);
-    padding: 0 var(--space-5) var(--space-5);
+    padding: var(--space-5) var(--space-5) var(--space-5);
     overflow-y: auto;
 }
 
@@ -386,7 +408,7 @@ body {
 
 <div class="topbar">
     <h1>更新窗口 · Fluent 2 重设计</h1>
-    <p class="sub">640×600 · 系统标题栏由 OS 绘制，原型只覆盖 webview 区域</p>
+    <p class="sub">700×600 · 自绘标题栏 44px，明暗随应用主题</p>
     <span class="spacer"></span>
     <button class="theme-btn" id="themeBtn" type="button">切换主题（D）</button>
 </div>
@@ -401,11 +423,14 @@ body {
             <span class="note">内联进度环，整块居中，不遮罩整页</span>
         </div>
         <div class="win">
+            <div class="wtb">
+                <span class="wtb-title">软件更新</span>
+                <button class="wtb-btn" type="button" title="关闭">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+                </button>
+            </div>
             <div class="uq-page">
                 <section class="uq-card" aria-busy="true">
-                    <header class="uq-head">
-                        <h1 class="uq-title">软件更新</h1>
-                    </header>
                     <div class="uq-main">
                         <div class="uq-status" role="status">
                             <span class="uq-ring" aria-hidden="true"></span>
@@ -425,12 +450,14 @@ body {
             <span class="note">整块居中，状态色只染图标</span>
         </div>
         <div class="win">
+            <div class="wtb">
+                <span class="wtb-title">软件更新</span>
+                <button class="wtb-btn" type="button" title="关闭">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+                </button>
+            </div>
             <div class="uq-page">
                 <section class="uq-card">
-                    <header class="uq-head">
-                        <h1 class="uq-title">软件更新</h1>
-                        <span class="uq-chip">v1.0.0</span>
-                    </header>
                     <div class="uq-main">
                         <div class="uq-status">
                             <svg class="uq-status-icon is-success" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true">
@@ -456,12 +483,14 @@ body {
             <span class="note">整块居中，错误详情限宽 420px 折行</span>
         </div>
         <div class="win">
+            <div class="wtb">
+                <span class="wtb-title">软件更新</span>
+                <button class="wtb-btn" type="button" title="关闭">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+                </button>
+            </div>
             <div class="uq-page">
                 <section class="uq-card">
-                    <header class="uq-head">
-                        <h1 class="uq-title">软件更新</h1>
-                        <span class="uq-chip">v1.0.0</span>
-                    </header>
                     <div class="uq-main">
                         <div class="uq-status">
                             <svg class="uq-status-icon is-danger" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true">
@@ -487,14 +516,20 @@ body {
             <span class="note">键值表 + 发丝线分区</span>
         </div>
         <div class="win">
+            <div class="wtb">
+                <span class="wtb-title">软件更新</span>
+                <button class="wtb-btn" type="button" title="关闭">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+                </button>
+            </div>
             <div class="uq-page">
                 <section class="uq-card">
-                    <header class="uq-head">
-                        <h1 class="uq-title">软件更新</h1>
-                        <span class="uq-chip">v1.0.0</span>
-                    </header>
                     <div class="uq-main">
                         <dl class="uq-meta">
+                            <div class="uq-meta-row">
+                                <dt>当前版本</dt>
+                                <dd>v1.0.0</dd>
+                            </div>
                             <div class="uq-meta-row">
                                 <dt>最新版本</dt>
                                 <dd class="is-version">v1.4.0</dd>
@@ -543,14 +578,20 @@ body {
             <span class="note">4px 细条，无条纹动画</span>
         </div>
         <div class="win">
+            <div class="wtb">
+                <span class="wtb-title">软件更新</span>
+                <button class="wtb-btn" type="button" title="关闭">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+                </button>
+            </div>
             <div class="uq-page">
                 <section class="uq-card">
-                    <header class="uq-head">
-                        <h1 class="uq-title">软件更新</h1>
-                        <span class="uq-chip">v1.0.0</span>
-                    </header>
                     <div class="uq-main">
                         <dl class="uq-meta">
+                            <div class="uq-meta-row">
+                                <dt>当前版本</dt>
+                                <dd>v1.0.0</dd>
+                            </div>
                             <div class="uq-meta-row">
                                 <dt>最新版本</dt>
                                 <dd class="is-version">v1.4.0</dd>
@@ -600,14 +641,20 @@ body {
             <span class="note">主按钮禁用态不换色系</span>
         </div>
         <div class="win">
+            <div class="wtb">
+                <span class="wtb-title">软件更新</span>
+                <button class="wtb-btn" type="button" title="关闭">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+                </button>
+            </div>
             <div class="uq-page">
                 <section class="uq-card">
-                    <header class="uq-head">
-                        <h1 class="uq-title">软件更新</h1>
-                        <span class="uq-chip">v1.0.0</span>
-                    </header>
                     <div class="uq-main">
                         <dl class="uq-meta">
+                            <div class="uq-meta-row">
+                                <dt>当前版本</dt>
+                                <dd>v1.0.0</dd>
+                            </div>
                             <div class="uq-meta-row">
                                 <dt>最新版本</dt>
                                 <dd class="is-version">v1.4.0</dd>
@@ -654,8 +701,8 @@ body {
 
     <!-- 规格 -->
     <div class="spec">
-        <span class="k"><b>结构</b>标题区 / 内容区 / 页脚共处一张 surface，发丝线分区，无嵌套卡片</span>
-        <span class="k"><b>标题</b>Subtitle1 20/28 · 600</span>
+        <span class="k"><b>结构</b>标题行 / 内容区 / 页脚共处一张 surface，发丝线分区，无嵌套卡片</span>
+        <span class="k"><b>标题</b>16/22 · 600，与窗口控制同处 44px 标题行</span>
         <span class="k"><b>页脚</b>32px 标准按钮，主操作最右</span>
         <span class="k"><b>进度</b>4px 轨道 · --color-accent · 完成态 --color-success-fg</span>
         <span class="k"><b>状态图标</b>32 网格，成对同尺寸</span>

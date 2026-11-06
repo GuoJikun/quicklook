@@ -7,6 +7,7 @@ import { error as logError, info } from '@tauri-apps/plugin-log'
 import { Checkmark32Regular, DismissCircle32Regular } from '@vicons/fluent'
 import { app } from '@tauri-apps/api'
 import MdViewer from '@/components/md-viewer/index.vue'
+import WindowTitlebar from '@/components/window-titlebar.vue'
 import { createMd } from '@/utils/markdown/index'
 import { formatBytes } from '@/utils/index'
 import type MarkdownIt from 'markdown-it'
@@ -206,14 +207,14 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <!-- 640×600 的对话框窗口。结构照 Fluent 2 的 ContentDialog：标题区 / 内容区 / 页脚
+    <!-- 700×600 的对话框窗口（自绘 44px 标题栏 + 三段式）。结构照 Fluent 2 的 ContentDialog：标题 / 内容 / 页脚
          直接铺在整窗 surface 上，不再「灰底 + 白卡片」—— 那是网页的分层方式，
-         而 Windows 的原生对话框客户区就是一整块 surface（标题栏的灰由 OS 绘制）。 -->
+         而 Windows 的原生对话框客户区就是一整块 surface。
+         标题与窗口控制同处一行：对话框只有一个标题，若标题栏只放关闭钮、下面再排一个大标题，
+         顶部就会先出现一条空带，再出现一行字，两层抢同一个位置。 -->
     <div class="uq-page" :aria-busy="checking">
-        <header class="uq-head">
-            <h1 class="uq-title">{{ t('upgrade.title') }}</h1>
-            <span v-if="currentVersion && !checking" class="uq-chip">v{{ currentVersion }}</span>
-        </header>
+        <!-- 尺寸固定的对话框：标题即窗口标题，只留关闭钮 -->
+        <WindowTitlebar :title="t('upgrade.title')" variant="dialog" :controls="['close']" />
 
         <div class="uq-main">
             <!-- 检查中：Fluent 的 ProgressRing 是内联的细环，不是盖住整页的遮罩 -->
@@ -242,6 +243,10 @@ onUnmounted(() => {
                 <!-- 版本信息用键值表，不用品牌浅底信息条：
                      accent-soft 上放不了品牌色文字（4.07:1），而纯中性排版本身就是 Fluent 的语气 -->
                 <dl class="uq-meta">
+                    <div v-if="currentVersion" class="uq-meta-row">
+                        <dt>{{ t('upgrade.currentVersion') }}</dt>
+                        <dd>v{{ currentVersion }}</dd>
+                    </div>
                     <div class="uq-meta-row">
                         <dt>{{ t('upgrade.latestVersion') }}</dt>
                         <dd class="is-version">v{{ newVersion || '—' }}</dd>
@@ -333,39 +338,6 @@ onUnmounted(() => {
     overflow: hidden;
 }
 
-/* ---------- 标题区 ---------- */
-.uq-head {
-    flex: none;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-    padding: var(--space-5) var(--space-5) var(--space-3);
-}
-
-.uq-title {
-    margin: 0;
-    font-size: var(--font-2xl);
-    font-weight: 600;
-    line-height: var(--line-2xl);
-    color: var(--color-text-primary);
-}
-
-/* 版本号胶囊：与命令栏的数值框同一种语言（chip 底 + 等宽数字） */
-.uq-chip {
-    flex: none;
-    display: inline-flex;
-    align-items: center;
-    height: var(--control-sm);
-    padding: 0 var(--space-2);
-    border-radius: var(--radius-sm);
-    background: var(--color-chip-bg);
-    color: var(--color-text-secondary);
-    font-size: var(--font-xs);
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
-}
-
 /* ---------- 内容区 ---------- */
 .uq-main {
     flex: 1;
@@ -373,7 +345,9 @@ onUnmounted(() => {
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
-    padding: 0 var(--space-5) var(--space-5);
+    /* 顶边距只补标题栏到第一行内容的呼吸：标题已在标题栏里，这里不再有第二层标题。
+       给到 24 让标题读起来是「窗口名」而不是「第一行内容」 */
+    padding: var(--space-5) var(--space-5) var(--space-5);
     /* 内容超出时整块滚动，页脚始终固定 */
     overflow-y: auto;
 }

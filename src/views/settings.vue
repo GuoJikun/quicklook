@@ -22,10 +22,12 @@ import { getConfigStore } from '@/utils/store'
 import { readTextFile } from '@/utils'
 import { LOCALE_OPTIONS, currentLocale, setLocale, type LocaleCode } from '@/locales'
 import { useTheme, type ThemePreference } from '@/hooks/theme'
+import WindowTitlebar from '@/components/window-titlebar.vue'
+import WindowResizeHandles from '@/components/window-resize-handles.vue'
 
 const { t } = useI18n()
-// 设置窗口不加载预览窗口的 header，这里必须自己初始化 useColorMode，
-// 否则 html.dark 不会被写入，深色主题在设置窗口里失效。
+// 主题初始化已收敛到 hooks/theme.ts 的模块作用域（由 main.ts 副作用导入），
+// 这里只取用响应式状态：设置页需要显示并改写用户偏好。
 const { preference, isDark } = useTheme()
 
 /* ---------------- 左导航 ---------------- */
@@ -426,6 +428,9 @@ onUnmounted(() => {
 
 <template>
     <div class="st-window">
+        <!-- 自绘标题栏与设置页同底色：Win11 的设置窗口标题区本来就不是一条独立色带 -->
+        <WindowTitlebar :title="t('settings.windowTitle')" />
+        <WindowResizeHandles />
         <div class="st-body">
             <!-- 左导航：唯一分组入口 -->
             <nav class="st-navpane" :aria-label="t('settings.navLabel')">
@@ -745,8 +750,8 @@ onUnmounted(() => {
 </template>
 
 <style lang="scss" scoped>
-/* 设置窗口保留系统标题栏，因此不自绘 44px 标题行：左导航与内容区占满窗口高度。
-   只有右侧内容区可滚动，避免与 #app 形成双滚动条。 */
+/* 设置窗口与预览、更新窗口一致：decorations(false) + 自绘 44px 标题栏。
+   标题栏、左导航、内容区依次纵向排列，只有右侧内容区滚动。 */
 .st-window {
     --st-nav-w: 240px;
     --st-content-w: 720px;
@@ -754,6 +759,9 @@ onUnmounted(() => {
     --el-disabled-bg-color: transparent;
     --el-disabled-border-color: var(--color-border);
     --el-disabled-text-color: var(--color-text-disabled);
+    position: relative;
+    display: flex;
+    flex-direction: column;
     height: 100vh;
     overflow: hidden;
     background: var(--color-bg);
@@ -763,7 +771,7 @@ onUnmounted(() => {
 
 .st-body {
     display: flex;
-    height: 100%;
+    flex: 1;
     min-height: 0;
 }
 
