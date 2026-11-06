@@ -31,10 +31,12 @@
     --page-bg: #e9edf2;
     --page-card: #ffffff;
     --page-line: #dfe3e8;
+    --radius-xs: 2px;   /* 细元素：进度条、指示条、内联代码 */
     --radius-sm: 4px;
     --radius-md: 8px;
     --radius-lg: 10px;
     --radius-xl: 12px;
+    --radius-pill: 999px;   /* 胶囊：开关、徽章、chip */
     --space-1: 4px;
     --space-2: 8px;
     --space-3: 12px;
@@ -125,7 +127,7 @@ body {
     gap: 2px;
     background: var(--page-card);
     border: 1px solid var(--page-line);
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
 }
 .seg button {
     appearance: none;
@@ -135,7 +137,7 @@ body {
     font: inherit;
     font-size: var(--font-xs);
     padding: 6px 14px;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     cursor: pointer;
     display: inline-flex;
     align-items: center;
@@ -248,7 +250,7 @@ body {
     content: '';
     position: absolute;
     inset: 8px 0;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     background: var(--ring-track);
     transition: padding var(--t-fast);
 }
@@ -258,7 +260,7 @@ body {
     left: 0;
     height: 4px;
     top: 8px;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     transition: height var(--t-fast), top var(--t-fast);
 }
 .track .buffer {
@@ -348,7 +350,7 @@ body {
     left: 50%;
     transform: translateX(-50%) translateY(4px);
     padding: 8px 0 8px;
-    border-radius: 16px;
+    border-radius: var(--radius-xl);
     background: var(--surface);
     border: 1px solid var(--border);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
@@ -362,7 +364,7 @@ body {
     width: 4px;
     height: 80px;
     margin: 0 14px;
-    border-radius: 2px;
+    border-radius: var(--radius-xs);
     background: var(--hover);
 }
 .vol-fill {
@@ -370,7 +372,7 @@ body {
     left: 0;
     bottom: 0;
     width: 100%;
-    border-radius: 2px;
+    border-radius: var(--radius-xs);
     background: var(--accent);
 }
 .vol-knob {
@@ -484,14 +486,14 @@ body {
 .note {
     background: var(--page-card);
     border: 1px solid var(--page-line);
-    border-radius: 12px;
+    border-radius: var(--radius-xl);
     padding: 16px 18px;
 }
 .note h3 { margin: 0 0 10px; font-size: var(--font-sm); font-weight: 600; display: flex; align-items: center; gap: 7px; }
 .note h3 i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); display: inline-block; }
 .note ul { margin: 0; padding-left: 16px; }
 .note li { font-size: var(--font-xs); line-height: 1.9; color: var(--text-2); }
-.note code { font-family: 'Cascadia Code', Consolas, monospace; font-size: 12px; background: var(--hover); padding: 1px 5px; border-radius: 3px; color: var(--text); }
+.note code { font-family: 'Cascadia Code', Consolas, monospace; font-size: 12px; background: var(--hover); padding: 1px 5px; border-radius: var(--radius-xs); color: var(--text); }
 .note .bad { color: #c33; }
 html[data-theme='dark'] .note .bad { color: #ff8b81; }
 </style>

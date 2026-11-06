@@ -4,7 +4,13 @@ import { useI18n } from 'vue-i18n'
 import { currentLocale } from '@/locales'
 import { computed, onMounted, onUnmounted, ref, shallowRef } from 'vue'
 import { error as logError, info } from '@tauri-apps/plugin-log'
-import { Check, CircleClose, Download, Refresh, Warning } from '@element-plus/icons-vue'
+import {
+    ArrowClockwise16Regular,
+    ArrowDownload16Regular,
+    Checkmark32Regular,
+    DismissCircle16Regular,
+    DismissCircle32Regular,
+} from '@vicons/fluent'
 import { app } from '@tauri-apps/api'
 import MdViewer from '@/components/md-viewer/index.vue'
 import { createMd } from '@/utils/markdown/index'
@@ -220,14 +226,14 @@ onUnmounted(() => {
 
             <template v-if="!checking">
                 <section v-if="errMsg" class="state state-error">
-                    <el-icon class="state-icon" :size="56"><Warning /></el-icon>
+                    <DismissCircle32Regular class="state-icon" />
                     <p class="state-title">{{ t('upgrade.checkFailed') }}</p>
                     <p class="state-desc">{{ errMsg }}</p>
                 </section>
 
                 <section v-else-if="!upgradeAvailable" class="state state-latest">
                     <div class="state-icon-wrap success">
-                        <el-icon :size="32"><Check /></el-icon>
+                        <Checkmark32Regular />
                     </div>
                     <p class="state-title">{{ t('upgrade.upToDate') }}</p>
                     <p class="state-desc" v-if="currentVersion">v{{ currentVersion }}</p>
@@ -272,9 +278,8 @@ onUnmounted(() => {
                 </section>
 
                 <footer class="upgrade-footer">
-                    <el-button @click="doCheck" :disabled="phase === 'downloading'">
-                        <el-icon><Refresh /></el-icon>
-                        <span>{{ t('upgrade.recheck') }}</span>
+                    <el-button :icon="ArrowClockwise16Regular" @click="doCheck" :disabled="phase === 'downloading'">
+                        {{ t('upgrade.recheck') }}
                     </el-button>
                     <template v-if="errMsg">
                         <el-button type="primary" @click="doCheck">{{ t('upgrade.retry') }}</el-button>
@@ -284,13 +289,13 @@ onUnmounted(() => {
                     </template>
                     <template v-else>
                         <!-- 取消不是破坏性操作，Fluent 2 里不用警示色：降为次级按钮即可 -->
-                        <el-button v-if="phase === 'downloading'" :icon="CircleClose" @click="cancelDownload">
+                        <el-button v-if="phase === 'downloading'" :icon="DismissCircle16Regular" @click="cancelDownload">
                             {{ t('upgrade.cancelDownload') }}
                         </el-button>
                         <el-button
                             v-else
                             type="primary"
-                            :icon="Download"
+                            :icon="ArrowDownload16Regular"
                             :disabled="phase === 'finished'"
                             @click="startDownload"
                         >
@@ -358,6 +363,11 @@ onUnmounted(() => {
         padding-top: var(--space-3);
         border-top: 1px solid var(--color-border);
         margin-top: auto;
+
+        /* 图标走 Fluent 的 16 网格：Element 默认按 1em 渲染会落到 14px */
+        :deep(.el-icon) {
+            font-size: var(--icon-sm);
+        }
     }
 }
 
@@ -385,7 +395,12 @@ onUnmounted(() => {
     gap: var(--space-2);
     flex: 1;
     width: 100%;
+    /* 错态与成功态都取 32 网格：两个状态是并列关系，图标不该一大一小。
+       Warning 在 Fluent 里最大只有 24，放大到 32 会发虚，故错态改用圆形的
+       DismissCircle —— 语义同为「失败」，且与 Checkmark32 同族同尺寸。 */
     &-icon {
+        width: var(--icon-xl);
+        height: var(--icon-xl);
         color: var(--color-danger-fg);
     }
 
@@ -403,6 +418,11 @@ onUnmounted(() => {
 
         &.success {
             color: var(--color-success-fg);
+        }
+
+        svg {
+            width: var(--icon-xl);
+            height: var(--icon-xl);
         }
     }
 
@@ -569,7 +589,7 @@ onUnmounted(() => {
 
 /* 进度条：Fluent 2 是细条 + 右侧百分比，不用条纹流动动画与条内文字 */
 .upgrade :deep(.el-progress-bar__outer) {
-    border-radius: 3px;
+    border-radius: var(--radius-xs);
     background-color: var(--color-chip-bg);
 }
 

@@ -1,7 +1,16 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ChevronDown16Regular, ChevronUp16Regular } from '@vicons/fluent'
+import {
+    ArrowUp16Regular,
+    ChevronDown16Regular,
+    ChevronRight16Regular,
+    ChevronUp16Regular,
+    Dismiss16Regular,
+    Document16Regular,
+    Folder16Regular,
+    Search16Regular,
+} from '@vicons/fluent'
 import LayoutPreview from '@/components/layout-preview.vue'
 import { useRoute } from 'vue-router'
 import type { FileInfo } from '@/utils/typescript'
@@ -254,15 +263,10 @@ const sortColumns = computed<Array<{ key: SortKey; label: string }>>(() => [
     <LayoutPreview :file="fileInfo" :loading="loading">
         <template #toolbar>
             <label class="pv-tb-input">
-                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
-                    <circle cx="7" cy="7" r="4.2" />
-                    <path d="M10.2 10.2 13.5 13.5" />
-                </svg>
+                <Search16Regular />
                 <input v-model="keyword" type="text" :placeholder="t('archive.filterPlaceholder')" spellcheck="false" />
                 <button v-if="keyword" class="pv-clear" type="button" :title="t('common.cancel')" @click="keyword = ''">
-                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" class="is-xs">
-                        <path d="M4 4l8 8M12 4l-8 8" />
-                    </svg>
+                    <Dismiss16Regular />
                 </button>
             </label>
 
@@ -278,26 +282,20 @@ const sortColumns = computed<Array<{ key: SortKey; label: string }>>(() => [
                 @click="cycleSort(col.key)"
             >
                 {{ col.label }}
-                <svg
+                <ArrowUp16Regular
                     v-if="sortKey === col.key"
                     class="sort-arrow"
                     :class="{ 'is-desc': !sortAsc }"
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.4"
-                >
-                    <path d="M8 12.5V4M4.5 7.5 8 4l3.5 3.5" />
-                </svg>
+                />
             </button>
 
             <i class="pv-tb-sep"></i>
 
             <button class="pv-tb-btn" type="button" :title="t('archive.expandAll')" @click="expandAll">
-                <el-icon :size="15"><ChevronDown16Regular /></el-icon>
+                <el-icon><ChevronDown16Regular /></el-icon>
             </button>
             <button class="pv-tb-btn" type="button" :title="t('archive.collapseAll')" @click="collapseAll">
-                <el-icon :size="15"><ChevronUp16Regular /></el-icon>
+                <el-icon><ChevronUp16Regular /></el-icon>
             </button>
 
             <div class="pv-tb-grow"></div>
@@ -320,28 +318,15 @@ const sortColumns = computed<Array<{ key: SortKey; label: string }>>(() => [
                     @click="toggle(row.node)"
                 >
                     <div class="ar-name" :style="{ paddingLeft: `${row.depth * 16}px` }">
-                        <svg
+                        <ChevronRight16Regular
                             v-if="row.node.dir"
                             class="chev"
                             :class="{ 'is-open': isOpen(row.node) }"
-                            viewBox="0 0 16 16"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="1.6"
-                        >
-                            <path d="M6.5 4 10.5 8l-4 4" />
-                        </svg>
+                        />
                         <span v-else class="chev-placeholder"></span>
 
-                        <svg v-if="row.node.dir" class="ico folder" viewBox="0 0 16 16" fill="currentColor">
-                            <path
-                                d="M1.8 4.2A1.2 1.2 0 0 1 3 3h3.1l1.3 1.6H13a1.2 1.2 0 0 1 1.2 1.2v5.4A1.2 1.2 0 0 1 13 12.4H3a1.2 1.2 0 0 1-1.2-1.2z"
-                            />
-                        </svg>
-                        <svg v-else class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
-                            <path d="M4 1.8h5.2L13 5.6v8.6H4z" />
-                            <path d="M9 1.8v4h4" />
-                        </svg>
+                        <Folder16Regular v-if="row.node.dir" class="ico folder" />
+                        <Document16Regular v-else class="ico" />
 
                         <span class="nm" :title="row.node.name">{{ displayName(row.node.name) }}</span>
                     </div>
@@ -433,8 +418,8 @@ const sortColumns = computed<Array<{ key: SortKey; label: string }>>(() => [
     }
 
     .chev {
-        width: 14px;
-        height: 14px;
+        width: var(--icon-sm);
+        height: var(--icon-sm);
         flex: none;
         color: var(--color-text-tertiary);
         transition: transform var(--transition-fast);
@@ -445,13 +430,13 @@ const sortColumns = computed<Array<{ key: SortKey; label: string }>>(() => [
     }
 
     .chev-placeholder {
-        width: 14px;
+        width: var(--icon-sm);
         flex: none;
     }
 
     .ico {
-        width: 14px;
-        height: 14px;
+        width: var(--icon-sm);
+        height: var(--icon-sm);
         flex: none;
         color: var(--color-text-tertiary);
     }
@@ -479,9 +464,11 @@ const sortColumns = computed<Array<{ key: SortKey; label: string }>>(() => [
     color: var(--color-text-tertiary);
 }
 
-.sort-arrow {
-    width: 12px;
-    height: 12px;
+/* 排序箭头贴着 12px 的表头文字，取 --icon-xs；
+   必须带 .pv-tb-btn 前缀，否则会被 .pv-tb-btn svg 的 16px 覆盖 */
+.pv-tb-btn .sort-arrow {
+    width: var(--icon-xs);
+    height: var(--icon-xs);
     flex: none;
     transition: transform var(--transition-fast);
 

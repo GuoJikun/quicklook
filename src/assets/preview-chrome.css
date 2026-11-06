@@ -4,7 +4,7 @@
 
    约定：
    - 视觉语言对齐音频预览：单底色、无实线分隔、控件悬浮在内容之上；
-   - 命令栏容器只负责 flex 布局，控件自带 28px 命中区与 4px 圆角；
+   - 命令栏容器只负责 flex 布局，控件自带 32px 命中区（--control-md）与 4px 圆角；
    - 图标尺寸必须同时给宽高，只给一侧会被 el-icon / svg 的默认值拉变形。 */
 
 /* ---------- 标题行胶囊：格式、大小 ---------- */
@@ -14,7 +14,7 @@
     flex: none;
     height: 18px;
     padding: 0 6px;
-    border-radius: 3px;
+    border-radius: var(--radius-xs);
     background: var(--color-chip-bg);
     color: var(--color-text-secondary);
     font-size: var(--font-2xs);
@@ -94,13 +94,13 @@
 
 /* 更小的行内图标（下拉箭头等）：必须同时给宽高 */
 .pv-tb-btn svg.is-xs {
-    width: 9px;
-    height: 9px;
+    width: var(--icon-xs);
+    height: var(--icon-xs);
 }
 
 .pv-tb-btn svg.is-sm {
-    width: 12px;
-    height: 12px;
+    width: var(--icon-xs);
+    height: var(--icon-xs);
 }
 
 /* 文字型按钮（适应窗口、全屏）略窄于图标按钮即可 */
@@ -195,8 +195,8 @@
 }
 
 .pv-tb-input svg {
-    width: 14px;
-    height: 14px;
+    width: var(--icon-sm);
+    height: var(--icon-sm);
     flex: none;
     color: var(--color-text-tertiary);
 }
@@ -250,7 +250,7 @@
 
 .pv-scroll::-webkit-scrollbar-thumb {
     background: var(--color-border);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
 }
 
 .pv-scroll::-webkit-scrollbar-track {

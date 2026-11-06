@@ -4,7 +4,13 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { convertFileSrc } from '@tauri-apps/api/core'
 import { openPath } from '@tauri-apps/plugin-opener'
-import { ArrowClockwise16Regular, ArrowSync16Regular, Cube16Regular, PaintBucket16Regular } from '@vicons/fluent'
+import {
+    ArrowClockwise16Regular,
+    ArrowSync16Regular,
+    ChevronDown16Regular,
+    Cube16Regular,
+    PaintBucket16Regular,
+} from '@vicons/fluent'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
@@ -417,7 +423,7 @@ onUnmounted(() => {
                 :disabled="!modelInfo"
                 @click="toggleWireframe"
             >
-                <el-icon :size="15"><Cube16Regular /></el-icon>
+                <el-icon><Cube16Regular /></el-icon>
                 {{ t('model.wireframe') }}
             </button>
             <button
@@ -427,7 +433,7 @@ onUnmounted(() => {
                 :disabled="!modelInfo"
                 @click="resetView"
             >
-                <el-icon :size="15"><ArrowSync16Regular /></el-icon>
+                <el-icon><ArrowSync16Regular /></el-icon>
                 {{ t('model.resetView') }}
             </button>
             <button
@@ -438,18 +444,16 @@ onUnmounted(() => {
                 :disabled="!modelInfo"
                 @click="autoRotate = !autoRotate"
             >
-                <el-icon :size="15"><ArrowClockwise16Regular /></el-icon>
+                <el-icon><ArrowClockwise16Regular /></el-icon>
                 {{ t('model.autoRotate') }}
             </button>
 
             <i class="pv-tb-sep"></i>
 
             <button class="pv-tb-btn is-text" type="button" :title="t('model.backgroundHint')" @click="cycleBackground">
-                <el-icon :size="15"><PaintBucket16Regular /></el-icon>
+                <el-icon><PaintBucket16Regular /></el-icon>
                 {{ t('model.background', { name: backgroundLabel }) }}
-                <svg class="is-xs" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
-                    <path d="M4.5 6.5 8 10l3.5-3.5" />
-                </svg>
+                <ChevronDown16Regular class="is-xs" />
             </button>
 
             <div class="pv-tb-grow"></div>
@@ -576,7 +580,7 @@ onUnmounted(() => {
     left: 0;
     height: 2px;
     width: 32%;
-    border-radius: 1px;
+    border-radius: var(--radius-xs);
     background: var(--color-accent);
     animation: md-indeterminate 1.15s ease-in-out infinite;
 }
@@ -621,7 +625,7 @@ onUnmounted(() => {
         margin: 0;
         max-width: 460px;
         font-size: var(--font-sm);
-        line-height: 1.55;
+        line-height: var(--line-base);
         color: var(--color-text-secondary);
         word-break: break-word;
     }

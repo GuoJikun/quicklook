@@ -1,6 +1,18 @@
 <script lang="ts" setup>
-import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
+import {
+    Add16Regular,
+    Code16Regular,
+    Delete16Regular,
+    Document16Regular,
+    Folder16Regular,
+    Info16Regular,
+    LocalLanguage16Regular,
+    Search16Regular,
+    Video16Regular,
+    WeatherMoon16Regular,
+} from '@vicons/fluent'
 import { app } from '@tauri-apps/api'
 import { invoke } from '@tauri-apps/api/core'
 import { BaseDirectory } from '@tauri-apps/plugin-fs'
@@ -20,15 +32,17 @@ const { preference, isDark } = useTheme()
 
 type SectionKey = 'language' | 'theme' | 'support' | 'code' | 'video' | 'cache' | 'log' | 'about'
 
-const ICONS: Record<SectionKey, string> = {
-    language: 'M8 1.8a6.2 6.2 0 1 0 0 12.4A6.2 6.2 0 0 0 8 1.8ZM2 8h12M8 1.8c1.8 2 1.8 10.4 0 12.4M8 1.8c-1.8 2-1.8 10.4 0 12.4',
-    theme: 'M13.2 10.4A5.6 5.6 0 0 1 5.6 2.8 5.6 5.6 0 1 0 13.2 10.4Z',
-    support: 'M2 3.6h4.4l1.6 2H14v8H2zM2 6h12',
-    code: 'M5.6 4 2 8l3.6 4M10.4 4 14 8l-3.6 4M9.2 2.8 6.8 13.2',
-    video: 'M2 3.6h9v8.8H2zM11 6.2l3-1.6v6.8l-3-1.6',
-    cache: 'M3 4h10M6 4V2.6h4V4M4.6 4l.6 9h5.6l.6-9',
-    log: 'M4 2.4h6l2.4 2.4v8.8H4zM6.2 7h4.8M6.2 9.6h4.8M6.2 12.2h3',
-    about: 'M8 1.8a6.2 6.2 0 1 0 0 12.4A6.2 6.2 0 0 0 8 1.8ZM8 7.2v4M8 5h.01',
+/* 导航图标统一取自 @vicons/fluent（16 网格、填充式），不再手绘描边 SVG：
+   手绘 1.3px 的笔画与同排 Fluent 图标的视觉重量差一档，切页时最明显。 */
+const ICONS: Record<SectionKey, Component> = {
+    language: LocalLanguage16Regular,
+    theme: WeatherMoon16Regular,
+    support: Folder16Regular,
+    code: Code16Regular,
+    video: Video16Regular,
+    cache: Delete16Regular,
+    log: Document16Regular,
+    about: Info16Regular,
 }
 
 const searchQuery = ref('')
@@ -395,10 +409,7 @@ onUnmounted(() => {
             <nav class="st-navpane" :aria-label="t('settings.navLabel')">
                 <el-input v-model="searchQuery" class="st-search" :placeholder="t('settings.search')" :spellcheck="false">
                     <template #prefix>
-                        <svg class="st-search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true">
-                            <circle cx="7" cy="7" r="4.2" />
-                            <path d="M10.2 10.2 13.5 13.5" />
-                        </svg>
+                        <Search16Regular class="st-search-icon" aria-hidden="true" />
                     </template>
                 </el-input>
                 <template v-for="group in navGroups" :key="group.label">
@@ -413,9 +424,7 @@ onUnmounted(() => {
                         :aria-current="activeSection === item.key"
                         @click="go(item.key)"
                     >
-                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true">
-                            <path :d="ICONS[item.key]" />
-                        </svg>
+                        <component :is="ICONS[item.key]" aria-hidden="true" />
                         <span>{{ item.label }}</span>
                     </button>
                 </template>
@@ -552,7 +561,7 @@ onUnmounted(() => {
                                 <div class="st-row-ctl">
                                     <el-input v-model="newCodeExt" class="st-textbox" :placeholder="t('settings.customCode.placeholder')" @keyup.enter="addCodeExt" />
                                     <button type="button" class="st-iconbtn" :title="t('common.add')" :aria-label="t('common.add')" @click="addCodeExt">
-                                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M8 3v10M3 8h10" /></svg>
+                                        <Add16Regular aria-hidden="true" />
                                     </button>
                                 </div>
                             </div>
@@ -564,9 +573,7 @@ onUnmounted(() => {
                     <template v-else-if="activeSection === 'video'">
                         <p class="st-subtitle">{{ t('settings.video.description') }}</p>
                         <div v-if="useLocalFfmpeg" class="st-infobar">
-                            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true">
-                                <circle cx="8" cy="8" r="6.2" /><path d="M8 7.2v4M8 5h.01" />
-                            </svg>
+                            <Info16Regular aria-hidden="true" />
                             <div>
                                 <div class="st-info-title">{{ ffmpegStatus.title }}</div>
                                 <div class="st-info-desc">{{ ffmpegStatus.description }}</div>
@@ -609,7 +616,7 @@ onUnmounted(() => {
                                 <div class="st-row-ctl">
                                     <el-input v-model="newVideoExt" class="st-textbox" :placeholder="t('settings.video.customPlaceholder')" :disabled="!useLocalFfmpeg" @keyup.enter="addVideoExt" />
                                     <button type="button" class="st-iconbtn" :title="t('common.add')" :aria-label="t('common.add')" :disabled="!useLocalFfmpeg" @click="addVideoExt">
-                                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M8 3v10M3 8h10" /></svg>
+                                        <Add16Regular aria-hidden="true" />
                                     </button>
                                 </div>
                             </div>
@@ -751,7 +758,7 @@ onUnmounted(() => {
     }
     &::-webkit-scrollbar-thumb {
         background: var(--color-border);
-        border-radius: 4px;
+        border-radius: var(--radius-sm);
     }
 }
 
@@ -782,8 +789,8 @@ onUnmounted(() => {
     }
 
     .st-search-icon {
-        width: 14px;
-        height: 14px;
+        width: var(--icon-sm);
+        height: var(--icon-sm);
         flex: none;
         color: var(--color-text-tertiary);
     }
@@ -806,7 +813,7 @@ onUnmounted(() => {
     gap: 10px;
     padding: 0 12px;
     border: 0;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     background: transparent;
     color: var(--color-text-secondary);
     font: inherit;
@@ -818,8 +825,8 @@ onUnmounted(() => {
         color var(--transition-fast);
 
     svg {
-        width: 16px;
-        height: 16px;
+        width: var(--icon-sm);
+        height: var(--icon-sm);
         flex: none;
     }
 
@@ -846,7 +853,7 @@ onUnmounted(() => {
             top: 9px;
             bottom: 9px;
             width: 3px;
-            border-radius: 2px;
+            border-radius: var(--radius-xs);
             background: var(--color-brand-fg);
         }
     }
@@ -878,7 +885,7 @@ onUnmounted(() => {
     }
     &::-webkit-scrollbar-thumb {
         background: var(--color-border);
-        border-radius: 4px;
+        border-radius: var(--radius-sm);
     }
 }
 
@@ -898,7 +905,7 @@ onUnmounted(() => {
         font-size: var(--font-3xl);
         font-weight: 600;
         letter-spacing: -0.01em;
-        line-height: 1.3;
+        line-height: var(--line-tight);
     }
 }
 
@@ -911,7 +918,7 @@ onUnmounted(() => {
 .st-subtitle {
     margin: 6px 0 24px;
     font-size: var(--font-sm);
-    line-height: 1.5;
+    line-height: var(--line-base);
     color: var(--color-text-secondary);
 
     &-row {
@@ -977,7 +984,7 @@ onUnmounted(() => {
 .st-row-d {
     margin-top: 3px;
     font-size: var(--font-xs);
-    line-height: 1.5;
+    line-height: var(--line-base);
     color: var(--color-text-secondary);
 }
 
@@ -1046,7 +1053,7 @@ onUnmounted(() => {
         height: var(--control-sm);
         padding: 0 12px;
         line-height: 1;
-        border-radius: 6px;
+        border-radius: var(--radius-sm);
         cursor: pointer;
         transition:
             background-color var(--transition-fast),
@@ -1085,7 +1092,7 @@ onUnmounted(() => {
     height: 20px;
     padding: 0;
     border: 0;
-    border-radius: 10px;
+    border-radius: var(--radius-pill);
     background: var(--color-chip-bg);
     cursor: pointer;
     transition: background-color var(--transition-fast);
@@ -1118,7 +1125,7 @@ onUnmounted(() => {
     width: 120px;
     --el-fill-color-blank: transparent;
     --el-border-color: var(--color-border);
-    --el-border-color-hover: var(--color-accent);
+    --el-border-color-hover: var(--color-brand-fg);
     --el-border-radius-base: var(--radius-sm);
     --el-color-primary: var(--color-brand-fg);
     --el-text-color-regular: var(--color-text-primary);
@@ -1187,8 +1194,8 @@ onUnmounted(() => {
         color var(--transition-fast);
 
     svg {
-        width: 14px;
-        height: 14px;
+        width: var(--icon-sm);
+        height: var(--icon-sm);
     }
 
     &:hover:not(:disabled) {
@@ -1222,7 +1229,7 @@ onUnmounted(() => {
     align-items: center;
     gap: 5px;
     padding: 0 6px 0 9px;
-    border-radius: 11px;
+    border-radius: var(--radius-pill);
     background: var(--color-chip-bg);
     color: var(--color-text-secondary);
     font-size: var(--font-xs);
@@ -1240,7 +1247,7 @@ onUnmounted(() => {
     height: 14px;
     padding: 0;
     border: 0;
-    border-radius: 3px;
+    border-radius: var(--radius-xs);
     background: transparent;
     color: var(--color-text-tertiary);
     display: grid;
@@ -1305,8 +1312,8 @@ onUnmounted(() => {
     background: var(--color-accent-soft);
 
     svg {
-        width: 16px;
-        height: 16px;
+        width: var(--icon-sm);
+        height: var(--icon-sm);
         flex: none;
         margin-top: 1px;
         color: var(--color-brand-fg);
@@ -1321,7 +1328,7 @@ onUnmounted(() => {
 .st-info-desc {
     margin-top: 2px;
     font-size: var(--font-xs);
-    line-height: 1.5;
+    line-height: var(--line-base);
     color: var(--color-text-secondary);
 }
 

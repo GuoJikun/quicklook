@@ -4,7 +4,7 @@ import {
     ArrowClockwise16Regular,
     ArrowFit16Regular,
     ArrowMinimize16Regular,
-    ArrowRotateCounterclockwise20Regular,
+    ArrowCounterclockwise16Regular,
     FullScreenMaximize16Regular,
     ZoomIn16Regular,
     ZoomOut16Regular,
@@ -64,11 +64,11 @@ onMounted(async () => {
     <LayoutPreview :file="fileInfo" :loading="loading" :immersive="isFullscreen">
         <template #toolbar>
             <button class="pv-tb-btn" type="button" :title="t('image.zoomOut')" @click="previewRef?.zoomBy(1 / ZOOM_STEP)">
-                <el-icon :size="15"><ZoomOut16Regular /></el-icon>
+                <el-icon><ZoomOut16Regular /></el-icon>
             </button>
             <span class="pv-tb-num" :title="t('image.zoomPercent')">{{ zoomPercent }}%</span>
             <button class="pv-tb-btn" type="button" :title="t('image.zoomIn')" @click="previewRef?.zoomBy(ZOOM_STEP)">
-                <el-icon :size="15"><ZoomIn16Regular /></el-icon>
+                <el-icon><ZoomIn16Regular /></el-icon>
             </button>
 
             <i class="pv-tb-sep"></i>
@@ -80,7 +80,7 @@ onMounted(async () => {
                 :title="t('image.fit')"
                 @click="previewRef?.applyFit()"
             >
-                <el-icon :size="15"><ArrowFit16Regular /></el-icon>
+                <el-icon><ArrowFit16Regular /></el-icon>
                 {{ t('image.fitShort') }}
             </button>
             <button
@@ -96,10 +96,10 @@ onMounted(async () => {
             <i class="pv-tb-sep"></i>
 
             <button class="pv-tb-btn" type="button" :title="t('image.rotateLeft')" @click="previewRef?.rotateBy(-90)">
-                <el-icon :size="15"><ArrowRotateCounterclockwise20Regular /></el-icon>
+                <el-icon><ArrowCounterclockwise16Regular /></el-icon>
             </button>
             <button class="pv-tb-btn" type="button" :title="t('image.rotateRight')" @click="previewRef?.rotateBy(90)">
-                <el-icon :size="15"><ArrowClockwise16Regular /></el-icon>
+                <el-icon><ArrowClockwise16Regular /></el-icon>
             </button>
 
             <i class="pv-tb-sep"></i>
@@ -110,7 +110,7 @@ onMounted(async () => {
                 :title="fullscreen ? t('image.exitFullscreen') : t('image.fullscreen')"
                 @click="previewRef?.toggleFullscreen()"
             >
-                <el-icon :size="15">
+                <el-icon>
                     <ArrowMinimize16Regular v-if="fullscreen" />
                     <FullScreenMaximize16Regular v-else />
                 </el-icon>

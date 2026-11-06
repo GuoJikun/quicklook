@@ -40,10 +40,12 @@
     --win-border: transparent;
     --shadow-win: 0 1px 2px rgba(0, 0, 0, 0.08), 0 16px 40px rgba(0, 0, 0, 0.14);
     --stage: #e9edf2;
+    --radius-xs: 2px;   /* 细元素：进度条、指示条、内联代码 */
     --radius-sm: 4px;
     --radius-md: 8px;
     --radius-lg: 10px;
     --radius-xl: 12px;
+    --radius-pill: 999px;   /* 胶囊：开关、徽章、chip */
     --space-1: 4px;
     --space-2: 8px;
     --space-3: 12px;
@@ -144,7 +146,7 @@ body {
 .nav button[aria-current='true'] { background: var(--selected); color: var(--text); font-weight: 600; }
 .nav button[aria-current='true']::before {
     content: ''; position: absolute; left: 0; top: 6px; bottom: 6px;
-    width: 2px; border-radius: 2px; background: var(--accent-fg);
+    width: 2px; border-radius: var(--radius-xs); background: var(--accent-fg);
 }
 .nav button[aria-current='true'] .idx { color: var(--accent-fg); opacity: 0.7; }
 
@@ -152,13 +154,13 @@ body {
 .seg { display: inline-flex; padding: 2px; gap: 2px; background: var(--chip-bg); border-radius: var(--radius-md); }
 .seg button {
     appearance: none; border: 0; background: transparent; color: var(--text-2);
-    font: inherit; font-size: 12px; padding: 5px 12px; border-radius: 6px; cursor: pointer; flex: 1;
+    font: inherit; font-size: 12px; padding: 5px 12px; border-radius: var(--radius-sm); cursor: pointer; flex: 1;
     transition: background var(--t-fast), color var(--t-fast);
 }
 .seg button[aria-pressed='true'] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12); }
 html[data-theme='dark'] .seg button[aria-pressed='true'] { background: rgba(255, 255, 255, 0.14); box-shadow: none; }
 .hint { font-size: 12px; line-height: 1.6; color: var(--text-3); }
-.hint kbd { font: inherit; font-size: 10px; padding: 1px 4px; border-radius: 3px; background: var(--chip-bg); border: 1px solid var(--border); }
+.hint kbd { font: inherit; font-size: 10px; padding: 1px 4px; border-radius: var(--radius-xs); background: var(--chip-bg); border: 1px solid var(--border); }
 
 .stage { padding: 26px 32px 56px; display: flex; flex-direction: column; align-items: center; gap: 14px; min-width: 0; }
 .stage-head { width: 100%; max-width: 1000px; display: flex; align-items: baseline; justify-content: space-between; gap: 20px; }
@@ -250,14 +252,14 @@ html[data-theme='dark'] .seg button[aria-pressed='true'] { background: rgba(255,
 .navitem.active { background: var(--selected); color: var(--text); font-weight: 600; }
 .navitem.active::before {
     content: ''; position: absolute; left: 0; top: 9px; bottom: 9px;
-    width: 3px; border-radius: 2px; background: var(--accent-fg);
+    width: 3px; border-radius: var(--radius-xs); background: var(--accent-fg);
 }
 .navfoot { margin-top: auto; padding: 12px; font-size: 12px; color: var(--text-3); }
 
 /* ---------- 右侧内容：唯一滚动容器 ---------- */
 .content { flex: 1; min-width: 0; overflow: auto; padding: 24px 32px 40px; background: var(--bg); }
 .content::-webkit-scrollbar, .navpane::-webkit-scrollbar { width: 8px; }
-.content::-webkit-scrollbar-thumb, .navpane::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.content::-webkit-scrollbar-thumb, .navpane::-webkit-scrollbar-thumb { background: var(--border); border-radius: var(--radius-sm); }
 .pane { display: none; max-width: 720px; margin: 0 auto; }
 .pane.on { display: block; }
 .ph h2 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
@@ -289,7 +291,7 @@ html[data-theme='dark'] .seg button[aria-pressed='true'] { background: rgba(255,
 .seg2 { display: inline-flex; padding: 2px; gap: 2px; background: var(--chip-bg); border-radius: var(--radius-md); }
 .seg2 button {
     appearance: none; border: 0; background: transparent; color: var(--text-2);
-    font: inherit; font-size: 12px; padding: 6px 14px; border-radius: 6px; cursor: pointer;
+    font: inherit; font-size: 12px; padding: 6px 14px; border-radius: var(--radius-sm); cursor: pointer;
     transition: background var(--t-fast), color var(--t-fast);
 }
 .seg2.is-3 button { padding: 6px 10px; }
@@ -297,7 +299,7 @@ html[data-theme='dark'] .seg button[aria-pressed='true'] { background: rgba(255,
 html[data-theme='dark'] .seg2 button[aria-pressed='true'] { background: rgba(255, 255, 255, 0.14); box-shadow: none; }
 
 .switch {
-    appearance: none; border: 0; width: 40px; height: 20px; border-radius: 10px;
+    appearance: none; border: 0; width: 40px; height: 20px; border-radius: var(--radius-lg);
     background: var(--chip-bg); position: relative; cursor: pointer; flex: none;
     transition: background var(--t-fast);
 }
@@ -332,12 +334,12 @@ html[data-theme='dark'] .seg2 button[aria-pressed='true'] { background: rgba(255
 .pills { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; max-width: 420px; }
 .chip {
     height: 22px; display: inline-flex; align-items: center; gap: 5px;
-    padding: 0 6px 0 9px; border-radius: 11px; background: var(--chip-bg);
+    padding: 0 6px 0 9px; border-radius: var(--radius-pill); background: var(--chip-bg);
     color: var(--text-2); font-size: 12px; font-variant-numeric: tabular-nums;
 }
 .chip .x {
     appearance: none; border: 0; background: transparent; color: var(--text-3);
-    width: 14px; height: 14px; padding: 0; border-radius: 3px; cursor: pointer;
+    width: 14px; height: 14px; padding: 0; border-radius: var(--radius-xs); cursor: pointer;
     display: grid; place-items: center; font-size: 12px; line-height: 1;
 }
 .chip .x:hover { background: var(--hover-strong); color: var(--text); }

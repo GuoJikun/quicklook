@@ -84,11 +84,11 @@
 
 | 项 | 规格 |
 | --- | --- |
-| 搜索框 | 高 32px，`--color-chip-bg` 填充、无描边、`--radius-md`，左 14px 放大镜图标；输入即时过滤下方导航项（实现为 `el-input` + `#prefix` 图标） |
-| 导航项 | 高 `--control-md` 32px，图标 `--icon-sm` 16px + 文字 14px，左右内边距 12px，间距 2px；常态 `--color-text-secondary` |
+| 搜索框 | 高 32px，`--color-chip-bg` 填充、无描边、`--radius-md`，左 `--icon-sm` 16px 放大镜（`Search16Regular`）；输入即时过滤下方导航项（实现为 `el-input` + `#prefix` 图标） |
+| 导航项 | 高 `--control-md` 32px，图标 `--icon-sm` 16px + 文字 14px，左右内边距 12px，间距 2px；常态 `--color-text-secondary`。八个分组图标全部取自 `@vicons/fluent`，不再手绘 |
 | 激活态 | `--color-selected-bg` 底 + 文字 `--color-text-primary` + 600 字重；**左侧 3px × 18px 圆角指示条**用 `--color-brand-fg`（贴卡片左缘，不占文字位置） |
 | hover | `--elevation-hover` 底 + 文字转主色；不使用边框 |
-| 分组标签 | 「常规」「内容」「维护」「关于」四组，10px 大写字距 0.04em、`--color-text-disabled`，组间 16px 留白；不画分隔线 |
+| 分组标签 | 「常规」「内容」「维护」「关于」四组，10px 大写字距 0.04em、`--color-text-tertiary`，组间 16px 留白；不画分隔线 |
 | 底部 | 「QuickLook v1.0.0」12px 次要色，贴导航底；这是版本信息的唯一常驻位置，标题行不重复 |
 
 导航项共 **8 项**，顺序与 i18n 键对应：`语言 / 主题 / 支持的格式 / 代码格式 / 视频 / 缓存 / 日志 / 关于`。「语言」「主题」归入「常规」，不再单列顶部锚点。舞台左下角的浅/深分段只是**原型演示控件**，窗口内真正切换主题的是「常规 · 主题」页（见 §5.2），两者在原型里联动同一个状态。
@@ -335,7 +335,9 @@ InfoBar    （仅开关打开时）检测中 / 可用 / 不可用，图标随态
 - [ ] 搜索框 / 扩展名输入框 / 日志级别下拉使用 `el-input` / `el-select`，浅深色下与自绘控件视觉一致；下拉浮层随主题变色，↑/↓ 不抢下拉焦点
 - [ ] 导航激活项为 `--color-selected-bg` 中性底 + `--color-text-primary` 文字 + `--color-brand-fg` 3px 指示条；浅色 / 深色下实测均 ≥ 4.5:1
 - [ ] 品牌色只用于实心底（开关轨道、主按钮）与前景（图标、链接、描边、焦点环），不存在「品牌浅底 + 品牌文字」的叠加组合
-- [ ] 全站字号落在 10 / 12 / 14 / 16 / 20 / 24 六档，无 13 / 15 / 18 与任何半像素值；行高按 14/16/20/22/28/32 成对
+- [ ] 全站字号落在 10 / 12 / 14 / 16 / 20 / 24 六档，无 13 / 15 / 18 与任何半像素值；行高只用 `--line-tight` / `--line-base` / `--line-reading` / `--line-code` / `--line-loose` 五档
+- [ ] 界面图标全部来自 `@vicons/fluent`，尺寸只取 `--icon-xs/sm/md/lg/xl`；无手绘 `<svg>`、无 `@element-plus/icons-vue`
+- [ ] 圆角只用 `--radius-xs/sm/md/lg/xl/pill`，样式里无字面量（`50%` 与 `0` 除外）
 - [ ] 重复扩展名提示、清理缓存失败提示使用 `--color-danger-fg`，不使用 `--color-danger`（后者仅作实心底）
 
 ## 11. 明确不做

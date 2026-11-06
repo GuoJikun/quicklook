@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
-import { Copy16Regular } from '@vicons/fluent'
+import { CircleHalfFill16Regular, Copy16Regular, Dismiss16Regular } from '@vicons/fluent'
 import { convertFileSrc } from '@tauri-apps/api/core'
 import { readFile } from '@tauri-apps/plugin-fs'
 import { openPath } from '@tauri-apps/plugin-opener'
@@ -165,9 +165,7 @@ onBeforeUnmount(() => {
                     :title="t('common.cancel')"
                     @click="sampleText = ''"
                 >
-                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" class="is-xs">
-                        <path d="M4 4l8 8M12 4l-8 8" />
-                    </svg>
+                    <Dismiss16Regular />
                 </button>
             </label>
 
@@ -202,10 +200,7 @@ onBeforeUnmount(() => {
                 :title="t('font.invertHint')"
                 @click="inverted = !inverted"
             >
-                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
-                    <circle cx="8" cy="8" r="5.6" />
-                    <path d="M8 2.4v11.2a5.6 5.6 0 0 0 0-11.2z" fill="currentColor" stroke="none" />
-                </svg>
+                <CircleHalfFill16Regular />
                 {{ t('font.invert') }}
             </button>
 
@@ -214,7 +209,7 @@ onBeforeUnmount(() => {
             <span v-if="summary" class="pv-tb-info">{{ summary }}</span>
             <i class="pv-tb-sep"></i>
             <button class="pv-tb-btn is-text" type="button" :title="t('font.copyName')" @click="copyName">
-                <el-icon :size="15"><Copy16Regular /></el-icon>
+                <el-icon><Copy16Regular /></el-icon>
                 {{ copied ? t('font.copied') : t('font.copyName') }}
             </button>
         </template>
@@ -312,7 +307,7 @@ onBeforeUnmount(() => {
     font-size: var(--font-4xl);
     /* 不做合成加粗：文件是哪个字重就显示哪个字重 */
     font-weight: 400;
-    line-height: 1.2;
+    line-height: var(--line-tight);
     letter-spacing: -0.01em;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -343,7 +338,7 @@ onBeforeUnmount(() => {
     padding: 0 7px;
     display: inline-flex;
     align-items: center;
-    border-radius: 9px;
+    border-radius: var(--radius-pill);
     background: var(--color-chip-bg);
     color: var(--color-text-secondary);
     font-size: var(--font-2xs);
@@ -376,7 +371,7 @@ onBeforeUnmount(() => {
 .ft-rung-text {
     font-family: var(--ft-font, inherit);
     color: var(--ft-fg);
-    line-height: 1.35;
+    line-height: var(--line-tight);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -451,7 +446,7 @@ onBeforeUnmount(() => {
         margin: 0;
         max-width: 460px;
         font-size: var(--font-sm);
-        line-height: 1.55;
+        line-height: var(--line-base);
         color: var(--ft-fg-3);
         word-break: break-word;
     }

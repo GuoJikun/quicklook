@@ -6,9 +6,11 @@ import { convertFileSrc, invoke } from '@tauri-apps/api/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import {
     Dismiss16Regular,
+    FastForward16Regular,
     MusicNote216Regular,
     Pause16Filled,
     Play16Filled,
+    Rewind16Regular,
     Speaker016Regular,
     Speaker116Regular,
     Speaker216Regular,
@@ -543,10 +545,7 @@ onBeforeUnmount(() => {
 
             <div class="audio-transport">
                 <button class="icon-btn" type="button" :title="t('audio.backward')" @click="backward">
-                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
-                        <path d="M13 8a5 5 0 1 1-1.5-3.5" />
-                        <path d="M13 2.5v3.2h-3.2" />
-                    </svg>
+                    <Rewind16Regular />
                 </button>
 
                 <button
@@ -563,10 +562,7 @@ onBeforeUnmount(() => {
                 </button>
 
                 <button class="icon-btn" type="button" :title="t('audio.forward')" @click="forward">
-                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
-                        <path d="M3 8a5 5 0 1 0 1.5-3.5" />
-                        <path d="M3 2.5v3.2h3.2" />
-                    </svg>
+                    <FastForward16Regular />
                 </button>
 
                 <div class="vol">
@@ -624,8 +620,8 @@ onBeforeUnmount(() => {
     --cover-size: min(56px, calc(56 * var(--u)));
     --lyric-h: min(calc(150 * var(--u)), 100%);
     --line-h: max(22px, calc(30 * var(--u)));
-    --lyric-font: clamp(12px, calc(14 * var(--u)), 14px);
-    --lyric-font-current: clamp(16px, calc(20 * var(--u)), 20px);
+    --lyric-font: clamp(var(--font-xs), calc(14 * var(--u)), var(--font-sm));
+    --lyric-font-current: clamp(var(--font-lg), calc(20 * var(--u)), var(--font-2xl));
     --shell-gap: calc(12 * var(--u));
 
     position: relative;
@@ -727,9 +723,9 @@ onBeforeUnmount(() => {
 }
 
 .meta-title {
-    font-size: clamp(13px, calc(15 * var(--u)), var(--font-lg));
+    font-size: clamp(var(--font-sm), calc(15 * var(--u)), var(--font-lg));
     font-weight: 600;
-    line-height: 1.3;
+    line-height: var(--line-tight);
     color: var(--color-text-primary);
     white-space: nowrap;
     overflow: hidden;
@@ -739,7 +735,7 @@ onBeforeUnmount(() => {
 .pill {
     flex: 0 0 auto;
     padding: 0 4px;
-    border-radius: 3px;
+    border-radius: var(--radius-xs);
     background: var(--elevation-hover);
     font-size: var(--font-2xs);
     font-weight: 600;
@@ -750,8 +746,8 @@ onBeforeUnmount(() => {
 }
 
 .meta-sub {
-    font-size: clamp(11px, calc(12 * var(--u)), var(--font-xs));
-    line-height: 1.4;
+    font-size: var(--font-xs);
+    line-height: var(--line-base);
     color: var(--color-text-secondary);
     white-space: nowrap;
     overflow: hidden;
@@ -818,7 +814,7 @@ onBeforeUnmount(() => {
 
 .progress-time {
     flex: 0 0 auto;
-    font-size: clamp(10px, calc(11 * var(--u)), 11px);
+    font-size: clamp(var(--font-2xs), calc(11 * var(--u)), var(--font-xs));
     color: var(--color-text-secondary);
     font-variant-numeric: tabular-nums;
 }
@@ -828,7 +824,7 @@ onBeforeUnmount(() => {
     flex: 1;
     height: 4px;
     min-width: 0;
-    border-radius: 2px;
+    border-radius: var(--radius-xs);
     background: var(--color-border);
     cursor: pointer;
     transition: height var(--transition-fast);
@@ -855,7 +851,7 @@ onBeforeUnmount(() => {
     top: 0;
     bottom: 0;
     left: 0;
-    border-radius: 2px;
+    border-radius: var(--radius-xs);
 }
 
 .bar-buffer {
@@ -900,7 +896,7 @@ onBeforeUnmount(() => {
     z-index: 5;
     padding: calc(8 * var(--u)) 0;
     border: 1px solid var(--color-border);
-    border-radius: 16px;
+    border-radius: var(--radius-xl);
     background: var(--color-bg);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
     opacity: 0;
@@ -916,7 +912,7 @@ onBeforeUnmount(() => {
     width: 4px;
     height: calc(80 * var(--u));
     margin: 0 calc(14 * var(--u));
-    border-radius: 2px;
+    border-radius: var(--radius-xs);
     background: var(--elevation-hover);
     cursor: pointer;
 }
@@ -926,7 +922,7 @@ onBeforeUnmount(() => {
     bottom: 0;
     left: 0;
     width: 100%;
-    border-radius: 2px;
+    border-radius: var(--radius-xs);
     background: var(--audio-accent);
 }
 
@@ -974,8 +970,8 @@ onBeforeUnmount(() => {
     }
 
     svg {
-        width: min(17px, calc(17 * var(--u)));
-        height: min(17px, calc(17 * var(--u)));
+        width: min(var(--icon-sm), calc(16 * var(--u)));
+        height: min(var(--icon-sm), calc(16 * var(--u)));
     }
 
     :deep(.el-icon) {
@@ -1021,7 +1017,7 @@ onBeforeUnmount(() => {
     border: none;
     border-radius: var(--radius-sm);
     background: transparent;
-    font-size: clamp(10px, calc(12 * var(--u)), var(--font-xs));
+    font-size: clamp(var(--font-2xs), calc(12 * var(--u)), var(--font-xs));
     color: var(--color-text-secondary);
     font-variant-numeric: tabular-nums;
     cursor: pointer;

@@ -108,6 +108,8 @@
 | < 0.67 | `Speaker116Regular` |
 | ≥ 0.67 | `Speaker216Regular` |
 
+传输区用的是 `Rewind16Regular` / `FastForward16Regular`（后退 / 前进 10 秒）与 `Play16Filled` / `Pause16Filled`（播放 / 暂停）。原先后退、前进是手绘的环形箭头（`stroke-width: 1.3`），与旁边 Fluent 填充图标的重量差一档；同时 `.icon-btn svg` 由 17px 收到 `--icon-sm` 16px —— 17 落在 Fluent 网格外，笔画发虚。
+
 浮层定位：`bottom: 30px`，水平居中；仅在 hover 时可见，浮层会短暂压住最后一行歌词与进度条中段，可接受。
 
 ## 6. 状态与数据

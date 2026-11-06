@@ -33,11 +33,14 @@ const FONT_DEFAULT = 15
 const STORE_TOC = 'previewMdTocOpen'
 const STORE_FONT = 'previewMdFontSize'
 
-/** 代码块右上角的复制按钮：只用图标，避免在注入的 DOM 里放界面文案 */
+/* 代码块右上角的复制按钮：只用图标，避免在注入的 DOM 里放界面文案。
+   路径与 @vicons/fluent 的 Copy16Regular / Checkmark16Regular 同源——这里的内联
+   字符串是塞进 markdown 渲染结果的，拿不到 Vue 组件，只能内联 path；填充式、12px
+   （--icon-xs）与命令栏里的 Fluent 图标保持同一套语言。 */
 const ICON_COPY =
-    '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" width="11" height="11"><rect x="5.2" y="5.2" width="7.6" height="7.6" rx="1.4"/><path d="M10.4 5.2V3.6a1 1 0 0 0-1-1H3.6a1 1 0 0 0-1 1v5.8a1 1 0 0 0 1 1h1.6"/></svg>'
+    '<svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M4 4.085V10.5a2.5 2.5 0 0 0 2.336 2.495L6.5 13h4.414A1.5 1.5 0 0 1 9.5 14H6a3 3 0 0 1-3-3V5.5a1.5 1.5 0 0 1 1-1.415zM11.5 2A1.5 1.5 0 0 1 13 3.5v7a1.5 1.5 0 0 1-1.5 1.5h-5A1.5 1.5 0 0 1 5 10.5v-7A1.5 1.5 0 0 1 6.5 2h5zm0 1h-5a.5.5 0 0 0-.5.5v7a.5.5 0 0 0 .5.5h5a.5.5 0 0 0 .5-.5v-7a.5.5 0 0 0-.5-.5z"/></svg>'
 const ICON_CHECK =
-    '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" width="11" height="11"><path d="M3.2 8.4 6.2 11.4 12.8 4.8"/></svg>'
+    '<svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M13.864 3.655a.5.5 0 0 1-.021.707l-7.93 7.474a.6.6 0 0 1-.839-.016L2.394 9.1a.5.5 0 0 1 .712-.702l2.406 2.442l7.645-7.206a.5.5 0 0 1 .707.021z"/></svg>'
 
 const route = useRoute()
 const { t } = useI18n()
@@ -318,7 +321,7 @@ watch(
     <LayoutPreview :file="file" :loading="loading" :hide-toolbar="Boolean(error)">
         <template #toolbar>
             <button class="pv-tb-btn is-text" type="button" :aria-pressed="tocOpen" :title="t('md.toc')" @click="toggleToc">
-                <el-icon :size="15"><List16Regular /></el-icon>
+                <el-icon><List16Regular /></el-icon>
                 {{ t('md.toc') }}
             </button>
             <i class="pv-tb-sep"></i>
@@ -361,7 +364,7 @@ watch(
             <span class="pv-tb-info">{{ t('md.wordCount', { count: wordCount }) }}</span>
             <i class="pv-tb-sep"></i>
             <button class="pv-tb-btn is-text" type="button" :title="t('md.copyAll')" :disabled="!raw" @click="copyAll">
-                <el-icon :size="15"><Copy16Regular /></el-icon>
+                <el-icon><Copy16Regular /></el-icon>
                 {{ copied ? t('md.copied') : t('md.copyAll') }}
             </button>
         </template>

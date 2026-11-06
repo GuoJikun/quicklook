@@ -42,10 +42,12 @@
     --paper-line: #e6e6e6;
     --stage: #e9edf2;
     --code-line: #f7f8fa;
+    --radius-xs: 2px;   /* 细元素：进度条、指示条、内联代码 */
     --radius-sm: 4px;
     --radius-md: 8px;
     --radius-lg: 10px;
     --radius-xl: 12px;
+    --radius-pill: 999px;   /* 胶囊：开关、徽章、chip */
     --space-1: 4px;
     --space-2: 8px;
     --space-3: 12px;
@@ -187,7 +189,7 @@ body {
     top: 6px;
     bottom: 6px;
     width: 2px;
-    border-radius: 2px;
+    border-radius: var(--radius-xs);
     background: var(--accent-fg);
 }
 
@@ -211,7 +213,7 @@ body {
     font: inherit;
     font-size: 12px;
     padding: 5px 12px;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
     flex: 1;
     transition: background var(--t-fast), color var(--t-fast);
@@ -238,7 +240,7 @@ html[data-theme='dark'] .seg button[aria-pressed='true'] {
     font: inherit;
     font-size: 10px;
     padding: 1px 4px;
-    border-radius: 3px;
+    border-radius: var(--radius-xs);
     background: var(--chip-bg);
     border: 1px solid var(--border);
 }
@@ -502,7 +504,7 @@ html[data-theme='dark'] .seg button[aria-pressed='true'] {
 .swatch {
     width: 12px;
     height: 12px;
-    border-radius: 3px;
+    border-radius: var(--radius-xs);
     border: 1px solid rgba(0, 0, 0, 0.16);
     flex: none;
     display: inline-block;
@@ -522,7 +524,7 @@ html[data-theme='dark'] .swatch { border-color: rgba(255, 255, 255, 0.22); }
 /* 滚动条 */
 .scroll { overflow: auto; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .scroll::-webkit-scrollbar { width: 8px; height: 8px; }
-.scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: var(--radius-sm); }
 .scroll::-webkit-scrollbar-track { background: transparent; }
 
 /* 说明条 */
@@ -573,7 +575,7 @@ html[data-theme='dark'] .swatch { border-color: rgba(255, 255, 255, 0.22); }
     gap: 8px;
     height: 24px;
     padding: 0 10px;
-    border-radius: 12px;
+    border-radius: var(--radius-xl);
     background: rgba(20, 20, 20, 0.62);
     color: #fff;
     font-size: 12px;
@@ -647,7 +649,7 @@ html[data-theme='dark'] .swatch { border-color: rgba(255, 255, 255, 0.22); }
     font-size: 12px;
     background: var(--chip-bg);
     padding: 1.5px 5px;
-    border-radius: 3px;
+    border-radius: var(--radius-xs);
     color: var(--text);
 }
 
@@ -683,7 +685,7 @@ html[data-theme='dark'] .swatch { border-color: rgba(255, 255, 255, 0.22); }
     align-items: center;
     gap: 4px;
     padding: 2px 4px;
-    border-radius: 3px;
+    border-radius: var(--radius-xs);
     opacity: 0;
     transition: opacity var(--t-fast), background var(--t-fast);
 }
@@ -780,7 +782,7 @@ html[data-theme='dark'] .tk-n { color: #b5cea8; }
     margin: 0 auto 12px;
     background: var(--paper);
     border: 1px solid var(--paper-line);
-    border-radius: 2px;
+    border-radius: var(--radius-xs);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 6px 20px rgba(0, 0, 0, 0.07);
     padding: 34px 42px 26px;
     position: relative;
@@ -798,7 +800,7 @@ html[data-theme='dark'] .page { box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
 .page .p-figure {
     height: 92px;
     margin: 14px 0 16px;
-    border-radius: 3px;
+    border-radius: var(--radius-xs);
     background: linear-gradient(135deg, var(--accent-soft), transparent 72%);
     border: 1px dashed var(--border);
     display: grid;
@@ -860,11 +862,11 @@ html[data-theme='dark'] .page { box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
     right: 16px;
     bottom: 8px;
     height: 3px;
-    border-radius: 2px;
+    border-radius: var(--radius-xs);
     background: var(--divider);
 }
 
-.bk-bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 42%; background: var(--accent); border-radius: 2px; display: block; }
+.bk-bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 42%; background: var(--accent); border-radius: var(--radius-xs); display: block; }
 
 /* ============================================================
    6 · 压缩包
@@ -964,7 +966,7 @@ html[data-theme='dark'] .page { box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
     gap: 8px;
     height: 24px;
     padding: 0 10px;
-    border-radius: 12px;
+    border-radius: var(--radius-xl);
     background: rgba(18, 20, 24, 0.6);
     border: 1px solid rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);

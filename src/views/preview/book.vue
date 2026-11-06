@@ -453,7 +453,7 @@ function buildSrcdoc() {
         padding: 30px 24px 56px;
         font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
         font-size: var(--bk-fs);
-        line-height: 1.8;
+        line-height: var(--line-reading);
         -webkit-font-smoothing: antialiased;
     }
 
@@ -528,7 +528,7 @@ function buildSrcdoc() {
         height: auto;
         display: block;
         margin: 1em auto;
-        border-radius: 4px;
+        border-radius: var(--radius-sm);
     }
 
     /* 正文里的内联 svg 同样不能撑破列宽 */
@@ -557,15 +557,15 @@ function buildSrcdoc() {
         font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", "Courier New", monospace;
         background: var(--bk-soft);
         padding: 0.15em 0.4em;
-        border-radius: 3px;
+        border-radius: var(--radius-xs);
         font-size: 0.9em;
     }
     pre {
         background: var(--bk-soft);
         padding: 1em;
-        border-radius: 4px;
+        border-radius: var(--radius-sm);
         overflow-x: auto;
-        line-height: 1.5;
+        line-height: var(--line-code);
     }
     pre code {
         background: none;
@@ -894,7 +894,7 @@ watch(
                 :title="t('book.toc')"
                 @click="toggleToc"
             >
-                <el-icon :size="15"><List16Regular /></el-icon>
+                <el-icon><List16Regular /></el-icon>
                 {{ t('book.toc') }}
             </button>
 

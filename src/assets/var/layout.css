@@ -13,16 +13,26 @@
     --control-lg: 40px;
 
     /* 图标网格：Fluent System Icons 只有 16 / 20 / 24 三种绘制尺寸，
-       15px 之类会落在非整数像素上，笔画发虚 */
+       15px 之类会落在非整数像素上，笔画发虚。
+       12px 是唯一例外，只给下拉箭头、输入框内联提示这类从属标记用（Fluent 的
+       Combobox 箭头本身也是 12px），不得用作按钮主图标。 */
+    --icon-xs: 12px;
     --icon-sm: 16px;
     --icon-md: 20px;
     --icon-lg: 24px;
+    /* 32 只用于空态/错态的状态图形；再大一档（48）属插画，见 §3.6 */
+    --icon-xl: 32px;
 
     /* ==== 圆角 (Radius) ==== */
+    /* 五档 + 胶囊。细元素（进度条、指示条、内联代码）用 xs，
+       小型控件（32px 按钮、导航项）用 sm，卡片与容器用 md/lg，窗口用 xl。
+       胶囊一律 radius-pill，不要写 11px / 16px 这类「半个高度」的近似值。 */
+    --radius-xs: 2px;
     --radius-sm: 4px;
     --radius-md: 8px;
     --radius-lg: 10px;
     --radius-xl: 12px;
+    --radius-pill: 999px;
 
     /* ==== 间距 (Spacing) ==== */
     --space-1: 4px;
@@ -46,9 +56,13 @@
     --font-4xl: 32px; /* Hero800 32/40 —— 仅字体样张的家族名 */
 
     /* ==== 行高 ==== */
-    /* 与字号成对：10/14、12/16、24/32 用 tight；14/20 用 base；阅读正文用 loose */
+    /* UI 文本只用 tight / base 两档：10/14、12/16、16/22、24/32 用 tight，
+       14/20 的正文型 UI 用 base。阅读区（Markdown / EPUB / PDF 正文）用
+       reading，代码块与源码视图用 code —— 这两档不参与 UI 阶梯。 */
     --line-tight: 1.33;
     --line-base: 1.43;
+    --line-reading: 1.75;
+    --line-code: 1.5;
     --line-loose: 1.7;
 
     /* ==== 预览窗口 ==== */

@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { List16Regular } from '@vicons/fluent'
+import {
+    ArrowRotateClockwise16Regular,
+    ChevronLeft16Regular,
+    ChevronRight16Regular,
+    List16Regular,
+    ZoomIn16Regular,
+    ZoomOut16Regular,
+} from '@vicons/fluent'
 import LayoutPreview from '@/components/layout-preview.vue'
 import { useRoute } from 'vue-router'
 import type { Store } from '@tauri-apps/plugin-store'
@@ -248,7 +255,7 @@ watch(
                     :title="t('pdf.toc')"
                     @click="toggleToc"
                 >
-                    <el-icon :size="15"><List16Regular /></el-icon>
+                    <el-icon><List16Regular /></el-icon>
                     {{ t('pdf.toc') }}
                 </button>
 
@@ -258,10 +265,7 @@ watch(
                     {{ t('pdf.fitWidth') }}
                 </button>
                 <button class="pv-tb-btn" type="button" :title="t('pdf.rotate')" @click="pdfRef?.rotate()">
-                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
-                        <path d="M13 8a5 5 0 1 1-1.6-3.7" />
-                        <path d="M13.4 2.6v2.8h-2.8" />
-                    </svg>
+                    <ArrowRotateClockwise16Regular />
                 </button>
 
                 <i class="pv-tb-sep"></i>
@@ -273,9 +277,7 @@ watch(
                     :disabled="zoomPct <= 10"
                     @click="pdfRef?.zoomOut()"
                 >
-                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <path d="M3.5 8h9" />
-                    </svg>
+                    <ZoomOut16Regular />
                 </button>
                 <span class="pv-tb-num">{{ zoomPct }}%</span>
                 <button
@@ -285,9 +287,7 @@ watch(
                     :disabled="zoomPct >= 500"
                     @click="pdfRef?.zoomIn()"
                 >
-                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <path d="M8 3.5v9M3.5 8h9" />
-                    </svg>
+                    <ZoomIn16Regular />
                 </button>
 
                 <div class="pv-tb-grow"></div>
@@ -299,9 +299,7 @@ watch(
                     :disabled="pdfState.current <= 1"
                     @click="stepPage(-1)"
                 >
-                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <path d="M9.8 3.6 5.4 8l4.4 4.4" />
-                    </svg>
+                    <ChevronLeft16Regular />
                 </button>
                 <span class="pdf-tb-page">
                     <input
@@ -322,9 +320,7 @@ watch(
                     :disabled="pdfState.total > 0 && pdfState.current >= pdfState.total"
                     @click="stepPage(1)"
                 >
-                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <path d="M6.2 3.6 10.6 8l-4.4 4.4" />
-                    </svg>
+                    <ChevronRight16Regular />
                 </button>
             </template>
         </template>

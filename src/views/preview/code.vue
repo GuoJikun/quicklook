@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { createHighlighter } from 'shiki'
-import { Copy16Regular } from '@vicons/fluent'
+import { ArrowWrap20Regular, Copy16Regular } from '@vicons/fluent'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import type { FileInfo } from '@/utils/typescript'
@@ -231,10 +231,7 @@ watch(isDark, async () => {
                 :title="t('code.wrap')"
                 @click="wrap = !wrap"
             >
-                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
-                    <path d="M2.5 4.5h11M2.5 8h7a2.2 2.2 0 0 1 0 4.4H7" />
-                    <path d="M8.4 10.6 7 12.4l1.4 1.6" />
-                </svg>
+                <ArrowWrap20Regular />
                 {{ t('code.wrap') }}
             </button>
 
@@ -264,7 +261,7 @@ watch(isDark, async () => {
             <span class="pv-tb-info">{{ t('code.summary', { lang: langLabel, count: lineCount }) }}</span>
             <i class="pv-tb-sep"></i>
             <button class="pv-tb-btn is-text" type="button" :title="t('code.copy')" :disabled="!rawCode" @click="copyCode">
-                <el-icon :size="15"><Copy16Regular /></el-icon>
+                <el-icon><Copy16Regular /></el-icon>
                 {{ copied ? t('code.copied') : t('code.copy') }}
             </button>
         </template>
