@@ -371,6 +371,28 @@ async function clearCache(kind: CacheKind) {
     }
 }
 
+/* ---------------- 关于 ---------------- */
+
+const upgradeOpening = ref(false)
+const upgradeError = ref('')
+
+/**
+ * 打开更新窗口。窗口挂载后自己去检查，「检查中 / 已是最新 / 检查失败」都在窗口里呈现，
+ * 所以这里不预检、也不弹对话框 —— 设置页的反馈一律内联在身份卡里。
+ */
+async function openUpgrade() {
+    if (upgradeOpening.value) return
+    upgradeOpening.value = true
+    upgradeError.value = ''
+    try {
+        await invoke('open_upgrade')
+    } catch (e) {
+        upgradeError.value = t('settings.about.checkUpdateFailed', { error: String(e) })
+    } finally {
+        upgradeOpening.value = false
+    }
+}
+
 /* ---------------- 生命周期 ---------------- */
 
 onMounted(async () => {
@@ -706,6 +728,13 @@ onUnmounted(() => {
                                     <a class="st-link" href="https://github.com/GuoJikun/quicklook/releases/latest" target="_blank" rel="noopener noreferrer">GitHub Releases</a>
                                     <a class="st-link" href="https://gitee.com/guojikun/quicklook/releases/latest" target="_blank" rel="noopener noreferrer">Gitee Releases</a>
                                 </div>
+                                <div v-if="upgradeError" class="st-inline is-error">{{ upgradeError }}</div>
+                            </div>
+                            <!-- 全页唯一的主操作：开更新窗口，检查中 / 已是最新 / 检查失败由窗口呈现 -->
+                            <div class="st-id-acts">
+                                <button type="button" class="st-accentbtn" :disabled="upgradeOpening" @click="openUpgrade">
+                                    {{ t('settings.about.checkUpdate') }}
+                                </button>
                             </div>
                         </div>
                     </template>
@@ -1359,6 +1388,47 @@ onUnmounted(() => {
 .st-id-info {
     flex: 1;
     min-width: 0;
+}
+
+/* 身份卡右侧的主操作。全页只有这一个实心品牌底按钮 */
+.st-id-acts {
+    flex: none;
+    margin-left: auto;
+}
+
+.st-accentbtn {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: var(--control-md);
+    padding: 0 14px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-text);
+    font: inherit;
+    font-size: var(--font-xs);
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+
+    &:hover:not(:disabled) {
+        background: var(--btn-primary-hover-bg);
+    }
+
+    &:active:not(:disabled) {
+        background: var(--btn-primary-active-bg);
+    }
+
+    /* 禁用时不退回中性底：那会看起来像换成了另一个次级按钮 */
+    &:disabled {
+        background: var(--btn-primary-disabled-bg);
+        color: var(--btn-primary-disabled-text);
+        cursor: default;
+    }
 }
 
 .st-id-name {

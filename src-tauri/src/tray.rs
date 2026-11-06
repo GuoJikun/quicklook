@@ -13,6 +13,36 @@ use crate::i18n::{self, Locale};
 /// 托盘图标 id，重建菜单时按此取回托盘实例
 const TRAY_ID: &str = "tray";
 
+/// 打开更新窗口。标题、尺寸、窗口类名集中在这里，托盘菜单与设置页共用，
+/// 免得两个入口各写一遍、日后改尺寸只改一处。
+///
+/// 这里**不做预检**：窗口挂载后 `upgrade.vue` 自己会发起检查，
+/// 「检查中 / 已是最新 / 检查失败」都由页面呈现。托盘的预检只为在没有更新时
+/// 直接弹系统提示，属于托盘独有的一段逻辑。
+pub fn open_upgrade_window(app: &AppHandle) -> tauri::Result<()> {
+    let texts = i18n::current_locale(app).tray_texts();
+
+    // 已存在就前置，而不是再建一个：同 label 重复 build 会失败，
+    // 表现就是「点了按钮没反应」
+    if let Some(window) = app.get_webview_window("upgrade") {
+        let _ = window.set_title(texts.update_window_title);
+        let _ = window.show();
+        let _ = window.set_focus();
+        return Ok(());
+    }
+
+    WebviewWindowBuilder::new(app, "upgrade", WebviewUrl::App("/upgrade".into()))
+        .center()
+        .title(texts.update_window_title)
+        .inner_size(700.0, 600.0)
+        .focused(true)
+        .window_classname("quicklook-upgrade")
+        .auto_resize()
+        .build()?;
+
+    Ok(())
+}
+
 async fn updater_check(app: AppHandle) -> tauri_plugin_updater::Result<()> {
     let texts = i18n::current_locale(&app).tray_texts();
 
@@ -31,14 +61,7 @@ async fn updater_check(app: AppHandle) -> tauri_plugin_updater::Result<()> {
 
     match checked {
         Some(_) => {
-            let _ = WebviewWindowBuilder::new(&app, "upgrade", WebviewUrl::App("/upgrade".into()))
-                .center()
-                .title(texts.update_window_title)
-                .inner_size(700.0, 600.0)
-                .focused(true)
-                .window_classname("quicklook-upgrade")
-                .auto_resize()
-                .build();
+            let _ = open_upgrade_window(&app);
         },
         None => {
             let _ = app

@@ -6,6 +6,8 @@
 > **颜色与字号基准：`design/fluent-baseline.md`**（本稿所有色值、字号以该文件为准）
 > 版本基线：v1.0.0
 > 实现状态：已按本方案落地（`src/views/upgrade.vue`、`src-tauri/src/tray.rs`）
+> 入口有两个：托盘菜单「检查更新」（先预检，无更新时弹系统提示）与设置页「关于 → 检查更新」
+> （直接开窗，结果交给窗口呈现）。窗口的标题、尺寸与窗口类名由 `tray::open_upgrade_window` 一处给出。
 >
 > **本文是设计方案，不含实现代码；实现以 `src/views/upgrade.vue` 为准。**
 

@@ -78,6 +78,24 @@ pub async fn get_default_program_name(path: String) -> Result<String, QuickLookE
         .map_err(|e| QuickLookError::WindowsApi(format!("获取默认程序任务执行失败: {}", e)))?
 }
 
+/// 从设置页打开更新窗口。
+///
+/// 窗口挂载后自己发起检查，所以这里只负责开窗：检查中、已是最新、检查失败
+/// 都在窗口内呈现，不像托盘那样另弹系统对话框。窗口的标题与尺寸由
+/// `tray::open_upgrade_window` 统一给出，两个入口不会长得不一样。
+///
+/// **必须是 `async fn`**：同步命令在主线程上执行，而创建窗口要等主线程把
+/// HWND 与 webview 初始化完 —— 主线程等自己，直接死锁：窗口外壳画出来、
+/// 内容永远加载不出来，整个应用连关闭都点不动。异步命令跑在 runtime 线程上，
+/// 由 Tauri 内部转投主线程，才不会自锁。托盘那条路径本来就在
+/// `async_runtime::spawn` 里，所以同一个函数从托盘调用一直是正常的。
+#[command]
+pub async fn open_upgrade(app: AppHandle) -> Result<(), QuickLookError> {
+    log::info!("从设置页打开更新窗口");
+    crate::tray::open_upgrade_window(&app)
+        .map_err(|e| QuickLookError::with_source("打开更新窗口失败", e))
+}
+
 /// 汇总清理所有 quicklook 产生的缓存，包含 ffmpeg HLS 转码缓存、图片转码缓存和 PDF 渲染缓存。
 /// 返回被删除的目录/文件总数量。
 #[command]

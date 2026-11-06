@@ -147,6 +147,8 @@ export default {
             title: '关于',
             description: '版本信息与最新发布渠道。',
             appDesc: 'Windows 平台的文件预览工具',
+            checkUpdate: '检查更新',
+            checkUpdateFailed: '打不开更新窗口：{error}',
         },
     },
     preview: {

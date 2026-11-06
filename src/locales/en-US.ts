@@ -147,6 +147,8 @@ export default {
             title: 'About',
             description: 'Version information and release channels.',
             appDesc: 'A file preview tool for Windows',
+            checkUpdate: 'Check for updates',
+            checkUpdateFailed: "Can't open the update window: {error}",
         },
     },
     preview: {
