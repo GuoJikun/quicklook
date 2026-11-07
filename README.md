@@ -30,7 +30,6 @@ QuickLook 是一个 windows 平台的快速预览工具。
 - Tauri [官方网站](https://tauri.app/start/prerequisites/)
 - NodeJS [官方网站](https://nodejs.org/)
 
-
 ### 拉取项目代码
 
 ```bash
@@ -78,7 +77,7 @@ Tauri 打包时按 target triple 自动选取对应架构。拷贝产物前会�
 两个二进制由脚本分两阶段构建，组件白名单不同：
 
 | 产物 | 用途 | 启用组件 | 体积（x64 / arm64） |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `ffmpeg.exe` | HLS 转码 | `h264_mf` / `aac` 编码器、常用解码器、`hls` / `mpegts` 封装、转码链路必需的滤镜 | 11 MB / 5.1 MB |
 | `ffprobe.exe` | 读取容器元数据 | 仅解封装、解析器与 `aac` 解码器（ts 内 AAC 的采样率/声道数只能由解码器补齐），无滤镜、无编码器 | 4.3 MB / 1.5 MB |
 
@@ -144,6 +143,10 @@ pnpm tauri build
 ### 预览 Audio
 
 ![preview-audio.png](./screenshots/preview-audio.png)
+
+### 预览 Fonts
+
+![preview-font.png](./screenshots/preview-font.png)
 
 ## License/许可证
 
