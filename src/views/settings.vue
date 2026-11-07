@@ -1,24 +1,166 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { BaseDirectory } from '@tauri-apps/plugin-fs'
-import { readTextFile } from '@/utils'
+import {
+    Add16Regular,
+    Code16Regular,
+    Delete16Regular,
+    Document16Regular,
+    Folder16Regular,
+    Info16Regular,
+    LocalLanguage16Regular,
+    Search16Regular,
+    Video16Regular,
+    WeatherMoon16Regular,
+} from '@vicons/fluent'
 import { app } from '@tauri-apps/api'
-import type { Store } from '@tauri-apps/plugin-store'
 import { invoke } from '@tauri-apps/api/core'
+import { BaseDirectory } from '@tauri-apps/plugin-fs'
 import { LogLevel } from '@tauri-apps/plugin-log'
-import { ChatDotRound, Delete, EditPen, Files, InfoFilled, VideoCamera } from '@element-plus/icons-vue'
-
-import SettingItem from '@/components/setting-item.vue'
+import type { Store } from '@tauri-apps/plugin-store'
 import { getConfigStore } from '@/utils/store'
+import { readTextFile } from '@/utils'
 import { LOCALE_OPTIONS, currentLocale, setLocale, type LocaleCode } from '@/locales'
+import { useTheme, type ThemePreference } from '@/hooks/theme'
+import WindowTitlebar from '@/components/window-titlebar.vue'
+import WindowResizeHandles from '@/components/window-resize-handles.vue'
 
 const { t } = useI18n()
+// 主题初始化已收敛到 hooks/theme.ts 的模块作用域（由 main.ts 副作用导入），
+// 这里只取用响应式状态：设置页需要显示并改写用户偏好。
+const { preference, isDark } = useTheme()
+
+/* ---------------- 左导航 ---------------- */
+
+type SectionKey = 'language' | 'theme' | 'support' | 'code' | 'video' | 'cache' | 'log' | 'about'
+
+/* 导航图标统一取自 @vicons/fluent（16 网格、填充式），不再手绘描边 SVG：
+   手绘 1.3px 的笔画与同排 Fluent 图标的视觉重量差一档，切页时最明显。 */
+const ICONS: Record<SectionKey, Component> = {
+    language: LocalLanguage16Regular,
+    theme: WeatherMoon16Regular,
+    support: Folder16Regular,
+    code: Code16Regular,
+    video: Video16Regular,
+    cache: Delete16Regular,
+    log: Document16Regular,
+    about: Info16Regular,
+}
+
+const searchQuery = ref('')
+const activeSection = ref<SectionKey>('language')
+const contentRef = ref<HTMLElement | null>(null)
+
+const navGroups = computed(() => {
+    const q = searchQuery.value.trim().toLowerCase()
+    const groups: { label: string; items: { key: SectionKey; label: string }[] }[] = [
+        {
+            label: t('settings.groups.general'),
+            items: [
+                { key: 'language', label: t('settings.nav.language') },
+                { key: 'theme', label: t('settings.nav.theme') },
+            ],
+        },
+        {
+            label: t('settings.groups.content'),
+            items: [
+                { key: 'support', label: t('settings.nav.support') },
+                { key: 'code', label: t('settings.nav.code') },
+                { key: 'video', label: t('settings.nav.video') },
+            ],
+        },
+        {
+            label: t('settings.groups.maintenance'),
+            items: [
+                { key: 'cache', label: t('settings.nav.cache') },
+                { key: 'log', label: t('settings.nav.log') },
+            ],
+        },
+        {
+            label: t('settings.groups.about'),
+            items: [{ key: 'about', label: t('settings.nav.about') }],
+        },
+    ]
+    return groups
+        .map(group => ({
+            ...group,
+            items: q ? group.items.filter(item => item.label.toLowerCase().includes(q)) : group.items,
+        }))
+        .filter(group => group.items.length > 0)
+})
+
+const visibleKeys = computed(() => navGroups.value.flatMap(group => group.items.map(item => item.key)))
+
+const pageTitle = computed(() => {
+    const titles: Record<SectionKey, string> = {
+        language: t('settings.nav.language'),
+        theme: t('settings.nav.theme'),
+        support: t('settings.support.title'),
+        code: t('settings.customCode.title'),
+        video: t('settings.video.title'),
+        cache: t('settings.cache.title'),
+        log: t('settings.log.title'),
+        about: t('settings.about.title'),
+    }
+    return titles[activeSection.value]
+})
+
+function go(key: SectionKey) {
+    activeSection.value = key
+    nextTick(() => contentRef.value?.scrollTo({ top: 0 }))
+}
+
+/** ↑/↓ 在可见项之间移动；输入框 / 下拉获得焦点时不抢按键 */
+function onGlobalKey(event: KeyboardEvent) {
+    if (event.metaKey || event.ctrlKey || event.altKey) return
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return
+    const el = document.activeElement
+    if (
+        el instanceof HTMLElement &&
+        (['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName) || el.closest('.el-input, .el-select, [role="combobox"]'))
+    ) {
+        return
+    }
+    const keys = visibleKeys.value
+    const index = keys.indexOf(activeSection.value)
+    if (index < 0 || keys.length < 2) return
+    event.preventDefault()
+    const next = Math.min(keys.length - 1, Math.max(0, index + (event.key === 'ArrowDown' ? 1 : -1)))
+    go(keys[next] as SectionKey)
+    nextTick(() => {
+        document.querySelector<HTMLElement>(`[data-nav-key="${keys[next]}"]`)?.scrollIntoView({ block: 'nearest' })
+    })
+}
+
+/* ---------------- 轻量反馈 ---------------- */
+
+const savedVisible = ref(false)
+let savedTimer: number | undefined
+function flashSaved() {
+    savedVisible.value = true
+    window.clearTimeout(savedTimer)
+    savedTimer = window.setTimeout(() => (savedVisible.value = false), 2000)
+}
+
+/* 行内反馈：成功/错误写在控件左侧，不用悬浮弹层 */
+const codeFeedbackText = ref('')
+const codeFeedbackError = ref(false)
+const videoFeedbackText = ref('')
+const videoFeedbackError = ref(false)
+const feedbackTimers: { code?: number; video?: number } = {}
+
+function showFeedback(kind: 'code' | 'video', text: string, error = false) {
+    const textRef = kind === 'code' ? codeFeedbackText : videoFeedbackText
+    const errorRef = kind === 'code' ? codeFeedbackError : videoFeedbackError
+    textRef.value = text
+    errorRef.value = error
+    window.clearTimeout(feedbackTimers[kind])
+    feedbackTimers[kind] = window.setTimeout(() => (textRef.value = ''), 2400)
+}
+
+/* ---------------- 配置与数据 ---------------- */
 
 let localStore: Store | null = null
-const loadStore = async () => {
-    localStore = await getConfigStore()
-}
 
 interface FormatSupport {
     nameKey: string
@@ -26,7 +168,7 @@ interface FormatSupport {
     data: string[]
 }
 
-const getConfig = async (): Promise<FormatSupport[]> => {
+async function getConfig(): Promise<FormatSupport[]> {
     const config = await readTextFile('config.json', { baseDir: BaseDirectory.Resource })
     const data = JSON.parse(config)
     return [
@@ -44,21 +186,45 @@ const getConfig = async (): Promise<FormatSupport[]> => {
 }
 
 const config = ref<FormatSupport[]>([])
-const version = ref<string>('')
+const version = ref('')
+
+/* ---------------- 语言 ---------------- */
 
 const localeOptions = LOCALE_OPTIONS
 const switchingLocale = ref(false)
-const handleLocaleChange = async (value: unknown) => {
-    if (typeof value !== 'string') return
+async function chooseLocale(value: LocaleCode) {
+    if (switchingLocale.value || value === currentLocale.value) return
     switchingLocale.value = true
     try {
-        await setLocale(value as LocaleCode)
+        await setLocale(value)
+        flashSaved()
     } finally {
         switchingLocale.value = false
     }
 }
 
-const logLevel = ref<string | number>(LogLevel.Warn)
+/* ---------------- 主题 ---------------- */
+
+const themeModes = computed<{ value: ThemePreference; label: string }[]>(() => [
+    { value: 'auto', label: t('settings.theme.modeAuto') },
+    { value: 'light', label: t('settings.theme.modeLight') },
+    { value: 'dark', label: t('settings.theme.modeDark') },
+])
+
+function chooseTheme(value: ThemePreference) {
+    if (preference.value === value) return
+    preference.value = value
+}
+
+const effectiveTheme = computed(
+    () =>
+        (isDark.value ? t('settings.theme.modeDark') : t('settings.theme.modeLight')) +
+        (preference.value === 'auto' ? t('settings.theme.followSystem') : ''),
+)
+
+/* ---------------- 日志级别 ---------------- */
+
+const logLevel = ref<number>(LogLevel.Warn)
 const logLevelList = [
     { label: 'Error', value: LogLevel.Error },
     { label: 'Warn', value: LogLevel.Warn },
@@ -67,26 +233,20 @@ const logLevelList = [
     { label: 'Trace', value: LogLevel.Trace },
     { label: 'Off', value: 0 },
 ]
-const updateLogLevel = async (level: number) => {
+async function updateLogLevel(level: number) {
+    logLevel.value = level
     await localStore?.set('logLevel', level)
     await localStore?.save()
     await invoke('set_log_level', { level })
-}
-const handleLogLevelChange = (level: unknown) => {
-    if (typeof level === 'number' || typeof level === 'string') {
-        const numeric = typeof level === 'string' ? Number(level) : level
-        if (!Number.isNaN(numeric)) {
-            logLevel.value = numeric
-            updateLogLevel(numeric)
-        }
-    }
+    flashSaved()
 }
 
-const useLocalFfmpeg = ref<boolean>(false)
+/* ---------------- 视频 / ffmpeg ---------------- */
+
+const useLocalFfmpeg = ref(false)
 const ffmpegAvailable = ref<boolean | null>(null)
 
-type AlertType = 'info' | 'success' | 'error'
-const ffmpegStatus = computed<{ type: AlertType; title: string; description: string }>(() => {
+const ffmpegStatus = computed<{ type: 'info' | 'success' | 'error'; title: string; description: string }>(() => {
     if (ffmpegAvailable.value === null) {
         return {
             type: 'info',
@@ -108,659 +268,1323 @@ const ffmpegStatus = computed<{ type: AlertType; title: string; description: str
     }
 })
 
-const handleUseLocalFfmpegChange = async (val: unknown) => {
-    if (typeof val !== 'boolean') return
-    useLocalFfmpeg.value = val
-    await localStore?.set('useLocalFfmpeg', val)
+async function toggleFfmpeg() {
+    const next = !useLocalFfmpeg.value
+    useLocalFfmpeg.value = next
+    await localStore?.set('useLocalFfmpeg', next)
     await localStore?.save()
-    if (val) {
-        ffmpegAvailable.value = await invoke<boolean>('check_ffmpeg')
-    } else {
-        ffmpegAvailable.value = null
-    }
+    ffmpegAvailable.value = next ? await invoke<boolean>('check_ffmpeg') : null
+    flashSaved()
 }
 
-const customCodeExts = ref<string[]>([])
-const newCodeExt = ref<string>('')
+/* ---------------- 自定义扩展名 ---------------- */
 
-const addCodeExt = async () => {
+const customCodeExts = ref<string[]>([])
+const newCodeExt = ref('')
+
+async function addCodeExt() {
     const ext = newCodeExt.value.trim().toLowerCase().replace(/^\./, '')
     if (!ext) return
     if (customCodeExts.value.includes(ext)) {
-        ElMessage.warning(t('settings.customCode.exists', { ext }))
+        showFeedback('code', t('settings.customCode.exists', { ext }), true)
         return
     }
     customCodeExts.value.push(ext)
     newCodeExt.value = ''
     await localStore?.set('customCodeExtensions', customCodeExts.value)
     await localStore?.save()
-    ElMessage.success(t('settings.customCode.added', { ext }))
+    showFeedback('code', t('settings.customCode.added', { ext }))
+    flashSaved()
 }
 
-const removeCodeExt = async (ext: string) => {
-    customCodeExts.value = customCodeExts.value.filter(e => e !== ext)
+async function removeCodeExt(ext: string) {
+    customCodeExts.value = customCodeExts.value.filter(item => item !== ext)
     await localStore?.set('customCodeExtensions', customCodeExts.value)
     await localStore?.save()
+    flashSaved()
 }
 
 const customVideoExts = ref<string[]>([])
-const newVideoExt = ref<string>('')
+const newVideoExt = ref('')
 
-const addVideoExt = async () => {
+async function addVideoExt() {
     if (!useLocalFfmpeg.value) return
     const ext = newVideoExt.value.trim().toLowerCase().replace(/^\./, '')
     if (!ext) return
     if (customVideoExts.value.includes(ext)) {
-        ElMessage.warning(t('settings.customCode.exists', { ext }))
+        showFeedback('video', t('settings.customCode.exists', { ext }), true)
         return
     }
     customVideoExts.value.push(ext)
     newVideoExt.value = ''
     await localStore?.set('customVideoExtensions', customVideoExts.value)
     await localStore?.save()
-    ElMessage.success(t('settings.video.added', { ext }))
+    showFeedback('video', t('settings.video.added', { ext }))
+    flashSaved()
 }
 
-const removeVideoExt = async (ext: string) => {
-    customVideoExts.value = customVideoExts.value.filter(e => e !== ext)
+async function removeVideoExt(ext: string) {
+    customVideoExts.value = customVideoExts.value.filter(item => item !== ext)
     await localStore?.set('customVideoExtensions', customVideoExts.value)
     await localStore?.save()
+    flashSaved()
 }
 
+/* ---------------- 缓存 ---------------- */
+
+type CacheKind = 'ffmpeg' | 'image' | 'pdf'
+const cacheBusy = reactive<Record<CacheKind, boolean>>({ ffmpeg: false, image: false, pdf: false })
+const cacheText = reactive<Record<CacheKind, string>>({ ffmpeg: '', image: '', pdf: '' })
+const cacheError = reactive<Record<CacheKind, boolean>>({ ffmpeg: false, image: false, pdf: false })
+const cacheTimers: Partial<Record<CacheKind, number>> = {}
+
+function showCache(kind: CacheKind, text: string, error = false) {
+    cacheText[kind] = text
+    cacheError[kind] = error
+    window.clearTimeout(cacheTimers[kind])
+    cacheTimers[kind] = window.setTimeout(() => (cacheText[kind] = ''), 2400)
+}
+
+async function clearCache(kind: CacheKind) {
+    if (cacheBusy[kind]) return
+    cacheBusy[kind] = true
+    try {
+        if (kind === 'ffmpeg') {
+            const count = await invoke<number>('clear_cache')
+            showCache(kind, t('settings.cache.cleared', { count }))
+        } else if (kind === 'image') {
+            await invoke('clear_image_cache')
+            showCache(kind, t('settings.cache.imageCleared'))
+        } else {
+            const count = await invoke<number>('clear_pdf_cache')
+            showCache(kind, t('settings.cache.pdfCleared', { count }))
+        }
+        flashSaved()
+    } catch (e) {
+        const message =
+            kind === 'ffmpeg'
+                ? t('settings.cache.clearFailed', { error: String(e) })
+                : kind === 'image'
+                  ? t('settings.cache.imageClearFailed', { error: String(e) })
+                  : t('settings.cache.pdfClearFailed', { error: String(e) })
+        showCache(kind, message, true)
+    } finally {
+        cacheBusy[kind] = false
+    }
+}
+
+/* ---------------- 关于 ---------------- */
+
+const upgradeOpening = ref(false)
+const upgradeError = ref('')
+
+/**
+ * 打开更新窗口。窗口挂载后自己去检查，「检查中 / 已是最新 / 检查失败」都在窗口里呈现，
+ * 所以这里不预检、也不弹对话框 —— 设置页的反馈一律内联在身份卡里。
+ */
+async function openUpgrade() {
+    if (upgradeOpening.value) return
+    upgradeOpening.value = true
+    upgradeError.value = ''
+    try {
+        await invoke('open_upgrade')
+    } catch (e) {
+        upgradeError.value = t('settings.about.checkUpdateFailed', { error: String(e) })
+    } finally {
+        upgradeOpening.value = false
+    }
+}
+
+/* ---------------- 生命周期 ---------------- */
+
 onMounted(async () => {
-    await loadStore()
-    config.value = await getConfig()
+    window.addEventListener('keydown', onGlobalKey)
+    localStore = await getConfigStore()
+    try {
+        config.value = await getConfig()
+    } catch {
+        config.value = []
+    }
     version.value = await app.getVersion()
 
-    const tmpLogLevel: string = (await localStore?.get<string>('logLevel')) || ''
-    logLevel.value = tmpLogLevel || String(LogLevel.Warn)
+    const storedLevel = await localStore?.get<number | string>('logLevel')
+    const numericLevel = Number(storedLevel ?? LogLevel.Warn)
+    logLevel.value = Number.isNaN(numericLevel) ? LogLevel.Warn : numericLevel
 
-    const storedFfmpeg = await localStore?.get<boolean>('useLocalFfmpeg')
-    useLocalFfmpeg.value = storedFfmpeg ?? false
-    if (useLocalFfmpeg.value) {
-        ffmpegAvailable.value = await invoke<boolean>('check_ffmpeg')
-    }
+    useLocalFfmpeg.value = (await localStore?.get<boolean>('useLocalFfmpeg')) ?? false
+    if (useLocalFfmpeg.value) ffmpegAvailable.value = await invoke<boolean>('check_ffmpeg')
 
     customCodeExts.value = (await localStore?.get<string[]>('customCodeExtensions')) ?? []
     customVideoExts.value = (await localStore?.get<string[]>('customVideoExtensions')) ?? []
 })
 
-const clearingCache = ref<boolean>(false)
-const handleClearCache = async () => {
-    clearingCache.value = true
-    try {
-        const removed = await invoke<number>('clear_cache')
-        ElMessage.success(t('settings.cache.cleared', { count: removed }))
-    } catch (e) {
-        ElMessage.error(t('settings.cache.clearFailed', { error: String(e) }))
-    } finally {
-        clearingCache.value = false
-    }
-}
-
-const clearingImageCache = ref<boolean>(false)
-const handleClearImageCache = async () => {
-    clearingImageCache.value = true
-    try {
-        await invoke('clear_image_cache')
-        ElMessage.success(t('settings.cache.imageCleared'))
-    } catch (e) {
-        ElMessage.error(t('settings.cache.imageClearFailed', { error: String(e) }))
-    } finally {
-        clearingImageCache.value = false
-    }
-}
-
-const clearingPdfCache = ref<boolean>(false)
-const handleClearPdfCache = async () => {
-    clearingPdfCache.value = true
-    try {
-        const removed = await invoke<number>('clear_pdf_cache')
-        ElMessage.success(t('settings.cache.pdfCleared', { count: removed }))
-    } catch (e) {
-        ElMessage.error(t('settings.cache.pdfClearFailed', { error: String(e) }))
-    } finally {
-        clearingPdfCache.value = false
-    }
-}
+onUnmounted(() => {
+    window.removeEventListener('keydown', onGlobalKey)
+    window.clearTimeout(savedTimer)
+    Object.values(feedbackTimers).forEach(timer => window.clearTimeout(timer))
+    Object.values(cacheTimers).forEach(timer => window.clearTimeout(timer))
+})
 </script>
 
 <template>
-    <div class="settings">
-        <div class="settings-inner">
-            <nav class="settings-nav">
-                <el-anchor direction="horizontal" container="#app" :offset="100" :bound="30">
-                    <el-anchor-link href="#language">{{ t('settings.nav.language') }}</el-anchor-link>
-                    <el-anchor-link href="#support">{{ t('settings.nav.support') }}</el-anchor-link>
-                    <el-anchor-link href="#custom-code">{{ t('settings.nav.code') }}</el-anchor-link>
-                    <el-anchor-link href="#video">{{ t('settings.nav.video') }}</el-anchor-link>
-                    <el-anchor-link href="#cache">{{ t('settings.nav.cache') }}</el-anchor-link>
-                    <el-anchor-link href="#log">{{ t('settings.nav.log') }}</el-anchor-link>
-                    <el-anchor-link href="#version">{{ t('settings.nav.about') }}</el-anchor-link>
-                </el-anchor>
-            </nav>
-            <div class="settings-content">
-                <SettingItem
-                    id="language"
-                    :title="t('language.title')"
-                    :description="t('language.description')"
-                    :icon="ChatDotRound"
-                >
-                    <el-radio-group
-                        :model-value="currentLocale"
-                        :disabled="switchingLocale"
-                        @change="handleLocaleChange"
+    <div class="st-window">
+        <!-- 自绘标题栏与设置页同底色：Win11 的设置窗口标题区本来就不是一条独立色带 -->
+        <WindowTitlebar :title="t('settings.windowTitle')" />
+        <WindowResizeHandles />
+        <div class="st-body">
+            <!-- 左导航：唯一分组入口 -->
+            <nav class="st-navpane" :aria-label="t('settings.navLabel')">
+                <el-input v-model="searchQuery" class="st-search" :placeholder="t('settings.search')" :spellcheck="false">
+                    <template #prefix>
+                        <Search16Regular class="st-search-icon" aria-hidden="true" />
+                    </template>
+                </el-input>
+                <template v-for="group in navGroups" :key="group.label">
+                    <div class="st-navgroup">{{ group.label }}</div>
+                    <button
+                        v-for="item in group.items"
+                        :key="item.key"
+                        :data-nav-key="item.key"
+                        type="button"
+                        class="st-navitem"
+                        :class="{ 'is-active': activeSection === item.key }"
+                        :aria-current="activeSection === item.key"
+                        @click="go(item.key)"
                     >
-                        <el-radio-button v-for="item in localeOptions" :key="item.value" :value="item.value">
-                            {{ t(item.labelKey) }}
-                        </el-radio-button>
-                    </el-radio-group>
-                </SettingItem>
+                        <component :is="ICONS[item.key]" aria-hidden="true" />
+                        <span>{{ item.label }}</span>
+                    </button>
+                </template>
+                <div v-if="!navGroups.length" class="st-navempty">{{ t('settings.searchEmpty') }}</div>
+                <div class="st-navfoot">QuickLook v{{ version || '—' }}</div>
+            </nav>
 
-                <SettingItem
-                    id="support"
-                    :title="t('settings.support.title')"
-                    :description="t('settings.support.description')"
-                    :icon="Files"
-                >
-                    <div class="format-grid">
-                        <div v-for="type in config" :key="type.code" class="format-card">
-                            <div class="format-card-head">
-                                <span class="format-card-code">{{ type.code }}</span>
-                                <span class="format-card-name">{{ t(type.nameKey) }}</span>
+            <!-- 右侧内容：唯一滚动容器 -->
+            <main ref="contentRef" class="st-content">
+                <div class="st-pane">
+                    <div class="st-pagehead">
+                        <h2>{{ pageTitle }}</h2>
+                        <span v-if="savedVisible" class="st-saved">{{ t('settings.feedback.saved') }}</span>
+                    </div>
+
+                    <!-- 1 语言 -->
+                    <template v-if="activeSection === 'language'">
+                        <p class="st-subtitle">{{ t('language.description') }}</p>
+                        <div class="st-card">
+                            <div class="st-row">
+                                <div class="st-row-txt">
+                                    <div class="st-row-t">{{ t('language.title') }}</div>
+                                    <div class="st-row-d">{{ t('settings.language.switchDesc') }}</div>
+                                </div>
+                                <div class="st-row-ctl">
+                                    <div class="st-seg" role="group">
+                                        <button
+                                            v-for="option in localeOptions"
+                                            :key="option.value"
+                                            type="button"
+                                            :aria-pressed="currentLocale === option.value"
+                                            :disabled="switchingLocale"
+                                            @click="chooseLocale(option.value)"
+                                        >
+                                            {{ t(option.labelKey) }}
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="format-card-exts">
-                                <el-tag v-for="ext in type.data" :key="ext" size="small" effect="plain" type="info">
-                                    {{ ext }}
-                                </el-tag>
+                            <div class="st-row">
+                                <div class="st-row-txt">
+                                    <div class="st-row-t">{{ t('settings.language.syncTitle') }}</div>
+                                    <div class="st-row-d">{{ t('settings.language.syncDesc') }}</div>
+                                </div>
+                                <div class="st-row-ctl">
+                                    <span v-if="switchingLocale" class="st-dot" aria-hidden="true"></span>
+                                    <span v-else class="st-muted">{{ t('settings.language.synced') }}</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </SettingItem>
+                        <p class="st-note">{{ t('settings.common.instant') }}</p>
+                    </template>
 
-                <SettingItem
-                    id="custom-code"
-                    :title="t('settings.customCode.title')"
-                    :description="t('settings.customCode.description')"
-                    :icon="EditPen"
-                >
-                    <div v-if="customCodeExts.length > 0" class="ext-tags">
-                        <el-tag
-                            v-for="ext in customCodeExts"
-                            :key="ext"
-                            closable
-                            type="primary"
-                            effect="light"
-                            @close="removeCodeExt(ext)"
-                        >
-                            {{ ext }}
-                        </el-tag>
-                    </div>
-                    <div v-else class="ext-empty">{{ t('settings.customCode.empty') }}</div>
-                    <div class="ext-input-row">
-                        <el-input
-                            v-model="newCodeExt"
-                            :placeholder="t('settings.customCode.placeholder')"
-                            size="default"
-                            class="ext-input"
-                            @keyup.enter="addCodeExt"
-                        />
-                        <el-button type="primary" @click="addCodeExt">{{ t('common.add') }}</el-button>
-                    </div>
-                </SettingItem>
-
-                <SettingItem
-                    id="video"
-                    :title="t('settings.video.title')"
-                    :description="t('settings.video.description')"
-                    :icon="VideoCamera"
-                >
-                    <div class="field-row">
-                        <div class="field-row-label">
-                            <span class="field-row-title">{{ t('settings.video.toggle') }}</span>
-                            <span class="field-row-desc">{{ t('settings.video.toggleDesc') }}</span>
-                        </div>
-                        <el-switch
-                            v-model="useLocalFfmpeg"
-                            class="field-row-control"
-                            @change="handleUseLocalFfmpegChange"
-                        />
-                    </div>
-
-                    <el-alert
-                        v-if="useLocalFfmpeg"
-                        :type="ffmpegStatus.type"
-                        :title="ffmpegStatus.title"
-                        :description="ffmpegStatus.description"
-                        :closable="false"
-                        show-icon
-                    />
-
-                    <div class="ext-sub">
-                        <div class="ext-sub-title">
-                            <span>{{ t('settings.video.customTitle') }}</span>
-                            <span v-if="!useLocalFfmpeg" class="ext-sub-tip">{{ t('settings.video.customTip') }}</span>
-                        </div>
-                        <div v-if="customVideoExts.length > 0" class="ext-tags">
-                            <el-tag
-                                v-for="ext in customVideoExts"
-                                :key="ext"
-                                closable
-                                type="primary"
-                                effect="light"
-                                :disabled="!useLocalFfmpeg"
-                                @close="useLocalFfmpeg && removeVideoExt(ext)"
-                            >
-                                {{ ext }}
-                            </el-tag>
-                        </div>
-                        <div v-else-if="useLocalFfmpeg" class="ext-empty">{{ t('settings.video.customEmpty') }}</div>
-                        <div class="ext-input-row">
-                            <el-input
-                                v-model="newVideoExt"
-                                :placeholder="t('settings.video.customPlaceholder')"
-                                size="default"
-                                class="ext-input"
-                                :disabled="!useLocalFfmpeg"
-                                @keyup.enter="addVideoExt"
-                            />
-                            <el-button type="primary" :disabled="!useLocalFfmpeg" @click="addVideoExt">
-                                {{ t('common.add') }}
-                            </el-button>
-                        </div>
-                    </div>
-                </SettingItem>
-
-                <SettingItem
-                    id="cache"
-                    :title="t('settings.cache.title')"
-                    :description="t('settings.cache.description')"
-                    :icon="Delete"
-                >
-                    <div class="cache-list">
-                        <div class="cache-item">
-                            <div class="cache-item-info">
-                                <div class="cache-item-title">{{ t('settings.cache.ffmpegTitle') }}</div>
-                                <div class="cache-item-desc">{{ t('settings.cache.ffmpegDesc') }}</div>
+                    <!-- 2 主题 -->
+                    <template v-else-if="activeSection === 'theme'">
+                        <p class="st-subtitle">{{ t('settings.theme.subtitle') }}</p>
+                        <div class="st-card">
+                            <div class="st-row">
+                                <div class="st-row-txt">
+                                    <div class="st-row-t">{{ t('settings.theme.appTheme') }}</div>
+                                    <div class="st-row-d">{{ t('settings.theme.appThemeDesc') }}</div>
+                                </div>
+                                <div class="st-row-ctl">
+                                    <div class="st-seg is-3" role="group">
+                                        <button
+                                            v-for="mode in themeModes"
+                                            :key="mode.value"
+                                            type="button"
+                                            :aria-pressed="preference === mode.value"
+                                            @click="chooseTheme(mode.value)"
+                                        >
+                                            {{ mode.label }}
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
-                            <el-button type="danger" plain :loading="clearingCache" @click="handleClearCache">
-                                <el-icon><Delete /></el-icon>
-                                <span style="margin-left: 4px">{{ t('settings.cache.clear') }}</span>
-                            </el-button>
-                        </div>
-                        <div class="cache-item">
-                            <div class="cache-item-info">
-                                <div class="cache-item-title">{{ t('settings.cache.imageTitle') }}</div>
-                                <div class="cache-item-desc">{{ t('settings.cache.imageDesc') }}</div>
+                            <div class="st-row">
+                                <div class="st-row-txt">
+                                    <div class="st-row-t">{{ t('settings.theme.current') }}</div>
+                                    <div class="st-row-d">{{ t('settings.theme.currentDesc') }}</div>
+                                </div>
+                                <div class="st-row-ctl"><span class="st-muted">{{ effectiveTheme }}</span></div>
                             </div>
-                            <el-button type="danger" plain :loading="clearingImageCache" @click="handleClearImageCache">
-                                <el-icon><Delete /></el-icon>
-                                <span style="margin-left: 4px">{{ t('settings.cache.clear') }}</span>
-                            </el-button>
                         </div>
-                        <div class="cache-item">
-                            <div class="cache-item-info">
-                                <div class="cache-item-title">{{ t('settings.cache.pdfTitle') }}</div>
-                                <div class="cache-item-desc">{{ t('settings.cache.pdfDesc') }}</div>
+                        <p class="st-note">{{ t('settings.theme.note') }}</p>
+                    </template>
+
+                    <!-- 3 支持的格式 -->
+                    <template v-else-if="activeSection === 'support'">
+                        <p class="st-subtitle st-subtitle-row">
+                            <span>{{ t('settings.support.description') }}</span>
+                            <span class="st-stat">{{ t('settings.support.total', { count: config.length }) }}</span>
+                        </p>
+                        <div class="st-card">
+                            <div v-if="!config.length" class="st-row">
+                                <div class="st-row-txt"><span class="st-empty">{{ t('settings.support.empty') }}</span></div>
                             </div>
-                            <el-button type="danger" plain :loading="clearingPdfCache" @click="handleClearPdfCache">
-                                <el-icon><Delete /></el-icon>
-                                <span style="margin-left: 4px">{{ t('settings.cache.clear') }}</span>
-                            </el-button>
+                            <div v-for="type in config" :key="type.code" class="st-row">
+                                <div class="st-row-txt"><div class="st-row-t">{{ t(type.nameKey) }}</div></div>
+                                <div class="st-row-ctl">
+                                    <div class="st-pills">
+                                        <span v-for="ext in type.data || []" :key="ext" class="st-chip is-plain">{{ ext }}</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </SettingItem>
+                    </template>
 
-                <SettingItem
-                    id="log"
-                    :title="t('settings.log.title')"
-                    :description="t('settings.log.description')"
-                    :icon="Files"
-                >
-                    <div class="log-row">
-                        <span class="log-label">{{ t('settings.log.level') }}</span>
-                        <el-radio-group v-model="logLevel" @change="handleLogLevelChange">
-                            <el-radio-button v-for="item in logLevelList" :key="item.value" :value="item.value">
-                                {{ item.label }}
-                            </el-radio-button>
-                        </el-radio-group>
-                    </div>
-                </SettingItem>
+                    <!-- 4 自定义代码格式 -->
+                    <template v-else-if="activeSection === 'code'">
+                        <p class="st-subtitle">{{ t('settings.customCode.description') }}</p>
+                        <div class="st-card">
+                            <div class="st-row">
+                                <div class="st-row-txt">
+                                    <div class="st-row-t">{{ t('settings.customCode.existing') }}</div>
+                                </div>
+                                <div class="st-row-ctl">
+                                    <div v-if="customCodeExts.length" class="st-pills">
+                                        <span v-for="ext in customCodeExts" :key="ext" class="st-chip">
+                                            {{ ext }}
+                                            <button type="button" class="st-chip-x" :aria-label="t('settings.common.remove')" @click="removeCodeExt(ext)">×</button>
+                                        </span>
+                                    </div>
+                                    <span v-else class="st-empty">{{ t('settings.customCode.empty') }}</span>
+                                </div>
+                            </div>
+                            <div class="st-row is-input">
+                                <div class="st-row-txt">
+                                    <div class="st-row-t">{{ t('settings.customCode.addExt') }}</div>
+                                    <div v-if="codeFeedbackText" class="st-inline" :class="{ 'is-error': codeFeedbackError }">
+                                        {{ codeFeedbackText }}
+                                    </div>
+                                </div>
+                                <div class="st-row-ctl">
+                                    <el-input v-model="newCodeExt" class="st-textbox" :placeholder="t('settings.customCode.placeholder')" @keyup.enter="addCodeExt" />
+                                    <button type="button" class="st-iconbtn" :title="t('common.add')" :aria-label="t('common.add')" @click="addCodeExt">
+                                        <Add16Regular aria-hidden="true" />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="st-note">{{ t('settings.common.instant') }}</p>
+                    </template>
 
-                <SettingItem
-                    id="version"
-                    :title="t('settings.about.title')"
-                    :description="t('settings.about.description')"
-                    :icon="InfoFilled"
-                >
-                    <div class="about-row">
-                        <div class="about-info">
-                            <div class="about-version-label">{{ t('settings.about.currentVersion') }}</div>
-                            <div class="about-version-value">v{{ version || '—' }}</div>
+                    <!-- 5 视频 -->
+                    <template v-else-if="activeSection === 'video'">
+                        <p class="st-subtitle">{{ t('settings.video.description') }}</p>
+                        <div v-if="useLocalFfmpeg" class="st-infobar">
+                            <Info16Regular aria-hidden="true" />
+                            <div>
+                                <div class="st-info-title">{{ ffmpegStatus.title }}</div>
+                                <div class="st-info-desc">{{ ffmpegStatus.description }}</div>
+                            </div>
                         </div>
-                        <div class="about-links">
-                            <el-link
-                                type="primary"
-                                href="https://github.com/GuoJikun/quicklook/releases/latest"
-                                target="_blank"
-                                :underline="false"
-                            >
-                                GitHub Releases
-                            </el-link>
-                            <el-divider direction="vertical" />
-                            <el-link
-                                type="primary"
-                                href="https://gitee.com/guojikun/quicklook/releases/latest"
-                                target="_blank"
-                                :underline="false"
-                            >
-                                Gitee Releases
-                            </el-link>
+                        <div class="st-card">
+                            <div class="st-row">
+                                <div class="st-row-txt">
+                                    <div class="st-row-t">{{ t('settings.video.toggle') }}</div>
+                                    <div class="st-row-d">{{ t('settings.video.toggleDesc') }}</div>
+                                </div>
+                                <div class="st-row-ctl">
+                                    <button type="button" class="st-switch" role="switch" :aria-checked="useLocalFfmpeg" :aria-label="t('settings.video.toggle')" @click="toggleFfmpeg"></button>
+                                </div>
+                            </div>
+                            <div class="st-row" :class="{ 'is-dep': !useLocalFfmpeg }">
+                                <div class="st-row-txt">
+                                    <div class="st-row-t">
+                                        {{ t('settings.video.customTitle') }}
+                                        <span v-if="!useLocalFfmpeg" class="st-row-tip">{{ t('settings.video.customTip') }}</span>
+                                    </div>
+                                </div>
+                                <div class="st-row-ctl">
+                                    <div v-if="customVideoExts.length" class="st-pills">
+                                        <span v-for="ext in customVideoExts" :key="ext" class="st-chip">
+                                            {{ ext }}
+                                            <button type="button" class="st-chip-x" :aria-label="t('settings.common.remove')" :disabled="!useLocalFfmpeg" @click="removeVideoExt(ext)">×</button>
+                                        </span>
+                                    </div>
+                                    <span v-else-if="useLocalFfmpeg" class="st-empty">{{ t('settings.video.customEmpty') }}</span>
+                                </div>
+                            </div>
+                            <div class="st-row is-input" :class="{ 'is-dep': !useLocalFfmpeg }">
+                                <div class="st-row-txt">
+                                    <div class="st-row-t">{{ t('settings.customCode.addExt') }}</div>
+                                    <div v-if="videoFeedbackText" class="st-inline" :class="{ 'is-error': videoFeedbackError }">
+                                        {{ videoFeedbackText }}
+                                    </div>
+                                </div>
+                                <div class="st-row-ctl">
+                                    <el-input v-model="newVideoExt" class="st-textbox" :placeholder="t('settings.video.customPlaceholder')" :disabled="!useLocalFfmpeg" @keyup.enter="addVideoExt" />
+                                    <button type="button" class="st-iconbtn" :title="t('common.add')" :aria-label="t('common.add')" :disabled="!useLocalFfmpeg" @click="addVideoExt">
+                                        <Add16Regular aria-hidden="true" />
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </SettingItem>
-            </div>
+                        <p class="st-note">{{ t('settings.common.instant') }}</p>
+                    </template>
+
+                    <!-- 6 缓存 -->
+                    <template v-else-if="activeSection === 'cache'">
+                        <p class="st-subtitle">{{ t('settings.cache.description') }}</p>
+                        <div class="st-card">
+                            <div class="st-row">
+                                <div class="st-row-txt">
+                                    <div class="st-row-t">{{ t('settings.cache.ffmpegTitle') }}</div>
+                                    <div class="st-row-d">{{ t('settings.cache.ffmpegDesc') }}</div>
+                                </div>
+                                <div class="st-row-ctl">
+                                    <span v-if="cacheText.ffmpeg" class="st-inline" :class="{ 'is-error': cacheError.ffmpeg }">{{ cacheText.ffmpeg }}</span>
+                                    <button type="button" class="st-subtle is-danger" :disabled="cacheBusy.ffmpeg" @click="clearCache('ffmpeg')">
+                                        {{ cacheBusy.ffmpeg ? t('settings.cache.clearing') : t('settings.cache.clear') }}
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="st-row">
+                                <div class="st-row-txt">
+                                    <div class="st-row-t">{{ t('settings.cache.imageTitle') }}</div>
+                                    <div class="st-row-d">{{ t('settings.cache.imageDesc') }}</div>
+                                </div>
+                                <div class="st-row-ctl">
+                                    <span v-if="cacheText.image" class="st-inline" :class="{ 'is-error': cacheError.image }">{{ cacheText.image }}</span>
+                                    <button type="button" class="st-subtle is-danger" :disabled="cacheBusy.image" @click="clearCache('image')">
+                                        {{ cacheBusy.image ? t('settings.cache.clearing') : t('settings.cache.clear') }}
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="st-row">
+                                <div class="st-row-txt">
+                                    <div class="st-row-t">{{ t('settings.cache.pdfTitle') }}</div>
+                                    <div class="st-row-d">{{ t('settings.cache.pdfDesc') }}</div>
+                                </div>
+                                <div class="st-row-ctl">
+                                    <span v-if="cacheText.pdf" class="st-inline" :class="{ 'is-error': cacheError.pdf }">{{ cacheText.pdf }}</span>
+                                    <button type="button" class="st-subtle is-danger" :disabled="cacheBusy.pdf" @click="clearCache('pdf')">
+                                        {{ cacheBusy.pdf ? t('settings.cache.clearing') : t('settings.cache.clear') }}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- 7 日志 -->
+                    <template v-else-if="activeSection === 'log'">
+                        <p class="st-subtitle">{{ t('settings.log.description') }}</p>
+                        <div class="st-card">
+                            <div class="st-row">
+                                <div class="st-row-txt">
+                                    <div class="st-row-t">{{ t('settings.log.level') }}</div>
+                                    <div class="st-row-d">{{ t('settings.log.levelDesc') }}</div>
+                                </div>
+                                <div class="st-row-ctl">
+                                    <el-select
+                                        v-model="logLevel"
+                                        class="st-combo"
+                                        popper-class="st-select-popper"
+                                        :aria-label="t('settings.log.level')"
+                                        @change="updateLogLevel"
+                                    >
+                                        <el-option v-for="item in logLevelList" :key="item.value" :label="item.label" :value="item.value" />
+                                    </el-select>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="st-note">{{ t('settings.common.instant') }}</p>
+                    </template>
+
+                    <!-- 8 关于 -->
+                    <template v-else>
+                        <p class="st-subtitle">{{ t('settings.about.description') }}</p>
+                        <div class="st-card st-identity">
+                            <div class="st-logo" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></svg>
+                            </div>
+                            <div class="st-id-info">
+                                <div class="st-id-name">QuickLook <small>v{{ version || '—' }}</small></div>
+                                <div class="st-id-desc">{{ t('settings.about.appDesc') }}</div>
+                                <div class="st-id-links">
+                                    <a class="st-link" href="https://github.com/GuoJikun/quicklook/releases/latest" target="_blank" rel="noopener noreferrer">GitHub Releases</a>
+                                    <a class="st-link" href="https://gitee.com/guojikun/quicklook/releases/latest" target="_blank" rel="noopener noreferrer">Gitee Releases</a>
+                                </div>
+                                <div v-if="upgradeError" class="st-inline is-error">{{ upgradeError }}</div>
+                            </div>
+                            <!-- 全页唯一的主操作：开更新窗口，检查中 / 已是最新 / 检查失败由窗口呈现 -->
+                            <div class="st-id-acts">
+                                <button type="button" class="st-accentbtn" :disabled="upgradeOpening" @click="openUpgrade">
+                                    {{ t('settings.about.checkUpdate') }}
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </main>
         </div>
     </div>
 </template>
 
 <style lang="scss" scoped>
-.settings {
-    width: 100%;
-    min-height: 100vh;
-    background-color: var(--color-bg);
-    box-sizing: border-box;
-    padding: var(--space-4) var(--space-5) var(--space-6);
-    overflow-x: clip;
-}
-
-.settings-inner {
-    max-width: 880px;
-    margin: 0 auto;
+/* 设置窗口与预览、更新窗口一致：decorations(false) + 自绘 44px 标题栏。
+   标题栏、左导航、内容区依次纵向排列，只有右侧内容区滚动。 */
+.st-window {
+    --st-nav-w: 240px;
+    --st-content-w: 720px;
+    /* Element Plus 的禁用态也走项目主题，避免出现组件自带的灰底 */
+    --el-disabled-bg-color: transparent;
+    --el-disabled-border-color: var(--color-border);
+    --el-disabled-text-color: var(--color-text-disabled);
+    position: relative;
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
-}
-
-.settings-nav {
-    position: sticky;
-    top: 0;
-    z-index: var(--z-sticky);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    padding: var(--space-2) var(--space-4);
-    overflow-x: auto;
-    :deep(.el-anchor) {
-        display: flex;
-        flex-wrap: nowrap;
-        justify-content: center;
-    }
-    :deep(.el-anchor__list) {
-        display: flex;
-        flex-wrap: nowrap;
-        gap: var(--space-2);
-    }
-    :deep(.el-anchor__item) {
-        padding: 0;
-    }
-    :deep(.el-anchor-link__title) {
-        font-size: var(--font-sm);
-        padding: 4px 8px;
-        border-radius: 6px;
-        transition: background-color var(--transition-base);
-    }
-    :deep(.el-anchor-link__title:hover) {
-        background-color: var(--color-hover-bg);
-    }
-    :deep(.el-anchor-link--active .el-anchor-link__title) {
-        color: var(--color-accent);
-        background-color: var(--color-hover-bg);
-        font-weight: 600;
-    }
-}
-
-.settings-content {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-}
-
-.format-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: var(--space-3);
-}
-
-.format-card {
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    padding: 10px 12px;
+    height: 100vh;
+    overflow: hidden;
     background: var(--color-bg);
+    color: var(--color-text-primary);
+    font-family: inherit;
+}
+
+.st-body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+}
+
+/* ---------- 左导航 ---------- */
+.st-navpane {
+    flex: none;
+    width: var(--st-nav-w);
+    min-width: 0;
+    padding: 14px 10px;
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
-    transition: border-color var(--transition-base);
+    gap: 2px;
+    overflow: auto;
+    background: color-mix(in srgb, var(--color-surface) 60%, transparent);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    border-right: 1px solid var(--color-divider);
+
+    &::-webkit-scrollbar {
+        width: var(--preview-scrollbar-w);
+    }
+    &::-webkit-scrollbar-thumb {
+        background: var(--color-border);
+        border-radius: var(--radius-sm);
+    }
+}
+
+/* 搜索、扩展名、日志级别都用 Element Plus 的 el-input / el-select；
+   这里只把 --el-* 映射到项目主题变量，保留 §4.4 的 Fluent 规格（32px 高、1px 边、透明底）。
+   scoped 规则带 data-v 属性，优先级高于组件自带样式。 */
+.st-search {
+    flex: none;
+    height: 32px;
+    margin-bottom: 8px;
+    color: var(--color-text-tertiary);
+    --el-input-bg-color: var(--color-chip-bg);
+    --el-input-border-color: transparent;
+    --el-input-hover-border-color: transparent;
+    --el-input-focus-border-color: var(--color-brand-fg);
+    --el-input-border-radius: var(--radius-md);
+    --el-input-text-color: var(--color-text-primary);
+    --el-input-placeholder-color: var(--color-text-tertiary);
+
+    :deep(.el-input__wrapper) {
+        min-height: 32px;
+        padding: 0 10px;
+    }
+
+    :deep(.el-input__inner) {
+        font: inherit;
+        font-size: var(--font-xs);
+    }
+
+    .st-search-icon {
+        width: var(--icon-sm);
+        height: var(--icon-sm);
+        flex: none;
+        color: var(--color-text-tertiary);
+    }
+}
+
+.st-navgroup {
+    padding: 12px 12px 4px;
+    font-size: var(--font-2xs);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--color-text-tertiary);
+}
+
+.st-navitem {
+    position: relative;
+    flex: none;
+    height: var(--control-md);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-text-secondary);
+    font: inherit;
+    font-size: var(--font-sm);
+    text-align: left;
+    cursor: pointer;
+    transition:
+        background-color var(--transition-fast),
+        color var(--transition-fast);
+
+    svg {
+        width: var(--icon-sm);
+        height: var(--icon-sm);
+        flex: none;
+    }
 
     &:hover {
-        border-color: var(--color-accent);
+        background: var(--elevation-hover);
+        color: var(--color-text-primary);
     }
 
-    &-head {
-        display: flex;
-        align-items: center;
-        gap: var(--space-2);
+    /* 选中项不参与按下反馈：它已有 selected-bg + 指示条，再叠一层会糊成一片 */
+    &:active:not(.is-active) {
+        background: var(--elevation-pressed);
+        color: var(--color-text-primary);
     }
 
-    &-code {
-        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-        font-size: var(--font-xs);
+    &.is-active {
+        background: var(--color-selected-bg);
+        color: var(--color-text-primary);
         font-weight: 600;
-        padding: 2px 8px;
-        border-radius: var(--radius-sm);
-        background: var(--color-accent);
-        color: #fff;
-    }
 
-    &-name {
-        font-size: var(--font-sm);
-        color: var(--color-text-secondary);
-    }
-
-    &-exts {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
-        :deep(.el-tag) {
-            margin: 0;
+        &::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 9px;
+            bottom: 9px;
+            width: 3px;
+            border-radius: var(--radius-xs);
+            background: var(--color-brand-fg);
         }
     }
 }
 
-.ext-tags {
+.st-navempty {
+    padding: 8px 12px;
+    font-size: var(--font-xs);
+    color: var(--color-text-tertiary);
+}
+
+.st-navfoot {
+    margin-top: auto;
+    padding: 12px;
+    font-size: var(--font-xs);
+    color: var(--color-text-tertiary);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 右侧内容 ---------- */
+.st-content {
+    flex: 1;
+    min-width: 0;
+    overflow: auto;
+    padding: 24px 32px 40px;
+
+    &::-webkit-scrollbar {
+        width: var(--preview-scrollbar-w);
+    }
+    &::-webkit-scrollbar-thumb {
+        background: var(--color-border);
+        border-radius: var(--radius-sm);
+    }
+}
+
+.st-pane {
+    max-width: var(--st-content-w);
+    margin: 0 auto;
+}
+
+.st-pagehead {
     display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    :deep(.el-tag) {
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+
+    h2 {
         margin: 0;
-    }
-}
-
-.ext-input-row {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    .ext-input {
-        flex: 0 0 200px;
-    }
-}
-
-.ext-empty {
-    font-size: var(--font-sm);
-    color: var(--color-text-disabled);
-    padding: 4px 0;
-}
-
-.ext-sub {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: var(--space-3) 14px;
-    border: 1px dashed var(--color-border);
-    border-radius: var(--radius-md);
-    background: var(--color-bg);
-
-    &-title {
-        font-size: var(--font-sm);
+        font-size: var(--font-3xl);
         font-weight: 600;
-        color: var(--color-text-primary);
-    }
-
-    &-tip {
-        margin-left: 6px;
-        font-weight: normal;
-        font-size: var(--font-xs);
-        color: var(--el-color-warning);
+        letter-spacing: -0.01em;
+        line-height: var(--line-3xl);
     }
 }
 
-.field-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-4);
-    padding: 4px 0;
+.st-saved {
+    font-size: var(--font-xs);
+    color: var(--color-text-tertiary);
+    white-space: nowrap;
+}
 
-    &-label {
+.st-subtitle {
+    margin: 6px 0 24px;
+    font-size: var(--font-sm);
+    line-height: var(--line-sm);
+    color: var(--color-text-secondary);
+
+    &-row {
         display: flex;
-        flex-direction: column;
-        gap: 2px;
-        min-width: 0;
-        flex: 1;
-    }
-
-    &-title {
-        font-size: var(--font-md);
-        font-weight: 500;
-        color: var(--color-text-primary);
-    }
-
-    &-desc {
-        font-size: var(--font-xs);
-        color: var(--color-text-secondary);
-        line-height: 1.5;
-    }
-
-    &-control {
-        flex: 0 0 auto;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 16px;
     }
 }
 
-.cache-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
+.st-stat {
+    font-size: var(--font-xs);
+    color: var(--color-text-tertiary);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
 }
 
-.cache-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-4);
-    padding: var(--space-3) 14px;
+/* ---------- 卡片与设置行 ---------- */
+.st-card {
+    padding: 4px 16px;
+    margin-bottom: 16px;
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background: var(--color-bg);
-
-    &-info {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        min-width: 0;
-        flex: 1;
-    }
-
-    &-title {
-        font-size: var(--font-md);
-        font-weight: 500;
-        color: var(--color-text-primary);
-    }
-
-    &-desc {
-        font-size: var(--font-xs);
-        color: var(--color-text-secondary);
-        line-height: 1.5;
-    }
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
 }
 
-.log-row {
+.st-row {
+    min-height: 52px;
     display: flex;
     align-items: center;
-    gap: var(--space-3);
-    flex-wrap: wrap;
+    gap: 16px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--color-divider);
+
+    &:last-child {
+        border-bottom: 0;
+    }
+
+    &.is-dep {
+        opacity: 0.45;
+        pointer-events: none;
+    }
 }
 
-.log-label {
+.st-row-txt {
+    flex: 1;
+    min-width: 0;
+}
+
+.st-row-t {
     font-size: var(--font-md);
-    font-weight: 500;
+    font-weight: 600;
     color: var(--color-text-primary);
 }
 
-.about-row {
+.st-row-tip {
+    margin-left: 6px;
+    font-size: var(--font-xs);
+    font-weight: 400;
+    color: var(--color-text-tertiary);
+}
+
+.st-row-d {
+    margin-top: 3px;
+    font-size: var(--font-xs);
+    line-height: var(--line-xs);
+    color: var(--color-text-secondary);
+}
+
+.st-row-ctl {
+    margin-left: auto;
+    flex: none;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: var(--space-4);
-    padding: var(--space-3) 14px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background: var(--color-bg);
-    flex-wrap: wrap;
+    gap: 8px;
 }
 
-.about-info {
-    display: flex;
-    flex-direction: column;
+.st-note {
+    margin: -6px 0 16px;
+    padding-left: 2px;
+    font-size: var(--font-xs);
+    color: var(--color-text-tertiary);
+}
+
+.st-muted,
+.st-empty {
+    font-size: var(--font-xs);
+    color: var(--color-text-tertiary);
+    font-variant-numeric: tabular-nums;
+}
+
+.st-inline {
+    margin-top: 3px;
+    font-size: var(--font-xs);
+    color: var(--color-text-secondary);
+
+    &.is-error {
+        color: var(--color-danger-fg);
+    }
+}
+
+.st-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-accent);
+    animation: st-pulse 1s ease-in-out infinite;
+}
+
+@keyframes st-pulse {
+    50% {
+        opacity: 0.3;
+    }
+}
+
+/* ---------- Fluent 控件 ---------- */
+.st-seg {
+    display: inline-flex;
+    /* 4+24+4 = 32，与同排的输入框、图标按钮同高 */
+    padding: 4px;
     gap: 2px;
+    border-radius: var(--radius-md);
+    background: var(--color-chip-bg);
+
+    button {
+        appearance: none;
+        border: 0;
+        background: transparent;
+        color: var(--color-text-secondary);
+        font: inherit;
+        font-size: var(--font-xs);
+        height: var(--control-sm);
+        padding: 0 12px;
+        line-height: 1;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        transition:
+            background-color var(--transition-fast),
+            color var(--transition-fast);
+
+        &:hover:not(:disabled) {
+            color: var(--color-text-primary);
+        }
+
+        &:active:not(:disabled) {
+            background: var(--elevation-pressed);
+        }
+
+        &[aria-pressed='true'] {
+            background: var(--color-surface);
+            color: var(--color-text-primary);
+            font-weight: 600;
+        }
+
+        &:disabled {
+            cursor: default;
+            opacity: 0.6;
+        }
+    }
+
+    &.is-3 button {
+        padding: 0 8px;
+    }
 }
 
-.about-version-label {
+.st-switch {
+    appearance: none;
+    position: relative;
+    flex: none;
+    width: 40px;
+    height: 20px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-pill);
+    background: var(--color-chip-bg);
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+
+    &::after {
+        content: '';
+        position: absolute;
+        left: 4px;
+        top: 4px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--color-text-tertiary);
+        transition:
+            transform var(--transition-fast),
+            background-color var(--transition-fast);
+    }
+
+    &[aria-checked='true'] {
+        background: var(--color-accent);
+
+        &::after {
+            transform: translateX(20px);
+            background: var(--btn-primary-text);
+        }
+    }
+}
+
+.st-combo {
+    width: 120px;
+    --el-fill-color-blank: transparent;
+    --el-border-color: var(--color-border);
+    --el-border-color-hover: var(--color-brand-fg);
+    --el-border-radius-base: var(--radius-sm);
+    --el-color-primary: var(--color-brand-fg);
+    --el-text-color-regular: var(--color-text-primary);
+    --el-select-input-color: var(--color-text-tertiary);
+
+    :deep(.el-select__wrapper) {
+        min-height: 32px;
+        padding: 4px 10px;
+        gap: 4px;
+        font-size: var(--font-xs);
+        line-height: var(--line-xs);
+    }
+
+    :deep(.el-select__placeholder),
+    :deep(.el-select__selected-item) {
+        font-size: var(--font-xs);
+    }
+
+    :deep(.el-select__caret) {
+        font-size: var(--font-xs);
+    }
+}
+
+.st-textbox {
+    box-sizing: border-box;
+    /* 定宽：不能写成 max-width，否则 EP 的清空/后缀图标会把盒子撑长 */
+    width: 200px;
+    flex: none;
+    --el-input-bg-color: transparent;
+    --el-input-border-color: var(--color-border);
+    --el-input-hover-border-color: var(--color-brand-fg);
+    --el-input-focus-border-color: var(--color-brand-fg);
+    --el-input-border-radius: var(--radius-sm);
+    --el-input-text-color: var(--color-text-primary);
+    --el-input-placeholder-color: var(--color-text-tertiary);
+
+    :deep(.el-input__wrapper) {
+        min-height: 32px;
+        padding: 0 10px;
+    }
+
+    :deep(.el-input__wrapper.is-focus) {
+        background: var(--color-surface);
+    }
+
+    :deep(.el-input__inner) {
+        font: inherit;
+        font-size: var(--font-xs);
+    }
+}
+
+.st-iconbtn {
+    appearance: none;
+    flex: none;
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: var(--color-chip-bg);
+    color: var(--color-text-secondary);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    transition:
+        background-color var(--transition-fast),
+        color var(--transition-fast);
+
+    svg {
+        width: var(--icon-sm);
+        height: var(--icon-sm);
+    }
+
+    &:hover:not(:disabled) {
+        /* 原先是 accent-soft + 品牌图标：深色下品牌色在浅品牌底上只有 4.07:1，
+           与命令栏按钮的 hover 语言也不一致。统一用中性悬浮底 + 主文字色。 */
+        background: var(--elevation-hover);
+        color: var(--color-text-primary);
+    }
+
+    &:active:not(:disabled) {
+        background: var(--elevation-pressed);
+        color: var(--color-text-primary);
+    }
+
+    &:disabled {
+        cursor: default;
+    }
+}
+
+.st-pills {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+    max-width: 420px;
+}
+
+.st-chip {
+    height: var(--badge-h);
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0 6px 0 9px;
+    border-radius: var(--radius-pill);
+    background: var(--color-chip-bg);
+    color: var(--color-text-secondary);
+    font-size: var(--font-xs);
+    font-variant-numeric: tabular-nums;
+
+    &.is-plain {
+        border-radius: var(--radius-sm);
+        padding: 0 8px;
+    }
+}
+
+.st-chip-x {
+    appearance: none;
+    /* 微按钮盒：22px 徽章内放不下 24 控件盒，取 --icon-sm 盒 + 12px 字形 */
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-xs);
+    background: transparent;
+    color: var(--color-text-tertiary);
+    display: grid;
+    place-items: center;
+    font: inherit;
+    font-size: var(--font-xs);
+    line-height: 1;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+        background: var(--elevation-hover);
+        color: var(--color-text-primary);
+    }
+
+    &:active:not(:disabled) {
+        background: var(--elevation-pressed);
+    }
+
+    &:disabled {
+        cursor: default;
+    }
+}
+
+.st-subtle {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--color-brand-fg);
+    font: inherit;
+    font-size: var(--font-xs);
+    padding: 7px 10px;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+
+    &:hover:not(:disabled) {
+        background: var(--elevation-hover);
+    }
+
+    &:active:not(:disabled) {
+        background: var(--elevation-pressed);
+    }
+
+    &.is-danger {
+        color: var(--color-danger-fg);
+    }
+
+    &:disabled {
+        opacity: 0.55;
+        cursor: default;
+    }
+}
+
+.st-infobar {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    border-radius: var(--radius-md);
+    background: var(--color-accent-soft);
+
+    svg {
+        width: var(--icon-sm);
+        height: var(--icon-sm);
+        flex: none;
+        margin-top: 1px;
+        color: var(--color-brand-fg);
+    }
+}
+
+.st-info-title {
+    font-size: var(--font-sm);
+    font-weight: 600;
+}
+
+.st-info-desc {
+    margin-top: 2px;
+    font-size: var(--font-xs);
+    line-height: var(--line-xs);
+    color: var(--color-text-secondary);
+}
+
+/* ---------- 关于：身份卡 ---------- */
+.st-identity {
+    padding: 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.st-logo {
+    width: 40px;
+    height: 40px;
+    flex: none;
+    border-radius: var(--radius-md);
+    background: var(--color-accent-soft);
+    color: var(--color-brand-fg);
+    display: grid;
+    place-items: center;
+
+    svg {
+        width: 22px;
+        height: 22px;
+    }
+}
+
+.st-id-info {
+    flex: 1;
+    min-width: 0;
+}
+
+/* 身份卡右侧的主操作。全页只有这一个实心品牌底按钮 */
+.st-id-acts {
+    flex: none;
+    margin-left: auto;
+}
+
+.st-accentbtn {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: var(--control-md);
+    padding: 0 14px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-text);
+    font: inherit;
+    font-size: var(--font-xs);
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+
+    &:hover:not(:disabled) {
+        background: var(--btn-primary-hover-bg);
+    }
+
+    &:active:not(:disabled) {
+        background: var(--btn-primary-active-bg);
+    }
+
+    /* 禁用时不退回中性底：那会看起来像换成了另一个次级按钮 */
+    &:disabled {
+        background: var(--btn-primary-disabled-bg);
+        color: var(--btn-primary-disabled-text);
+        cursor: default;
+    }
+}
+
+.st-id-name {
+    font-size: var(--font-2xl);
+    font-weight: 600;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+
+    small {
+        font-size: var(--font-xs);
+        font-weight: 500;
+        color: var(--color-text-tertiary);
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+.st-id-desc {
+    margin-top: 4px;
     font-size: var(--font-xs);
     color: var(--color-text-secondary);
 }
 
-.about-version-value {
-    font-size: var(--font-xl);
-    font-weight: 600;
-    color: var(--color-text-primary);
-    font-variant-numeric: tabular-nums;
-}
-
-.about-links {
+.st-id-links {
     display: flex;
-    align-items: center;
-    gap: 4px;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 14px;
 }
 
-@media (max-width: 640px) {
-    .settings {
-        padding: 12px 12px 24px;
+.st-link {
+    color: var(--color-brand-fg);
+    font-size: var(--font-xs);
+    text-decoration: none;
+
+    &:hover {
+        text-decoration: underline;
     }
-    .format-grid {
-        grid-template-columns: 1fr;
+}
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 999px) {
+    .st-window {
+        --st-nav-w: 200px;
     }
-    .field-row,
-    .cache-item,
-    .about-row {
+    .st-content {
+        padding: 20px 20px 32px;
+    }
+    .st-card {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+}
+
+@media (max-width: 759px) {
+    .st-body {
         flex-direction: column;
-        align-items: flex-start;
     }
-    .ext-input-row .ext-input {
-        flex: 1 1 auto;
+    .st-navpane {
         width: 100%;
+        height: 44px;
+        flex: none;
+        flex-direction: row;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 10px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        border-right: 0;
+        border-bottom: 1px solid var(--color-divider);
     }
-    .ext-input-row {
+    .st-search {
+        width: 140px;
+        flex: none;
+        margin: 0 8px 0 0;
+    }
+    .st-navgroup,
+    .st-navfoot,
+    .st-navempty {
+        display: none;
+    }
+    .st-navitem {
+        flex: none;
+        height: 32px;
+        padding: 0 10px;
+
+        &.is-active::before {
+            top: auto;
+            bottom: 0;
+            left: 10px;
+            right: 10px;
+            width: auto;
+            height: 2px;
+        }
+    }
+    .st-pagehead h2 {
+        font-size: var(--font-2xl);
+    }
+    .st-row {
         flex-wrap: wrap;
     }
+    .st-row-ctl {
+        width: 100%;
+        justify-content: flex-end;
+    }
+}
+
+@media (max-width: 520px) {
+    .st-row.is-input .st-row-ctl {
+        flex-wrap: wrap;
+    }
+    .st-textbox {
+        width: 100%;
+    }
+    .st-subtitle-row {
+        flex-wrap: wrap;
+    }
+}
+</style>
+
+<!-- el-select 的下拉由 Teleport 挂到 body，拿不到 scoped 的 data-v，
+     因此用独立的 popper-class 在非 scoped 样式里映射主题变量。 -->
+<style lang="scss">
+.st-select-popper.el-popper {
+    --el-bg-color-overlay: var(--color-surface);
+    --el-border-color-light: var(--color-border);
+    --el-text-color-regular: var(--color-text-primary);
+    --el-text-color-placeholder: var(--color-text-tertiary);
+    --el-fill-color-light: var(--color-chip-bg);
+    --el-color-primary: var(--color-brand-fg);
+    --el-box-shadow-light: 0 6px 20px rgba(0, 0, 0, 0.14);
+    border-radius: var(--radius-md);
+
+    .el-select-dropdown__list {
+        padding: 4px 0;
+    }
+
+    .el-select-dropdown__item {
+        height: var(--control-md);
+        /* 单行居中：行高等于控件高（EP 默认 34/34 同机制），不写字面量 */
+        line-height: var(--control-md);
+        padding: 0 10px;
+        font-size: var(--font-xs);
+    }
+}
+
+html.dark .st-select-popper.el-popper {
+    --el-box-shadow-light: 0 6px 20px rgba(0, 0, 0, 0.45);
 }
 </style>

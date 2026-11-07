@@ -1,0 +1,223 @@
+/* ==== EPUB 预览的阅读版式 ====
+   两层职责：
+   1. .bk-pv-* 负责预览外壳（目录抽屉、阅读列、底部进度条、统一错态）；
+   2. iframe 内的排版由 srcdoc 自带，颜色/字号通过 CSS 变量 --bk-* 注入，
+      切换底色与字号只改变量、不重载文档，避免丢失阅读位置。
+   颜色与间距只用 --color-* / --space-* / --font-* / --radius-* 变量，不新增硬编码色值。 */
+
+.bk-pv {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    display: flex;
+    overflow: hidden;
+    color: var(--color-text-primary);
+    font-size: var(--font-md);
+
+    /* ---------- 目录抽屉（覆盖式，不挤压正文） ---------- */
+    &-toc {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 5;
+        width: 240px;
+        padding: 10px 8px 16px 10px;
+        background: color-mix(in srgb, var(--color-bg) 94%, transparent);
+        backdrop-filter: blur(14px);
+        border-right: 1px solid var(--color-divider);
+        box-shadow: 8px 0 18px -10px rgba(0, 0, 0, 0.22);
+    }
+
+    /* 抽屉顶部：书名与作者，取代原 book-toolbar 里的重复标题 */
+    &-toc-head {
+        padding: 2px 8px 10px;
+        margin-bottom: 6px;
+        border-bottom: 1px solid var(--color-divider);
+    }
+
+    &-toc-title {
+        margin: 0;
+        font-size: var(--font-xs);
+        font-weight: 600;
+        line-height: var(--line-xs);
+        color: var(--color-text-primary);
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+
+    &-toc-author {
+        margin: 3px 0 0;
+        font-size: var(--font-xs);
+        color: var(--color-text-tertiary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    &-toc-empty {
+        margin: 8px 0 0;
+        padding: 0 8px;
+        font-size: var(--font-xs);
+        color: var(--color-text-tertiary);
+    }
+
+    &-toc-item {
+        display: block;
+        padding: 5px 8px;
+        margin-bottom: 1px;
+        border-radius: var(--radius-sm);
+        border-left: 2px solid transparent;
+        font-size: var(--font-xs);
+        line-height: var(--line-xs);
+        color: var(--color-text-secondary);
+        text-decoration: none;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        transition:
+            background-color var(--transition-fast),
+            color var(--transition-fast);
+
+        &:hover {
+            background: var(--elevation-hover);
+            color: var(--color-text-primary);
+        }
+
+        /* 章节层级缩进 16px/级 */
+        &.is-lv2 {
+            padding-left: 24px;
+        }
+
+        &.is-lv3 {
+            padding-left: 40px;
+            font-size: var(--font-xs);
+            color: var(--color-text-tertiary);
+        }
+
+        &.is-active {
+            color: var(--color-text-primary);
+            background: var(--color-selected-bg);
+            border-left-color: var(--color-brand-fg);
+            font-weight: 600;
+        }
+    }
+
+    /* ---------- 阅读区 ----------
+       iframe 铺满整块阅读区，正文列（680px）由 srcdoc 里的 body 自己居中：
+       这样滚动条贴窗口右缘、纸面填满阅读区，不会出现「窄条纸 + 右侧空白」的割裂。
+       封面等整页媒体由 body.is-cover 处理（见 buildSrcdoc）。 */
+    &-read {
+        position: relative;
+        flex: 1;
+        min-width: 0;
+        height: 100%;
+        display: flex;
+        overflow: hidden;
+    }
+
+    /* 抽屉挤压正文：正文列始终居中于「扣除目录后的可见区」。
+       若做成覆盖式，正文仍按整个阅读区居中，看上去会偏左压着目录。 */
+    &.is-toc &-read {
+        padding-left: 240px;
+    }
+
+    &-iframe {
+        width: 100%;
+        height: 100%;
+        border: 0;
+        display: block;
+        color-scheme: normal;
+    }
+
+    /* ---------- 底部进度条 ----------
+       左右各内缩 16px；抽屉打开时整体右移，避免被覆盖式抽屉压住左端。 */
+    &-bar {
+        position: absolute;
+        left: 16px;
+        right: 16px;
+        bottom: 8px;
+        height: 3px;
+        border-radius: var(--radius-xs);
+        background: var(--color-divider);
+        pointer-events: none;
+        transition: left var(--transition-fast);
+
+        i {
+            display: block;
+            height: 100%;
+            min-width: 0;
+            border-radius: var(--radius-xs);
+            background: var(--color-accent);
+            transition: width var(--transition-fast);
+        }
+    }
+
+    &.is-toc &-bar {
+        left: 256px;
+    }
+
+    /* ---------- 统一错态 ---------- */
+    &-state {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-2);
+        padding: var(--space-5);
+        text-align: center;
+
+        &-title {
+            font-size: var(--font-lg);
+            font-weight: 600;
+            color: var(--color-danger-fg);
+        }
+
+        &-detail {
+            max-width: 460px;
+            font-size: var(--font-sm);
+            color: var(--color-text-secondary);
+            word-break: break-word;
+        }
+
+        &-btn {
+            margin-top: var(--space-2);
+            height: var(--control-md);
+            padding: 0 14px;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            background: var(--color-surface);
+            color: var(--color-text-primary);
+            font-family: inherit;
+            font-size: var(--font-sm);
+            cursor: pointer;
+            transition:
+                background-color var(--transition-fast),
+                border-color var(--transition-fast);
+
+            &:hover {
+                background: var(--elevation-hover);
+                border-color: var(--color-brand-fg);
+            }
+        }
+    }
+}
+
+/* ---------- 命令栏里的底色色块 ---------- */
+.bk-paper .swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: var(--radius-xs);
+    border: 1px solid rgba(0, 0, 0, 0.16);
+    flex: none;
+    display: inline-block;
+}
+
+.dark .bk-paper .swatch {
+    border-color: rgba(255, 255, 255, 0.22);
+}

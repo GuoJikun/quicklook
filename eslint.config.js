@@ -11,7 +11,14 @@ export default [
 
     {
         name: 'app/files-to-ignore',
-        ignores: ['**/dist/**', '**/dist-ssr/**', '**/coverage/**', '**/target/**', '**/src-tauri/**'],
+        ignores: [
+            '**/dist/**',
+            '**/dist-ssr/**',
+            '**/coverage/**',
+            '**/target/**',
+            '**/src-tauri/**',
+            '.ffmpeg-build/**',
+        ],
     },
 
     ...pluginVue.configs['flat/essential'],

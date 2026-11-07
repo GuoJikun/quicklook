@@ -5,6 +5,7 @@ pub mod document;
 pub mod image;
 pub mod pdf;
 pub mod system;
+pub mod upgrade;
 pub mod video;
 
 pub use archive::{archive, archive_is_password_protected};
@@ -14,8 +15,10 @@ pub use document::document;
 pub use image::{clear_image_cache, convert_to_png};
 pub use pdf::{clear_pdf_cache, get_pdf_outline, get_pdf_page_sizes, render_pdf_page};
 pub use system::{
-    clear_cache, get_default_program_name, set_locale, set_log_level, show_open_with_dialog,
+    clear_cache, get_default_program_name, open_upgrade, set_locale, set_log_level,
+    show_open_with_dialog,
 };
+pub use upgrade::{UpgradeState, upgrade_cancel_download, upgrade_download_and_install};
 pub use video::{
     cancel_video_conversion, check_ffmpeg, convert_video_to_hls, prepare_video_for_preview,
 };

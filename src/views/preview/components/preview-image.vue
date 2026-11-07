@@ -3,15 +3,6 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useElementSize, useEventListener, useThrottleFn } from '@vueuse/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import {
-    ArrowClockwise16Regular,
-    ArrowFit16Regular,
-    ArrowMinimize16Regular,
-    ArrowRotateCounterclockwise20Regular,
-    FullScreenMaximize16Regular,
-    ZoomIn16Regular,
-    ZoomOut16Regular,
-} from '@vicons/fluent'
 
 const { t } = useI18n()
 
@@ -224,6 +215,22 @@ onBeforeUnmount(() => {
     // 离开图片视图时复位全屏，避免下一个预览继承无边框全屏状态
     if (isFullscreen.value) void setWindowFullscreen(false)
 })
+
+// 缩放/旋转/全屏的控件已上移到 LayoutPreview 的命令栏，
+// 此处只暴露状态与方法，由父级渲染按钮，避免同一套操作在两处各写一遍。
+defineExpose({
+    percent,
+    mode,
+    rotate,
+    isFullscreen,
+    naturalW,
+    naturalH,
+    zoomBy,
+    applyFit,
+    setActualSize,
+    rotateBy,
+    toggleFullscreen,
+})
 </script>
 
 <template>
@@ -238,61 +245,12 @@ onBeforeUnmount(() => {
             @load="onImgLoad"
             draggable="false"
         />
-
-        <div class="image-toolbar" @wheel.stop @dblclick.stop>
-            <div class="image-toolbar-btn" :title="t('image.zoomOut')" @click="zoomBy(1 / ZOOM_STEP)">
-                <el-icon :size="16"><ZoomOut16Regular /></el-icon>
-            </div>
-            <span class="image-toolbar-percent" :title="t('image.zoomPercent')">{{ percent }}%</span>
-            <div class="image-toolbar-btn" :title="t('image.zoomIn')" @click="zoomBy(ZOOM_STEP)">
-                <el-icon :size="16"><ZoomIn16Regular /></el-icon>
-            </div>
-
-            <span class="image-toolbar-divider"></span>
-
-            <div
-                class="image-toolbar-btn"
-                :class="{ 'is-active': mode === 'fit' }"
-                :title="t('image.fit')"
-                @click="applyFit"
-            >
-                <el-icon :size="16"><ArrowFit16Regular /></el-icon>
-            </div>
-            <div
-                class="image-toolbar-btn is-text"
-                :class="{ 'is-active': mode === 'actual' }"
-                :title="t('image.actual')"
-                @click="setActualSize"
-            >
-                1:1
-            </div>
-
-            <span class="image-toolbar-divider"></span>
-
-            <div class="image-toolbar-btn" :title="t('image.rotateLeft')" @click="rotateBy(-90)">
-                <el-icon :size="16"><ArrowRotateCounterclockwise20Regular /></el-icon>
-            </div>
-            <div class="image-toolbar-btn" :title="t('image.rotateRight')" @click="rotateBy(90)">
-                <el-icon :size="16"><ArrowClockwise16Regular /></el-icon>
-            </div>
-
-            <span class="image-toolbar-divider"></span>
-
-            <div
-                class="image-toolbar-btn"
-                :title="isFullscreen ? t('image.exitFullscreen') : t('image.fullscreen')"
-                @click="toggleFullscreen"
-            >
-                <el-icon :size="16">
-                    <ArrowMinimize16Regular v-if="isFullscreen" />
-                    <FullScreenMaximize16Regular v-else />
-                </el-icon>
-            </div>
-        </div>
     </div>
 </template>
 
 <style scoped lang="scss">
+/* 图片本身不加圆角与阴影：缩放到 800% 时圆角会被 transform 一并放大，
+   反而失真。留出内边距让图片与命令栏之间保持呼吸即可。 */
 .preview-image {
     width: 100%;
     height: 100%;
@@ -300,6 +258,7 @@ onBeforeUnmount(() => {
     justify-content: center;
     align-items: center;
     align-content: center;
+    padding: 4px 16px 16px;
     background-color: var(--color-bg);
     position: relative;
     overflow: hidden; // 防止视觉溢出
@@ -310,79 +269,14 @@ onBeforeUnmount(() => {
         user-select: none;
         transform-origin: center center;
         will-change: transform;
+        /* base.css 的 img { max-width: 100% } 会先把图缩到容器宽，再叠乘 transform，
+           令命令栏上的百分比与实际显示尺寸不符。这里按原始像素渲染，缩放只由 scale 决定。 */
+        max-width: none;
+        max-height: none;
     }
 
     img:active {
         cursor: grabbing;
-    }
-}
-
-.image-toolbar {
-    position: absolute;
-    left: 50%;
-    bottom: var(--space-4);
-    transform: translateX(-50%);
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    padding: 4px 8px;
-    border-radius: var(--radius-lg);
-    background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-    user-select: none;
-    z-index: 10;
-    opacity: 0.92;
-    transition: opacity var(--transition-base);
-
-    &:hover {
-        opacity: 1;
-    }
-
-    &-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 28px;
-        height: 28px;
-        padding: 0 4px;
-        border-radius: var(--radius-sm);
-        cursor: pointer;
-        color: var(--color-text-primary);
-        transition:
-            background-color var(--transition-fast),
-            color var(--transition-fast);
-
-        &:hover {
-            background-color: var(--color-hover-bg);
-        }
-
-        &.is-active {
-            color: var(--el-color-primary);
-            background-color: var(--color-hover-bg);
-        }
-
-        &.is-text {
-            font-size: var(--font-xs);
-            font-weight: 500;
-            letter-spacing: 0.02em;
-        }
-    }
-
-    &-percent {
-        min-width: 44px;
-        text-align: center;
-        font-size: var(--font-xs);
-        color: var(--color-text-secondary);
-        font-variant-numeric: tabular-nums;
-    }
-
-    &-divider {
-        width: 1px;
-        height: 16px;
-        margin: 0 4px;
-        background-color: var(--color-border);
-        flex: 0 0 1px;
     }
 }
 </style>

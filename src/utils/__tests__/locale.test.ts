@@ -158,8 +158,9 @@ describe('源码中的文案键', () => {
     })
 
     it('没有遗留硬编码的中文界面文案', () => {
-        // markdown 插件的 codeCopyButtonTitle 目前未被渲染逻辑使用，保留原值
-        const allowList = [join('src', 'utils', 'markdown', 'index.ts')]
+        // markdown 插件的 codeCopyButtonTitle 目前未被渲染逻辑使用，保留原值；
+        // font-samples 是字形样本（「永」「和」这类单字），属于样张数据而非界面文案
+        const allowList = [join('src', 'utils', 'markdown', 'index.ts'), join('src', 'utils', 'font-samples.ts')]
         const offenders = files
             .filter(file => !allowList.some(allowed => file.endsWith(allowed)))
             .filter(file => /[\u4e00-\u9fa5]/.test(stripNonUiText(readFileSync(file, 'utf-8'))))

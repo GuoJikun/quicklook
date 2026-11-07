@@ -1,7 +1,16 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-
+import { computed, onMounted, ref } from 'vue'
+import {
+    ArrowClockwise16Regular,
+    ArrowFit16Regular,
+    ArrowMinimize16Regular,
+    ArrowCounterclockwise16Regular,
+    FullScreenMaximize16Regular,
+    ZoomIn16Regular,
+    ZoomOut16Regular,
+} from '@vicons/fluent'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import type { FileInfo } from '@/utils/typescript'
 import LayoutPreview from '@/components/layout-preview.vue'
 import { convertFileSrc, invoke } from '@tauri-apps/api/core'
@@ -11,16 +20,29 @@ defineOptions({
     name: 'ImageSupport',
 })
 
+const { t } = useI18n()
 const route = useRoute()
 
 const fileInfo = ref<FileInfo>()
 
 const loading = ref(false)
 const imgPath = ref<string>()
-// 图片全屏时隐藏头尾，进入沉浸模式
+// 图片全屏时隐藏标题行与命令栏，进入沉浸模式
 const isFullscreen = ref(false)
 
 const convertFormats = ['psd', 'tiff', 'tif', 'tga', 'pbm', 'pgm', 'ppm', 'qoi', 'exr', 'heic', 'heif', 'jxl']
+
+const previewRef = ref<InstanceType<typeof PreviewImage> | null>(null)
+const ZOOM_STEP = 1.2
+
+const zoomPercent = computed(() => previewRef.value?.percent ?? 100)
+const viewMode = computed(() => previewRef.value?.mode ?? 'fit')
+const resolution = computed(() => {
+    const w = previewRef.value?.naturalW ?? 0
+    const h = previewRef.value?.naturalH ?? 0
+    return w && h ? `${w} × ${h}` : ''
+})
+const fullscreen = computed(() => previewRef.value?.isFullscreen ?? false)
 
 const init = async () => {
     loading.value = true
@@ -40,10 +62,70 @@ onMounted(async () => {
 
 <template>
     <LayoutPreview :file="fileInfo" :loading="loading" :immersive="isFullscreen">
+        <template #toolbar>
+            <button class="pv-tb-btn" type="button" :title="t('image.zoomOut')" @click="previewRef?.zoomBy(1 / ZOOM_STEP)">
+                <el-icon><ZoomOut16Regular /></el-icon>
+            </button>
+            <span class="pv-tb-num" :title="t('image.zoomPercent')">{{ zoomPercent }}%</span>
+            <button class="pv-tb-btn" type="button" :title="t('image.zoomIn')" @click="previewRef?.zoomBy(ZOOM_STEP)">
+                <el-icon><ZoomIn16Regular /></el-icon>
+            </button>
+
+            <i class="pv-tb-sep"></i>
+
+            <button
+                class="pv-tb-btn is-text"
+                type="button"
+                :aria-pressed="viewMode === 'fit'"
+                :title="t('image.fit')"
+                @click="previewRef?.applyFit()"
+            >
+                <el-icon><ArrowFit16Regular /></el-icon>
+                {{ t('image.fitShort') }}
+            </button>
+            <button
+                class="pv-tb-btn is-text"
+                type="button"
+                :aria-pressed="viewMode === 'actual'"
+                :title="t('image.actual')"
+                @click="previewRef?.setActualSize()"
+            >
+                1:1
+            </button>
+
+            <i class="pv-tb-sep"></i>
+
+            <button class="pv-tb-btn" type="button" :title="t('image.rotateLeft')" @click="previewRef?.rotateBy(-90)">
+                <el-icon><ArrowCounterclockwise16Regular /></el-icon>
+            </button>
+            <button class="pv-tb-btn" type="button" :title="t('image.rotateRight')" @click="previewRef?.rotateBy(90)">
+                <el-icon><ArrowClockwise16Regular /></el-icon>
+            </button>
+
+            <i class="pv-tb-sep"></i>
+
+            <button
+                class="pv-tb-btn is-text"
+                type="button"
+                :title="fullscreen ? t('image.exitFullscreen') : t('image.fullscreen')"
+                @click="previewRef?.toggleFullscreen()"
+            >
+                <el-icon>
+                    <ArrowMinimize16Regular v-if="fullscreen" />
+                    <FullScreenMaximize16Regular v-else />
+                </el-icon>
+                {{ fullscreen ? t('image.exitFullscreenShort') : t('image.fullscreen') }}
+            </button>
+
+            <div class="pv-tb-grow"></div>
+            <span v-if="resolution" class="pv-tb-info">{{ resolution }}</span>
+        </template>
+
         <div class="image-support">
             <div class="image-support-inner" id="canvas">
                 <PreviewImage
                     v-if="!loading"
+                    ref="previewRef"
                     :src="imgPath as string"
                     @fullscreen-change="isFullscreen = $event"
                 />

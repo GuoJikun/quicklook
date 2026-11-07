@@ -9,7 +9,8 @@ import { error, warn } from '@tauri-apps/plugin-log'
 import 'element-plus/theme-chalk/base.css'
 import 'element-plus/theme-chalk/dark/css-vars.css'
 
-// 初始化主题（暗黑/明亮），在应用创建前执行以减少闪烁
+// 副作用导入：主题在此完成初始化（写入 html.dark），早于 app.mount 以减少首帧闪烁。
+// 所有窗口都会执行到这里，因此各窗口无需各自初始化；页面只按需调用 useTheme() 读取响应式状态。
 import './hooks/theme'
 import i18n, { initLocale, listenLocaleChange } from './locales'
 

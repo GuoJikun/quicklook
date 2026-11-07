@@ -13,11 +13,14 @@
     --surface: #ffffff;
     --text: #1a1a1a;
     --text-2: #555555;
-    --text-3: #8a8a8a;
+    --text-3: #616161;          /* NeutralForeground3 */
     --border: #e1e1e1;
-    --accent: #0078d4;
-    --accent-hi: #2b95e3;
-    --accent-soft: rgba(0, 120, 212, 0.12);
+    --accent: #0078d4;            /* BrandBackground：仅作实心底 */
+    --accent-fg: #0f6cbd;         /* BrandForeground1：文字/图标/描边 */
+    --accent-hover: #115ea3;      /* BrandBackgroundHover */
+    --selected: #ebebeb;          /* NeutralBackground1Selected */
+    --danger-fg: #a80000;
+    --accent-soft: rgba(15, 108, 189, 0.10);
     --hover: rgba(0, 0, 0, 0.06);
     --ring-track: rgba(0, 0, 0, 0.10);
     --win-border: transparent;
@@ -28,23 +31,53 @@
     --page-bg: #e9edf2;
     --page-card: #ffffff;
     --page-line: #dfe3e8;
+    --radius-xs: 2px;   /* 细元素：进度条、指示条、内联代码 */
     --radius-sm: 4px;
     --radius-md: 8px;
     --radius-lg: 10px;
     --radius-xl: 12px;
+    --radius-pill: 999px;   /* 胶囊：开关、徽章、chip */
     --space-1: 4px;
     --space-2: 8px;
     --space-3: 12px;
     --space-4: 16px;
     --space-5: 24px;
+    --font-2xs: 10px;
     --font-xs: 12px;
-    --font-sm: 13px;
+    --font-sm: 14px;
     --font-md: 14px;
-    --font-lg: 15px;
+    --font-lg: 16px;
     --font-xl: 16px;
     --t-fast: 0.15s ease;
     --t-base: 0.2s ease;
     --t-med: 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    /* 控件/徽章/图标/行高阶梯：fluent-baseline.md §3 */
+    --control-sm: 24px;
+    --control-md: 32px;
+    --control-lg: 40px;
+    --icon-xs: 12px;
+    --icon-sm: 16px;
+    --icon-md: 20px;
+    --icon-lg: 24px;
+    --icon-xl: 32px;
+    --badge-h: 22px;
+    --line-2xs: 14px;
+    --line-xs: 16px;
+    --line-sm: 20px;
+    --line-md: 20px;
+    --line-lg: 22px;
+    --line-xl: 22px;
+    --line-2xl: 28px;
+    --line-3xl: 32px;
+    --line-4xl: 40px;
+    --line-reading: 1.75;
+    --line-code: 1.5;
+    --line-loose: 1.7;
+    /* 歌词行几何（560×360 设计值，随 --u 缩放），不是文本行高 */
+    --line-h: 30px;
+    --line-h-cur: 34px;
+    --btn-primary-text: #ffffff;
+    --close-hover: #e81123;
 }
 
 html[data-theme='dark'] {
@@ -52,11 +85,14 @@ html[data-theme='dark'] {
     --surface: #2b2b2b;
     --text: #ffffff;
     --text-2: #c2c2c2;
-    --text-3: #8f8f8f;
+    --text-3: #adadad;          /* NeutralForeground3 dark */
     --border: #3a3a3a;
-    --accent: #2b95e3;
-    --accent-hi: #4aa8f0;
-    --accent-soft: rgba(43, 149, 227, 0.16);
+    --accent: #0078d4;            /* BrandBackground */
+    --accent-fg: #479ef5;         /* BrandForeground1 dark */
+    --accent-hover: #0e4775;
+    --selected: #383838;
+    --danger-fg: #ff99a4;
+    --accent-soft: rgba(71, 158, 245, 0.14);
     --hover: rgba(255, 255, 255, 0.07);
     --ring-track: rgba(255, 255, 255, 0.14);
     --win-border: rgba(255, 255, 255, 0.08);
@@ -70,12 +106,19 @@ html[data-theme='dark'] {
 
 * { box-sizing: border-box; }
 
+/* 焦点环：Fluent 2 双层（外 2px 品牌前景 + 内侧 1px 背景隔离） */
+:focus-visible {
+    outline: 2px solid var(--accent-fg);
+    outline-offset: 1px;
+    box-shadow: 0 0 0 1px var(--bg);
+}
+
 body {
     margin: 0;
     padding: 40px 32px 72px;
     background: var(--page-bg);
     color: var(--text);
-    font-family: 'Segoe UI Variable Display', 'Segoe UI', 'Microsoft YaHei UI', 'Microsoft YaHei', system-ui, sans-serif;
+    font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif;
     -webkit-font-smoothing: antialiased;
     transition: background var(--t-med), color var(--t-med);
 }
@@ -92,7 +135,7 @@ body {
 }
 .doc-head h1 {
     margin: 0 0 6px;
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 600;
     letter-spacing: -0.2px;
 }
@@ -100,7 +143,7 @@ body {
     margin: 0;
     font-size: var(--font-sm);
     color: var(--text-2);
-    line-height: 1.7;
+    line-height: var(--line-reading);
     max-width: 860px;
 }
 .head-tools { display: flex; align-items: center; gap: 8px; }
@@ -111,7 +154,7 @@ body {
     gap: 2px;
     background: var(--page-card);
     border: 1px solid var(--page-line);
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
 }
 .seg button {
     appearance: none;
@@ -121,7 +164,7 @@ body {
     font: inherit;
     font-size: var(--font-xs);
     padding: 6px 14px;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     cursor: pointer;
     display: inline-flex;
     align-items: center;
@@ -131,9 +174,9 @@ body {
 .seg button:hover { background: var(--hover); }
 .seg button[aria-pressed='true'] {
     background: var(--accent);
-    color: #fff;
+    color: var(--btn-primary-text);
 }
-.seg svg { width: 14px; height: 14px; }
+.seg svg { width: var(--icon-sm); height: var(--icon-sm); }
 
 .grid {
     max-width: 1224px;
@@ -153,7 +196,7 @@ body {
 }
 .frame-cap b { font-size: var(--font-sm); font-weight: 600; }
 .frame-cap span {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--text-3);
     font-variant-numeric: tabular-nums;
     letter-spacing: 0.3px;
@@ -184,13 +227,13 @@ body {
     display: grid;
     place-items: center;
     cursor: pointer;
-    color: #fff;
+    color: var(--btn-primary-text);
     background: color-mix(in srgb, var(--accent) 92%, #000);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
     transition: transform var(--t-fast), background var(--t-fast);
 }
 .play-btn svg { width: 20px; height: 20px; }
-.play-btn:hover { transform: scale(1.06); background: var(--accent-hi); }
+.play-btn:hover { transform: scale(1.06); background: var(--accent-hover); }
 .play-btn:active { transform: scale(0.95); }
 
 
@@ -214,7 +257,7 @@ body {
 /* 进度行：真实 track + buffer + thumb，hover 加粗 */
 .time {
     flex: 0 0 auto;
-    font-size: 11px;
+    font-size: 12px;
     font-variant-numeric: tabular-nums;
     color: var(--text-2);
     letter-spacing: 0.2px;
@@ -234,7 +277,7 @@ body {
     content: '';
     position: absolute;
     inset: 8px 0;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     background: var(--ring-track);
     transition: padding var(--t-fast);
 }
@@ -244,7 +287,7 @@ body {
     left: 0;
     height: 4px;
     top: 8px;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     transition: height var(--t-fast), top var(--t-fast);
 }
 .track .buffer {
@@ -253,7 +296,7 @@ body {
 }
 .track .fill {
     width: 0%;
-    background: linear-gradient(90deg, var(--accent), var(--accent-hi));
+    background: linear-gradient(90deg, var(--accent), var(--accent-fg));
 }
 .track .thumb {
     position: absolute;
@@ -261,7 +304,7 @@ body {
     height: 10px;
     border-radius: 50%;
     background: var(--surface);
-    border: 2px solid var(--accent);
+    border: 2px solid var(--accent-fg);
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
     transform: translate(-50%, -50%);
     top: 10px;
@@ -305,10 +348,10 @@ body {
     z-index: 3;
 }
 .win:hover .win-actions { opacity: 1; }
-.win-actions .icon-btn { width: 26px; height: 26px; background: color-mix(in srgb, var(--bg) 72%, transparent); backdrop-filter: blur(8px); }
+.win-actions .icon-btn { width: var(--control-md); height: var(--control-md); background: color-mix(in srgb, var(--bg) 72%, transparent); backdrop-filter: blur(8px); }
 .win-actions .icon-btn:hover { background: var(--hover); }
-.win-actions .icon-btn.close:hover { background: #e81123; color: #fff; }
-.win-actions .icon-btn svg { width: 12px; height: 12px; }
+.win-actions .icon-btn.close:hover { background: var(--close-hover); color: var(--btn-primary-text); }
+.win-actions .icon-btn svg { width: var(--icon-sm); height: var(--icon-sm); }
 
 /* 顶部拖拽提示区（等同于 Tauri 的 data-tauri-drag-region） */
 .drag-strip { position: absolute; inset: 0 0 auto 0; height: 22px; z-index: 0; }
@@ -321,7 +364,7 @@ body {
 .transport .skip small {
     position: absolute;
     bottom: -1px;
-    font-size: 7px;
+    font-size: 10px;
     font-weight: 700;
     letter-spacing: -0.2px;
 }
@@ -334,7 +377,7 @@ body {
     left: 50%;
     transform: translateX(-50%) translateY(4px);
     padding: 8px 0 8px;
-    border-radius: 16px;
+    border-radius: var(--radius-xl);
     background: var(--surface);
     border: 1px solid var(--border);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
@@ -348,7 +391,7 @@ body {
     width: 4px;
     height: 80px;
     margin: 0 14px;
-    border-radius: 2px;
+    border-radius: var(--radius-xs);
     background: var(--hover);
 }
 .vol-fill {
@@ -356,7 +399,7 @@ body {
     left: 0;
     bottom: 0;
     width: 100%;
-    border-radius: 2px;
+    border-radius: var(--radius-xs);
     background: var(--accent);
 }
 .vol-knob {
@@ -416,7 +459,7 @@ body {
 .imm-title {
     font-size: var(--font-lg);
     font-weight: 600;
-    line-height: 1.35;
+    line-height: var(--line-lg);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -444,7 +487,7 @@ body {
 .imm-lyric .line {
     flex: 0 0 auto;
     font-size: var(--font-md);
-    line-height: 30px;
+    line-height: var(--line-h);
     color: var(--text-3);
     white-space: nowrap;
     overflow: hidden;
@@ -453,10 +496,10 @@ body {
 }
 .imm-lyric .line.near { color: var(--text-2); }
 .imm-lyric .line.current {
-    font-size: 22px;
-    line-height: 34px;
+    font-size: 20px;
+    line-height: var(--line-h-cur);
     font-weight: 600;
-    color: var(--accent);
+    color: var(--accent-fg);
     letter-spacing: -0.3px;
 }
 
@@ -470,16 +513,16 @@ body {
 .note {
     background: var(--page-card);
     border: 1px solid var(--page-line);
-    border-radius: 12px;
+    border-radius: var(--radius-xl);
     padding: 16px 18px;
 }
 .note h3 { margin: 0 0 10px; font-size: var(--font-sm); font-weight: 600; display: flex; align-items: center; gap: 7px; }
 .note h3 i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); display: inline-block; }
 .note ul { margin: 0; padding-left: 16px; }
-.note li { font-size: var(--font-xs); line-height: 1.9; color: var(--text-2); }
-.note code { font-family: 'Cascadia Code', Consolas, monospace; font-size: 11px; background: var(--hover); padding: 1px 5px; border-radius: 3px; color: var(--text); }
-.note .bad { color: #c33; }
-html[data-theme='dark'] .note .bad { color: #ff8b81; }
+.note li { font-size: var(--font-xs); line-height: var(--line-reading); color: var(--text-2); }
+.note code { font-family: 'Cascadia Code', Consolas, monospace; font-size: 12px; background: var(--hover); padding: 1px 5px; border-radius: var(--radius-xs); color: var(--text); }
+.note .bad { color: var(--danger-fg); }
+html[data-theme='dark'] .note .bad { color: var(--danger-fg); }
 </style>
 </head>
 <body>
@@ -590,8 +633,8 @@ html[data-theme='dark'] .note .bad { color: #ff8b81; }
     <div class="note">
         <h3><i></i>关键参数</h3>
         <ul>
-            <li>顶部行 <code>56×56</code> 缩略封面 + 标题 <code>15px/600</code>，右侧留 <code>44px</code> 避开窗口按钮</li>
-            <li>歌词 5 行可见，行高 <code>30</code>，当前行 <code>22px/600 accent</code>，上下 9% 遮罩渐隐</li>
+            <li>顶部行 <code>56×56</code> 缩略封面 + 标题 <code>16px/600</code>，右侧留 <code>44px</code> 避开窗口按钮</li>
+            <li>歌词 5 行可见，行高 <code>30</code>，当前行 <code>20px/600 accent</code>，上下 9% 遮罩渐隐</li>
             <li>背景层 <code>blur(34px)</code> + 0.76 主题蒙版，文字对比度不依赖封面色</li>
             <li>循环按钮已替换为音量：单击静音、悬停弹竖向滑块、<code>↑↓</code> 步进 0.05，图标四档</li>
             <li>传输簇居中：后退 10s / 播放 <code>46px</code> / 前进 10s / 音量 / 倍速，间距 <code>14px</code></li>

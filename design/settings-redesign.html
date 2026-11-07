@@ -1,0 +1,890 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>QuickLook · 设置页 Fluent 重设计</title>
+<script>
+    // 支持 ?theme=dark#theme 深链（首帧前写好主题，避免闪白）
+    (() => {
+        const q = new URLSearchParams(location.search).get('theme')
+        if (q === 'dark' || q === 'light') document.documentElement.dataset.theme = q
+    })()
+</script>
+<style>
+/* ============================================================
+   Design tokens —— 与 src/assets/var.css、preview-types-redesign.html 对齐
+   本文件只做设计演示，颜色一律来自变量，不引入硬编码色值
+   表单控件在实现里用 el-input / el-select 重皮（见 settings-ui-design.md §4.4.1），
+   这里的原生 input / select 仅作视觉等价的静态演示，不引入组件库依赖
+   ============================================================ */
+:root {
+    --bg: #f3f3f3;
+    --surface: #ffffff;
+    --text: #1a1a1a;
+    --text-2: #555555;
+    --text-3: #616161;          /* NeutralForeground3 */
+    --border: #e1e1e1;
+    --accent: #0078d4;            /* BrandBackground：仅作实心底 */
+    --accent-fg: #0f6cbd;         /* BrandForeground1：文字/图标/描边 */
+    --accent-hover: #115ea3;      /* BrandBackgroundHover */
+    --selected: #ebebeb;          /* NeutralBackground1Selected */
+    --danger-fg: #a80000;
+    --accent-soft: rgba(15, 108, 189, 0.10);
+    --hover: rgba(0, 0, 0, 0.06);
+    --hover-strong: rgba(0, 0, 0, 0.1);
+    --pressed: rgba(0, 0, 0, 0.12);   /* SubtleBackgroundPressed */
+    --chip-bg: rgba(0, 0, 0, 0.05);
+    --divider: rgba(0, 0, 0, 0.07);
+    --danger: #d13438;
+    --win-border: transparent;
+    --shadow-win: 0 1px 2px rgba(0, 0, 0, 0.08), 0 16px 40px rgba(0, 0, 0, 0.14);
+    --stage: #e9edf2;
+    --radius-xs: 2px;   /* 细元素：进度条、指示条、内联代码 */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 10px;
+    --radius-xl: 12px;
+    --radius-pill: 999px;   /* 胶囊：开关、徽章、chip */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+    --font-2xs: 10px;
+    --font-xs: 12px;
+    --font-sm: 14px;
+    --font-md: 14px;
+    --font-lg: 16px;
+    --font-xl: 16px;
+    /* 控件/徽章/图标/行高阶梯：fluent-baseline.md §3 */
+    --control-sm: 24px;
+    --control-md: 32px;
+    --control-lg: 40px;
+    --icon-xs: 12px;
+    --icon-sm: 16px;
+    --icon-md: 20px;
+    --icon-lg: 24px;
+    --icon-xl: 32px;
+    --badge-h: 22px;
+    --line-2xs: 14px;
+    --line-xs: 16px;
+    --line-sm: 20px;
+    --line-md: 20px;
+    --line-lg: 22px;
+    --line-xl: 22px;
+    --line-2xl: 28px;
+    --line-3xl: 32px;
+    --line-4xl: 40px;
+    --btn-primary-text: #ffffff;
+    --close-hover: #e81123;
+    --t-fast: 0.15s ease;
+    --t-med: 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    --fit: 1;
+    --acrylic: rgba(255, 255, 255, 0.6);
+}
+
+html[data-theme='dark'] {
+    --bg: #1c1c1c;
+    --surface: #2b2b2b;
+    --text: #ffffff;
+    --text-2: #c2c2c2;
+    --text-3: #adadad;          /* NeutralForeground3 dark */
+    --border: #3a3a3a;
+    --accent: #0078d4;            /* BrandBackground */
+    --accent-fg: #479ef5;         /* BrandForeground1 dark */
+    --accent-hover: #0e4775;
+    --pressed: rgba(255, 255, 255, 0.09);
+    --selected: #383838;
+    --danger-fg: #ff99a4;
+    --accent-soft: rgba(71, 158, 245, 0.14);
+    --hover: rgba(255, 255, 255, 0.07);
+    --hover-strong: rgba(255, 255, 255, 0.12);
+    --chip-bg: rgba(255, 255, 255, 0.08);
+    --divider: rgba(255, 255, 255, 0.08);
+    --danger: #ff6b6b;
+    --win-border: rgba(255, 255, 255, 0.08);
+    --shadow-win: 0 2px 8px rgba(0, 0, 0, 0.45), 0 18px 44px rgba(0, 0, 0, 0.5);
+    --stage: #111111;
+    --acrylic: rgba(43, 43, 43, 0.6);
+}
+
+* { box-sizing: border-box; }
+
+/* 焦点环：Fluent 2 双层（外 2px 品牌前景 + 内侧 1px 背景隔离） */
+:focus-visible {
+    outline: 2px solid var(--accent-fg);
+    outline-offset: 1px;
+    box-shadow: 0 0 0 1px var(--bg);
+}
+
+body {
+    margin: 0;
+    background: var(--stage);
+    color: var(--text);
+    font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    transition: background var(--t-med), color var(--t-med);
+}
+
+/* ---------- 原型外壳 ---------- */
+.shell { display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 100vh; }
+
+.side {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    padding: 22px 14px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+.side h1 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: 0.01em; }
+.side .sub { margin: -12px 0 0; font-size: 12px; line-height: var(--line-xs); color: var(--text-3); }
+
+.nav { display: flex; flex-direction: column; gap: 1px; }
+.nav button {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--text-2);
+    font: inherit;
+    font-size: 14px;
+    text-align: left;
+    padding: 7px 10px 7px 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    position: relative;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    transition: background var(--t-fast), color var(--t-fast);
+}
+.nav button .idx { font-size: 10px; color: var(--text-3); width: 12px; flex: none; font-variant-numeric: tabular-nums; }
+.nav button:hover { background: var(--hover); color: var(--text); }
+.nav button[aria-current='true'] { background: var(--selected); color: var(--text); font-weight: 600; }
+.nav button[aria-current='true']::before {
+    content: ''; position: absolute; left: 0; top: 6px; bottom: 6px;
+    width: 2px; border-radius: var(--radius-xs); background: var(--accent-fg);
+}
+.nav button[aria-current='true'] .idx { color: var(--accent-fg); opacity: 0.7; }
+
+.side-foot { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
+.seg { display: inline-flex; padding: 2px; gap: 2px; background: var(--chip-bg); border-radius: var(--radius-md); }
+.seg button {
+    appearance: none; border: 0; background: transparent; color: var(--text-2);
+    font: inherit; font-size: 12px; padding: 5px 12px; border-radius: var(--radius-sm); cursor: pointer; flex: 1;
+    transition: background var(--t-fast), color var(--t-fast);
+}
+.seg button[aria-pressed='true'] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12); }
+html[data-theme='dark'] .seg button[aria-pressed='true'] { background: rgba(255, 255, 255, 0.14); box-shadow: none; }
+.hint { font-size: 12px; line-height: var(--line-xs); color: var(--text-3); }
+.hint kbd { font: inherit; font-size: 10px; padding: 1px 4px; border-radius: var(--radius-xs); background: var(--chip-bg); border: 1px solid var(--border); }
+
+.stage { padding: 26px 32px 56px; display: flex; flex-direction: column; align-items: center; gap: 14px; min-width: 0; }
+.stage-head { width: 100%; max-width: 1000px; display: flex; align-items: baseline; justify-content: space-between; gap: 20px; }
+.stage-head .name { font-size: 16px; font-weight: 600; }
+.stage-head .meta { font-size: 12px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.frame { width: 1000px; zoom: var(--fit); flex: none; }
+
+.spec {
+    width: 100%; max-width: 1000px; margin-top: 4px;
+    display: flex; flex-wrap: wrap; gap: 8px 18px;
+    font-size: 12px; color: var(--text-2); line-height: var(--line-xs);
+}
+.spec .k { display: inline-flex; gap: 6px; align-items: baseline; }
+.spec .k b { color: var(--text-3); font-weight: 600; white-space: nowrap; }
+.spec .k b::after { content: ' ·'; }
+
+/* ---------- 设置窗口 ---------- */
+.win {
+    width: 1000px;
+    height: 640px;
+    background: var(--bg);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--win-border);
+    box-shadow: var(--shadow-win);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    isolation: isolate;
+    transition: background var(--t-med);
+}
+
+/* 标题行 44 —— 与预览、更新窗口同规格，透明底，明暗随 html.dark */
+.hd {
+    flex: none; height: 44px; display: flex; align-items: center; gap: 10px;
+    padding: 0 6px 0 16px; background: transparent; user-select: none;
+}
+/* Fluent 2 的 TitleBar 标题是 Caption：12/16、常规字重、次要色。16px/600 会与内容区的一级标题抢视线 */
+.hd-title { font-size: var(--font-xs); font-weight: 400; line-height: var(--line-xs); color: var(--text-2); }
+/* 标题行只放「设置」与窗口按钮；软件名 / 版本交给「关于」分组，不重复占位 */
+.hd-acts { display: flex; align-items: center; gap: 1px; margin-left: auto; flex: none; }
+.hd-btn {
+    appearance: none; border: 0; background: transparent; color: var(--text-3);
+    width: var(--control-md); height: var(--control-md); border-radius: var(--radius-sm);
+    display: grid; place-items: center; cursor: pointer;
+    transition: background var(--t-fast), color var(--t-fast);
+}
+.hd-btn:hover { background: var(--hover); color: var(--text); }
+.hd-btn.close { margin-left: 4px; }
+.hd-btn.close:hover { background: var(--close-hover); color: var(--btn-primary-text); }
+.hd-btn svg { width: 13px; height: 13px; }
+
+.body { flex: 1; min-height: 0; display: flex; }
+
+/* ---------- 左导航 240px ---------- */
+.navpane {
+    flex: none; width: 240px; padding: 14px 10px;
+    background: var(--acrylic);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    border-right: 1px solid var(--divider);
+    display: flex; flex-direction: column; gap: 2px; overflow: auto;
+}
+.search {
+    height: 32px; flex: none; display: flex; align-items: center; gap: 8px;
+    padding: 0 10px; border-radius: var(--radius-md);
+    background: var(--chip-bg); color: var(--text-3); font-size: 12px;
+    margin-bottom: 8px;
+}
+.search svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; }
+.search input {
+    appearance: none; border: 0; outline: none; background: transparent;
+    color: var(--text); font: inherit; font-size: 12px; width: 100%; min-width: 0; padding: 0;
+}
+.search input::placeholder { color: var(--text-3); }
+
+.navgroup {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.04em; color: var(--text-3);
+    padding: 12px 12px 4px;
+}
+.navitem {
+    position: relative; flex: none; height: 32px; border-radius: var(--radius-sm);
+    display: flex; align-items: center; gap: 10px; padding: 0 12px;
+    font-size: 14px; color: var(--text-2); cursor: pointer;
+    transition: background var(--t-fast), color var(--t-fast);
+}
+.navitem svg { width: 16px; height: 16px; flex: none; }
+.navitem:hover { background: var(--hover); color: var(--text); }
+.navitem:active:not(.active) { background: var(--pressed); }
+.navitem.active { background: var(--selected); color: var(--text); font-weight: 600; }
+.navitem.active::before {
+    content: ''; position: absolute; left: 0; top: 9px; bottom: 9px;
+    width: 3px; border-radius: var(--radius-xs); background: var(--accent-fg);
+}
+.navfoot { margin-top: auto; padding: 12px; font-size: 12px; color: var(--text-3); }
+
+/* ---------- 右侧内容：唯一滚动容器 ---------- */
+.content { flex: 1; min-width: 0; overflow: auto; padding: 24px 32px 40px; background: var(--bg); }
+.content::-webkit-scrollbar, .navpane::-webkit-scrollbar { width: 8px; }
+.content::-webkit-scrollbar-thumb, .navpane::-webkit-scrollbar-thumb { background: var(--border); border-radius: var(--radius-sm); }
+.pane { display: none; max-width: 720px; margin: 0 auto; }
+.pane.on { display: block; }
+.ph h2 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
+.ph p {
+    margin: 6px 0 24px; font-size: 14px; line-height: var(--line-sm); color: var(--text-2);
+    display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+}
+.ph p .stat { font-size: 12px; color: var(--text-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* ---------- 设置卡片与设置行 ---------- */
+.card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 4px 16px; margin-bottom: 16px;
+}
+.row {
+    min-height: 52px; display: flex; align-items: center; gap: 16px;
+    padding: 10px 0; border-bottom: 1px solid var(--divider);
+}
+.row:last-child { border-bottom: 0; }
+.row .txt { flex: 1; min-width: 0; }
+.row .t { font-size: 14px; font-weight: 600; color: var(--text); }
+.row .d { font-size: 12px; line-height: var(--line-xs); color: var(--text-2); margin-top: 3px; }
+.row .ctl { margin-left: auto; flex: none; display: flex; align-items: center; gap: 8px; }
+.row.is-dep { transition: opacity var(--t-fast); }
+.win.ffmpeg-off .row.is-dep { opacity: 0.45; pointer-events: none; }
+.note { font-size: 12px; color: var(--text-3); margin: -10px 0 16px; padding-left: 2px; }
+
+/* ---------- Fluent 控件 ---------- */
+.seg2 { display: inline-flex; padding: 2px; gap: 2px; background: var(--chip-bg); border-radius: var(--radius-md); }
+.seg2 button {
+    appearance: none; border: 0; background: transparent; color: var(--text-2);
+    font: inherit; font-size: 12px; padding: 6px 14px; border-radius: var(--radius-sm); cursor: pointer;
+    transition: background var(--t-fast), color var(--t-fast);
+}
+.seg2.is-3 button { padding: 6px 10px; }
+.seg2 button[aria-pressed='true'] { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12); }
+html[data-theme='dark'] .seg2 button[aria-pressed='true'] { background: rgba(255, 255, 255, 0.14); box-shadow: none; }
+
+.switch {
+    appearance: none; border: 0; width: 40px; height: 20px; border-radius: var(--radius-lg);
+    background: var(--chip-bg); position: relative; cursor: pointer; flex: none;
+    transition: background var(--t-fast);
+}
+.switch::after {
+    content: ''; position: absolute; left: 4px; top: 4px; width: 12px; height: 12px;
+    border-radius: 50%; background: var(--text-3); transition: transform var(--t-fast), background var(--t-fast);
+}
+.switch[aria-checked='true'] { background: var(--accent); }
+.switch[aria-checked='true']::after { transform: translateX(20px); background: #fff; }
+
+.combo {
+    height: 32px; min-width: 120px; display: inline-flex; align-items: center; gap: 12px;
+    padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: transparent; color: var(--text); font-size: 12px;
+}
+.combo svg { width: 10px; height: 10px; color: var(--text-3); margin-left: auto; }
+
+.textbox {
+    width: 200px; height: 32px; padding: 0 10px;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: transparent; color: var(--text); font: inherit; font-size: 12px;
+}
+.textbox::placeholder { color: var(--text-3); }
+.iconbtn {
+    appearance: none; border: 0; width: 32px; height: 32px; border-radius: var(--radius-sm);
+    background: var(--chip-bg); color: var(--text-2); display: grid; place-items: center;
+    cursor: pointer; transition: background var(--t-fast), color var(--t-fast);
+}
+.iconbtn:hover { background: var(--accent-soft); color: var(--accent-fg); }
+.iconbtn svg { width: var(--icon-sm); height: var(--icon-sm); }
+
+.pills { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; max-width: 420px; }
+.chip {
+    height: var(--badge-h); display: inline-flex; align-items: center; gap: 5px;
+    padding: 0 6px 0 9px; border-radius: var(--radius-pill); background: var(--chip-bg);
+    color: var(--text-2); font-size: 12px; font-variant-numeric: tabular-nums;
+}
+.chip .x {
+    appearance: none; border: 0; background: transparent; color: var(--text-3);
+    width: var(--icon-sm); height: var(--icon-sm); padding: 0; border-radius: var(--radius-xs); cursor: pointer;
+    display: grid; place-items: center; font-size: 12px; line-height: 1;
+}
+.chip .x:hover { background: var(--hover-strong); color: var(--text); }
+.chip.is-plain { border-radius: var(--radius-sm); padding: 0 8px; }
+
+.subtle {
+    appearance: none; border: 0; background: transparent; color: var(--accent-fg);
+    font: inherit; font-size: 12px; padding: 7px 10px; border-radius: var(--radius-sm);
+    cursor: pointer; transition: background var(--t-fast);
+}
+.subtle:hover { background: var(--hover); }
+.subtle.is-danger { color: var(--danger-fg); }
+.subtle.is-danger:hover { background: var(--hover-strong); }
+.accentbtn {
+    appearance: none; border: 0; background: var(--accent); color: var(--btn-primary-text);
+    font: inherit; font-size: 12px; font-weight: 600; height: 32px;
+    padding: 0 14px; border-radius: var(--radius-sm); cursor: pointer;
+}
+.muted { font-size: 12px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.empty { font-size: 12px; color: var(--text-3); }
+.link { color: var(--accent-fg); font-size: 12px; text-decoration: none; }
+.link:hover { text-decoration: underline; }
+
+.infobar {
+    display: flex; align-items: flex-start; gap: 10px;
+    background: var(--accent-soft); border-radius: var(--radius-md);
+    padding: 10px 14px; margin: 0 0 16px;
+}
+.infobar svg { width: 16px; height: 16px; flex: none; color: var(--accent-fg); margin-top: 1px; }
+.infobar .it { font-size: 14px; font-weight: 600; color: var(--text); }
+.infobar .id { font-size: 12px; line-height: var(--line-xs); color: var(--text-2); margin-top: 2px; }
+.win.ffmpeg-off .infobar { display: none; }
+
+/* 关于：身份卡，非行式 */
+.identity { padding: 20px; display: flex; align-items: flex-start; gap: 16px; }
+.identity .logo {
+    width: 40px; height: 40px; border-radius: var(--radius-md); flex: none;
+    background: var(--accent-soft); color: var(--accent-fg);
+    display: grid; place-items: center;
+}
+.identity .logo svg { width: 22px; height: 22px; }
+.identity .info { flex: 1; min-width: 0; }
+.identity .nm { font-size: 20px; font-weight: 600; display: flex; align-items: baseline; gap: 8px; }
+.identity .nm small { font-size: 12px; font-weight: 500; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.identity .desc { font-size: 12px; color: var(--text-2); margin-top: 4px; }
+.identity .links { display: flex; gap: 16px; margin-top: 14px; }
+.identity .acts { margin-left: auto; flex: none; }
+
+/* 无自定义项时的行内空态 */
+.row.is-empty .ctl { max-width: 420px; }
+
+@media (max-width: 1100px) {
+    .shell { grid-template-columns: 200px minmax(0, 1fr); }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+    <aside class="side">
+        <h1>设置页 · Fluent 重设计</h1>
+        <p class="sub">与预览窗口共用一套视觉语言：单一底色、透明标题行、控件悬浮、卡片 + 发丝线。</p>
+        <nav class="nav" id="nav">
+            <button data-go="language"><span class="idx">1</span>常规 · 语言</button>
+            <button data-go="theme"><span class="idx">2</span>常规 · 主题</button>
+            <button data-go="support"><span class="idx">3</span>支持的格式</button>
+            <button data-go="code"><span class="idx">4</span>自定义代码格式</button>
+            <button data-go="video"><span class="idx">5</span>视频</button>
+            <button data-go="cache"><span class="idx">6</span>缓存</button>
+            <button data-go="log"><span class="idx">7</span>日志</button>
+            <button data-go="about"><span class="idx">8</span>关于</button>
+        </nav>
+        <div class="side-foot">
+            <div class="seg" id="theme">
+                <button data-theme-set="light" aria-pressed="true">浅色</button>
+                <button data-theme-set="dark" aria-pressed="false">深色</button>
+            </div>
+            <p class="hint">按 <kbd>1</kbd>–<kbd>8</kbd> 切换分组，<kbd>D</kbd> 切主题。<br>也可用 <code>?theme=dark#theme</code> 深链。</p>
+        </div>
+    </aside>
+
+    <main class="stage" id="stage">
+        <div class="stage-head">
+            <span class="name" id="stageName">常规 · 语言</span>
+            <span class="meta" id="stageMeta">1000 × 640 · 导航 240px · 内容列 720px</span>
+        </div>
+
+        <div class="frame">
+            <div class="win" id="win">
+                <!-- 标题行 44：三个窗口（预览 / 设置 / 更新）统一自绘，不再保留系统标题栏。
+                     自绘的收益是明暗随 html.dark 自动切换，不需要再调 setTheme 对齐系统主题 -->
+                <div class="hd">
+                    <span class="hd-title">设置</span>
+                    <div class="hd-acts">
+                        <button class="hd-btn" title="最小化"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M3 8h10"/></svg></button>
+                        <button class="hd-btn" title="最大化"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3.5" y="3.5" width="9" height="9" rx="1"/></svg></button>
+                        <button class="hd-btn close" title="关闭"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+                    </div>
+                </div>
+
+                <div class="body">
+                    <!-- 左导航 -->
+                    <div class="navpane" id="navpane">
+                        <label class="search">
+                            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="4.2"/><path d="M10.2 10.2 13.5 13.5"/></svg>
+                            <input id="navSearch" type="text" placeholder="查找设置" spellcheck="false">
+                        </label>
+                        <div class="navgroup">常规</div>
+                        <div class="navitem" data-go="language"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c2 2 2 10 0 12M8 2c-2 2-2 10 0 12"/></svg>语言</div>
+                        <div class="navitem" data-go="theme"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="6"/><path d="M8 2a6 6 0 0 1 0 12z" fill="currentColor" stroke="none"/></svg>主题</div>
+                        <div class="navgroup">内容</div>
+                        <div class="navitem" data-go="support"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 3.5h5l1.5 2H14v8H2z"/><path d="M2 6h12"/></svg>支持的格式</div>
+                        <div class="navitem" data-go="code"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M5.5 4 2 8l3.5 4M10.5 4 14 8l-3.5 4M9 3 7 13"/></svg>代码格式</div>
+                        <div class="navitem" data-go="video"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="3.5" width="9" height="9" rx="1.5"/><path d="M11 6.5 14 5v6l-3-1.5"/></svg>视频</div>
+                        <div class="navgroup">维护</div>
+                        <div class="navitem" data-go="cache"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 4h10M6 4V2.5h4V4M4.5 4l.6 9h5.8l.6-9"/></svg>缓存</div>
+                        <div class="navitem" data-go="log"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4 2.5h6l2.5 2.5v8.5H4z"/><path d="M6 7h5M6 9.5h5M6 12h3"/></svg>日志</div>
+                        <div class="navgroup">关于</div>
+                        <div class="navitem" data-go="about"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="6"/><path d="M8 7v4M8 5h.01"/></svg>关于</div>
+                        <div class="navfoot">QuickLook v1.0.0</div>
+                    </div>
+
+                    <!-- 右侧内容：唯一滚动容器 -->
+                    <div class="content" id="content">
+
+                        <!-- 1 语言 -->
+                        <section class="pane" data-pv="language">
+                            <div class="ph"><h2>语言</h2><p><span>选择界面显示语言，切换后立即生效并同步到所有窗口</span></p></div>
+                            <div class="card">
+                                <div class="row">
+                                    <div class="txt"><div class="t">界面语言</div><div class="d">托盘菜单、系统对话框与窗口标题会一起切换</div></div>
+                                    <div class="ctl"><div class="seg2" data-seg><button aria-pressed="true">简体中文</button><button aria-pressed="false">English</button></div></div>
+                                </div>
+                                <div class="row">
+                                    <div class="txt"><div class="t">同步状态</div><div class="d">切换期间短暂无响应属正常现象</div></div>
+                                    <div class="ctl"><span class="muted">已同步</span></div>
+                                </div>
+                            </div>
+                            <p class="note">设置即时写入 config.data，页面不出现「保存」按钮。</p>
+                        </section>
+
+                        <!-- 2 主题（常规） -->
+                        <section class="pane" data-pv="theme">
+                            <div class="ph"><h2>主题</h2><p><span>选择应用外观，切换后立即同步到所有预览窗口</span></p></div>
+                            <div class="card">
+                                <div class="row">
+                                    <div class="txt"><div class="t">应用主题</div><div class="d">跟随系统时会随系统深浅色设置自动切换</div></div>
+                                    <div class="ctl"><div class="seg2 is-3" data-theme-seg><button data-mode="auto" aria-pressed="true">跟随系统</button><button data-mode="light" aria-pressed="false">浅色</button><button data-mode="dark" aria-pressed="false">深色</button></div></div>
+                                </div>
+                                <div class="row">
+                                    <div class="txt"><div class="t">当前生效</div><div class="d">预览窗口标题栏的太阳 / 月亮按钮可快速切换明暗</div></div>
+                                    <div class="ctl"><span class="muted" id="themeNow">浅色</span></div>
+                                </div>
+                            </div>
+                            <p class="note">即时写入 useColorMode 的本地存储，无保存按钮；快捷切换等价于直接选浅色 / 深色，回到本页可重新选「跟随系统」。</p>
+                        </section>
+
+                        <!-- 3 支持的格式 -->
+                        <section class="pane" data-pv="support">
+                            <div class="ph"><h2>支持的格式</h2><p><span>QuickLook 已识别的文件类型与对应扩展名</span><span class="stat">共 10 类</span></p></div>
+                            <div class="card">
+                                <div class="row"><div class="txt"><div class="t">Markdown</div></div><div class="ctl"><div class="pills"><span class="chip is-plain">md</span><span class="chip is-plain">markdown</span></div></div></div>
+                                <div class="row"><div class="txt"><div class="t">图片</div></div><div class="ctl"><div class="pills"><span class="chip is-plain">jpg</span><span class="chip is-plain">png</span><span class="chip is-plain">gif</span><span class="chip is-plain">webp</span><span class="chip is-plain">bmp</span><span class="chip is-plain">psd</span><span class="chip is-plain">heic</span></div></div></div>
+                                <div class="row"><div class="txt"><div class="t">视频</div></div><div class="ctl"><div class="pills"><span class="chip is-plain">mp4</span><span class="chip is-plain">mkv</span><span class="chip is-plain">mov</span><span class="chip is-plain">avi</span><span class="chip is-plain">ts</span></div></div></div>
+                                <div class="row"><div class="txt"><div class="t">音频</div></div><div class="ctl"><div class="pills"><span class="chip is-plain">mp3</span><span class="chip is-plain">wav</span><span class="chip is-plain">flac</span><span class="chip is-plain">opus</span><span class="chip is-plain">m4a</span></div></div></div>
+                                <div class="row"><div class="txt"><div class="t">文档</div></div><div class="ctl"><div class="pills"><span class="chip is-plain">pdf</span><span class="chip is-plain">docx</span><span class="chip is-plain">xlsx</span></div></div></div>
+                                <div class="row"><div class="txt"><div class="t">代码</div></div><div class="ctl"><div class="pills"><span class="chip is-plain">js</span><span class="chip is-plain">ts</span><span class="chip is-plain">vue</span><span class="chip is-plain">rs</span><span class="chip is-plain">py</span></div></div></div>
+                                <div class="row"><div class="txt"><div class="t">字体</div></div><div class="ctl"><div class="pills"><span class="chip is-plain">ttf</span><span class="chip is-plain">otf</span><span class="chip is-plain">woff</span><span class="chip is-plain">woff2</span></div></div></div>
+                                <div class="row"><div class="txt"><div class="t">压缩包</div></div><div class="ctl"><div class="pills"><span class="chip is-plain">zip</span><span class="chip is-plain">rar</span><span class="chip is-plain">7z</span></div></div></div>
+                                <div class="row"><div class="txt"><div class="t">书籍</div></div><div class="ctl"><div class="pills"><span class="chip is-plain">epub</span></div></div></div>
+                                <div class="row"><div class="txt"><div class="t">3D 模型</div></div><div class="ctl"><div class="pills"><span class="chip is-plain">glb</span><span class="chip is-plain">gltf</span><span class="chip is-plain">obj</span></div></div></div>
+                            </div>
+                            <p class="note">旧版 10 张蓝底 CODE 徽章小卡片合并为一张卡片 + 10 行，层级只剩两级。</p>
+                        </section>
+
+                        <!-- 4 代码格式 -->
+                        <section class="pane" data-pv="code">
+                            <div class="ph"><h2>自定义代码格式</h2><p><span>添加额外的代码扩展名（如 rb、lua），添加后即可预览对应文件</span></p></div>
+                            <div class="card">
+                                <div class="row">
+                                    <div class="txt"><div class="t">已添加</div><div class="d">点标签右侧的 × 可移除</div></div>
+                                    <div class="ctl"><div class="pills" data-pills><span class="chip">rb<button class="x" aria-label="移除">×</button></span><span class="chip">lua<button class="x" aria-label="移除">×</button></span><span class="chip">toml<button class="x" aria-label="移除">×</button></span></div></div>
+                                </div>
+                                <div class="row">
+                                    <div class="txt"><div class="t">添加扩展名</div><div class="d">自动去掉前缀「.」并转小写，重复项不添加</div></div>
+                                    <div class="ctl"><input class="textbox" data-ext type="text" placeholder="输入扩展名，如 rb" spellcheck="false"><button class="iconbtn" data-add title="添加"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3v10M3 8h10"/></svg></button></div>
+                                </div>
+                            </div>
+                            <p class="note">输入框定宽 200px：只给 max-width 时，添加后的内容会把设置行撑宽。</p>
+                        </section>
+
+                        <!-- 5 视频 -->
+                        <section class="pane" data-pv="video">
+                            <div class="ph"><h2>视频</h2><p><span>启用 ffmpeg 后，兼容视频直接播放，不兼容时自动转码</span></p></div>
+                            <div class="card">
+                                <div class="row">
+                                    <div class="txt"><div class="t">使用 ffmpeg 解析视频</div><div class="d">兼容格式直接播放，不兼容时自动转码</div></div>
+                                    <div class="ctl"><button class="switch" id="ffmpegSwitch" role="switch" aria-checked="true" aria-label="使用 ffmpeg 解析视频"></button></div>
+                                </div>
+                            </div>
+                            <div class="infobar">
+                                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="6"/><path d="M5.5 8.2 7.2 10l3.4-3.8"/></svg>
+                                <div><div class="it">ffmpeg 可用</div><div class="id">所有视频转码都将通过内置 ffmpeg 完成。</div></div>
+                            </div>
+                            <div class="card">
+                                <div class="row is-dep">
+                                    <div class="txt"><div class="t">自定义视频扩展名</div><div class="d">需先启用 ffmpeg 解析；关闭时整行置灰</div></div>
+                                    <div class="ctl"><div class="pills" data-pills><span class="chip">m2ts<button class="x" aria-label="移除">×</button></span><span class="chip">wmv<button class="x" aria-label="移除">×</button></span></div></div>
+                                </div>
+                                <div class="row is-dep">
+                                    <div class="txt"><div class="t">添加扩展名</div><div class="d">关闭开关后不可编辑</div></div>
+                                    <div class="ctl"><input class="textbox" data-ext type="text" placeholder="输入扩展名，如 ts" spellcheck="false"><button class="iconbtn" data-add title="添加"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3v10M3 8h10"/></svg></button></div>
+                                </div>
+                            </div>
+                            <p class="note">检测中 / 可用 / 不可用共用同一个 InfoBar 位置，开关切换不会撑高页面。点击开关可看禁用态。</p>
+                        </section>
+
+                        <!-- 6 缓存 -->
+                        <section class="pane" data-pv="cache">
+                            <div class="ph"><h2>缓存</h2><p><span>清理预览过程中生成的临时文件，不会影响原文件</span></p></div>
+                            <div class="card">
+                                <div class="row">
+                                    <div class="txt"><div class="t">ffmpeg 转码缓存</div><div class="d">由视频转码生成的临时 HLS 缓存文件</div></div>
+                                    <div class="ctl"><span class="muted" data-size>128 MB</span><button class="subtle is-danger" data-clear>清理</button></div>
+                                </div>
+                                <div class="row">
+                                    <div class="txt"><div class="t">图片预览缓存</div><div class="d">由图片预览（含 PSD）转码生成的临时 PNG 缓存</div></div>
+                                    <div class="ctl"><span class="muted" data-size>42 MB</span><button class="subtle is-danger" data-clear>清理</button></div>
+                                </div>
+                                <div class="row">
+                                    <div class="txt"><div class="t">PDF 渲染缓存</div><div class="d">由 PDF 预览渲染生成的临时 WebP 缓存</div></div>
+                                    <div class="ctl"><span class="muted" data-size>16 MB</span><button class="subtle is-danger" data-clear>清理</button></div>
+                                </div>
+                            </div>
+                            <p class="note">危险操作降级为 subtle 按钮；清理结果在同一行内联显示，不用弹层。体积显示标为 P2。</p>
+                        </section>
+
+                        <!-- 7 日志 -->
+                        <section class="pane" data-pv="log">
+                            <div class="ph"><h2>日志</h2><p><span>调整应用日志的输出级别，级别越详细，输出越多</span></p></div>
+                            <div class="card">
+                                <div class="row">
+                                    <div class="txt"><div class="t">日志级别</div><div class="d">默认 Warn，仅在排查问题时调低；重启后仍保持</div></div>
+                                    <div class="ctl"><span class="combo">Warn<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 6l4 4 4-4"/></svg></span></div>
+                                </div>
+                            </div>
+                            <p class="note">六档改为 ComboBox：横排 6 个 radio button 会挤压描述文字。</p>
+                        </section>
+
+                        <!-- 8 关于 -->
+                        <section class="pane" data-pv="about">
+                            <div class="ph"><h2>关于</h2><p><span>版本信息与最新发布渠道</span></p></div>
+                            <div class="card identity">
+                                <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8V4h4M17 4h4v4M21 16v4h-4M7 20H3v-4"/><circle cx="12" cy="12" r="3.2"/></svg></div>
+                                <div class="info">
+                                    <div class="nm">QuickLook <small>v1.0.0</small></div>
+                                    <div class="desc">Windows 平台的文件预览工具</div>
+                                    <div class="links"><a class="link" href="#">GitHub Releases</a><a class="link" href="#">Gitee Releases</a></div>
+                                </div>
+                                <div class="acts"><button class="accentbtn">检查更新</button></div>
+                            </div>
+                            <p class="note">「检查更新」打开 700×600 的更新窗口，由窗口自己发起检查；设置页不重复实现那五个状态。</p>
+                        </section>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="spec" id="spec"></div>
+    </main>
+</div>
+
+<script>
+(() => {
+    const META = {
+        language: {
+            name: '常规 · 语言',
+            meta: '1000 × 640 · 导航 240px · 内容列 720px',
+            spec: [
+                ['结构', '页面标题 24/600 + 副标题 12，卡片内 52px 行、行间发丝线'],
+                ['控件', '语言用 Segmented（当前 2 档），不凭空增加「跟随系统」'],
+                ['反馈', '切换期间禁用控件，完成后右区出现「已同步」'],
+                ['保存', '即时写入，无保存按钮'],
+            ],
+        },
+        theme: {
+            name: '常规 · 主题',
+            meta: 'Segmented 三档 auto / light / dark · 与演示主题联动',
+            spec: [
+                ['分组', '归入「常规」，与语言并列；不塞进语言页'],
+                ['三档', '跟随系统 / 浅色 / 深色，对应 useColorMode 的 auto / light / dark'],
+                ['默认', '跟随系统；与预览窗口标题栏的快捷切换共用同一状态'],
+                ['反馈', '「当前生效」只读显示实际明暗；切换即时生效，无保存按钮'],
+            ],
+        },
+        support: {
+            name: '内容 · 支持的格式',
+            meta: '一张卡片 · 10 行 · 扩展名 Pill 组',
+            spec: [
+                ['层级', '取消 10 张小卡片与蓝底 CODE 徽章，合并为一张卡片 + 10 行'],
+                ['扩展名', 'Pill 用 --chip-bg，不用彩色描边 el-tag'],
+                ['统计', '副标题右区「共 10 类」裸文本，不加胶囊'],
+                ['长列表', 'Pill 折行，行高随内容增高，最小 52px'],
+            ],
+        },
+        code: {
+            name: '内容 · 自定义代码格式',
+            meta: '输入框定宽 200px · 图标按钮 32×32',
+            spec: [
+                ['输入框', '定宽 200px；只给 max-width 会被清空/提交元素撑宽'],
+                ['提交', '行内 32×32 图标按钮，不再用主色实心按钮'],
+                ['校验', '去前缀点、转小写、去重；重复时在输入下沿给危险色文字'],
+                ['空态', '行内 12px 引导语，不用居中大图标卡片'],
+            ],
+        },
+        video: {
+            name: '内容 · 视频',
+            meta: 'ToggleSwitch 40×20 · InfoBar 三态同位',
+            spec: [
+                ['开关', 'Fluent ToggleSwitch，无文字标签'],
+                ['状态', '检测中/可用/不可用共用一个 InfoBar 位置，不撑高页面'],
+                ['依赖', '关闭时自定义扩展名两行置灰到 0.45 且不可编辑'],
+                ['禁止', '不加蒙版、不加虚线框'],
+            ],
+        },
+        cache: {
+            name: '维护 · 缓存',
+            meta: '三行同构 · SubtleButton · 内联结果',
+            spec: [
+                ['按钮', '无红色描边，仅 hover 浮底；文字用危险色'],
+                ['反馈', '内联 loading → 同位置「已清理 N 项」→ 淡出'],
+                ['体积', '清理前显示可释放空间（P2，依赖后端）'],
+                ['结构', '三行同卡，不各自套边框'],
+            ],
+        },
+        log: {
+            name: '维护 · 日志',
+            meta: 'ComboBox 高 32px · 六档收进下拉',
+            spec: [
+                ['控件', '六档改为 ComboBox，避免横排挤压描述'],
+                ['默认', 'Warn，重启后保持'],
+                ['保存', '即时写入 config.data'],
+            ],
+        },
+        about: {
+            name: '关于',
+            meta: '身份卡 · 40px 图标 · 唯一 AccentButton',
+            spec: [
+                ['结构', '图标 + 应用名 + 版本 + 一行说明 + 两个链接'],
+                ['版本', '12px 次要色，不再用巨大版本号'],
+                ['主操作', '检查更新（唯一的 AccentButton，开更新窗口）'],
+                ['链接', '链接式文字，无下划线、无竖分隔线'],
+            ],
+        },
+    };
+
+    const ORDER = ['language', 'theme', 'support', 'code', 'video', 'cache', 'log', 'about'];
+    const panes = [...document.querySelectorAll('[data-pv]')];
+    const sideNav = document.getElementById('nav');
+    const navPane = document.getElementById('navpane');
+    const content = document.getElementById('content');
+    const spec = document.getElementById('spec');
+    const stageName = document.getElementById('stageName');
+    const stageMeta = document.getElementById('stageMeta');
+    const win = document.getElementById('win');
+
+    function go(key) {
+        panes.forEach(p => p.classList.toggle('on', p.dataset.pv === key));
+        [...sideNav.querySelectorAll('button[data-go]')].forEach(b => {
+            b.setAttribute('aria-current', String(b.dataset.go === key));
+        });
+        [...navPane.querySelectorAll('.navitem[data-go]')].forEach(b => {
+            b.classList.toggle('active', b.dataset.go === key);
+        });
+        const m = META[key];
+        stageName.textContent = m.name;
+        stageMeta.textContent = m.meta;
+        spec.innerHTML = m.spec.map(([k, v]) => `<span class="k"><b>${k}</b>${v}</span>`).join('');
+        content.scrollTop = 0;
+    }
+
+    sideNav.addEventListener('click', e => {
+        const btn = e.target.closest('button[data-go]');
+        if (btn) go(btn.dataset.go);
+    });
+    navPane.addEventListener('click', e => {
+        const item = e.target.closest('.navitem[data-go]');
+        if (item) go(item.dataset.go);
+    });
+
+    // 主题：舞台演示控件、设置页「应用主题」与快捷键共用同一状态。
+    // mode 用 useColorMode 的 auto / light / dark；舞台只认实际明暗 light / dark。
+    const html = document.documentElement;
+    const themeBox = document.getElementById('theme');
+    const themeSeg = document.querySelector('[data-theme-seg]');
+    const themeNow = document.getElementById('themeNow');
+    const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
+    let themeMode = 'auto';
+
+    function effective(mode) {
+        return mode === 'auto' ? (systemDark.matches ? 'dark' : 'light') : mode;
+    }
+    function setTheme(mode) {
+        themeMode = mode;
+        const t = effective(mode);
+        html.dataset.theme = t;
+        [...themeBox.querySelectorAll('button')].forEach(b => {
+            b.setAttribute('aria-pressed', String(b.dataset.themeSet === t));
+        });
+        [...themeSeg.querySelectorAll('button')].forEach(b => {
+            b.setAttribute('aria-pressed', String(b.dataset.mode === mode));
+        });
+        themeNow.textContent = (t === 'dark' ? '深色' : '浅色') + (mode === 'auto' ? '（跟随系统）' : '');
+    }
+    // 演示按钮 / 快捷键等价于标题栏的快捷切换：直接选明或暗，脱离「跟随系统」
+    themeBox.addEventListener('click', e => {
+        const btn = e.target.closest('button[data-theme-set]');
+        if (btn) setTheme(btn.dataset.themeSet);
+    });
+    themeSeg.addEventListener('click', e => {
+        const btn = e.target.closest('button[data-mode]');
+        if (btn) setTheme(btn.dataset.mode);
+    });
+    if (systemDark.addEventListener) {
+        systemDark.addEventListener('change', () => { if (themeMode === 'auto') setTheme('auto'); });
+    }
+
+    // 导航搜索：即时过滤分组项
+    document.getElementById('navSearch').addEventListener('input', e => {
+        const q = e.target.value.trim().toLowerCase();
+        [...navPane.querySelectorAll('.navitem')].forEach(item => {
+            item.style.display = !q || item.textContent.toLowerCase().includes(q) ? '' : 'none';
+        });
+    });
+
+    // 演示用交互：分段控件、开关、标签删除/添加、清理反馈
+    document.addEventListener('click', e => {
+        const segBtn = e.target.closest('[data-seg] button');
+        if (segBtn) {
+            [...segBtn.parentElement.querySelectorAll('button')].forEach(b => b.setAttribute('aria-pressed', 'false'));
+            segBtn.setAttribute('aria-pressed', 'true');
+            return;
+        }
+        const sw = e.target.closest('#ffmpegSwitch');
+        if (sw) {
+            const on = sw.getAttribute('aria-checked') !== 'true';
+            sw.setAttribute('aria-checked', String(on));
+            win.classList.toggle('ffmpeg-off', !on);
+            return;
+        }
+        const rm = e.target.closest('.chip .x');
+        if (rm) { rm.closest('.chip').remove(); return; }
+        const clear = e.target.closest('[data-clear]');
+        if (clear) {
+            const size = clear.parentElement.querySelector('[data-size]');
+            clear.textContent = '已清理';
+            if (size) size.textContent = '0 MB';
+            window.setTimeout(() => { clear.textContent = '清理'; }, 1600);
+            return;
+        }
+    });
+
+    // 添加扩展名：把输入框内容变成 Pill
+    function addPill(btn) {
+        const input = btn.parentElement.querySelector('[data-ext]');
+        const box = btn.closest('.card').querySelector('[data-pills]');
+        if (!input || !box) return;
+        const ext = input.value.trim().toLowerCase().replace(/^\./, '');
+        if (!ext) return;
+        if ([...box.querySelectorAll('.chip')].some(c => c.textContent.replace('×', '').trim() === ext)) {
+            input.value = '';
+            return;
+        }
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.append(document.createTextNode(ext));
+        const x = document.createElement('button');
+        x.className = 'x';
+        x.setAttribute('aria-label', '移除');
+        x.textContent = '×';
+        chip.append(x);
+        box.append(chip);
+        input.value = '';
+    }
+    document.addEventListener('click', e => {
+        const btn = e.target.closest('[data-add]');
+        if (btn) addPill(btn);
+    });
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && e.target.matches('[data-ext]')) {
+            const btn = e.target.parentElement.querySelector('[data-add]');
+            if (btn) addPill(btn);
+        }
+    });
+
+    // 键盘
+    document.addEventListener('keydown', e => {
+        if (e.metaKey || e.ctrlKey || e.altKey) return;
+        if (document.activeElement && document.activeElement.matches('input')) return;
+        if (e.key >= '1' && e.key <= '8') go(ORDER[Number(e.key) - 1]);
+        if (e.key.toLowerCase() === 'd') setTheme(html.dataset.theme === 'dark' ? 'light' : 'dark');
+    });
+
+    // 等比缩放
+    const stage = document.getElementById('stage');
+    function fit() {
+        const avail = stage.clientWidth - 64;
+        const s = Math.min(1, Math.max(0.45, avail / 1000));
+        document.documentElement.style.setProperty('--fit', String(s));
+    }
+    window.addEventListener('resize', fit);
+
+    fit();
+    const qTheme = new URLSearchParams(location.search).get('theme');
+    const raw = location.hash.slice(1);
+    const [hashKey, hashTheme] = raw.split(':');
+    // ?theme=dark 已由 <head> 内联脚本先写好以避免首帧闪白；这里让控件状态与之对齐，
+    // 未指定时默认「跟随系统」（auto）。
+    const forced = ['dark', 'light'].includes(hashTheme) ? hashTheme
+        : (['dark', 'light'].includes(qTheme) ? qTheme : null);
+    setTheme(forced || 'auto');
+    go(ORDER.includes(hashKey) ? hashKey : 'language');
+})();
+</script>
+</body>
+</html>
