@@ -20,39 +20,77 @@
     --surface: #ffffff;
     --text: #1a1a1a;
     --text-2: #555555;
-    --text-3: #8a8a8a;
+    --text-3: #616161;          /* NeutralForeground3 */
     --border: #e1e1e1;
-    --accent: #0078d4;
-    --accent-hi: #2b95e3;
-    --accent-soft: rgba(0, 120, 212, 0.12);
+    --accent: #0078d4;            /* BrandBackground：仅作实心底 */
+    --accent-fg: #0f6cbd;         /* BrandForeground1：文字/图标/描边 */
+    --accent-hover: #115ea3;      /* BrandBackgroundHover */
+    --selected: #ebebeb;          /* NeutralBackground1Selected：导航/列表 */
+    --selected-strong: #cfcfcf;   /* 开关按钮已开启：须比 hover 深一档 */
+    --danger-fg: #a80000;
+    --folder-fg: #e9b44c;         /* 目录图标：资源管理器惯例，装饰色不参与对比度验收 */
+    --accent-soft: rgba(15, 108, 189, 0.10);
     --hover: rgba(0, 0, 0, 0.06);
     --hover-strong: rgba(0, 0, 0, 0.1);
+    --pressed: rgba(0, 0, 0, 0.12);   /* SubtleBackgroundPressed */
     --chip-bg: rgba(0, 0, 0, 0.05);
     /* Fluent 分隔：不用 1px 实线，改用低透明度发丝线；层与层之间靠底色与留白 */
     --divider: rgba(0, 0, 0, 0.07);
-    --pill-text: #8a8a8a;
+    --pill-text: #616161;
     --win-border: transparent;
     --shadow-win: 0 1px 2px rgba(0, 0, 0, 0.08), 0 16px 40px rgba(0, 0, 0, 0.14);
     --paper: #ffffff;
     --paper-line: #e6e6e6;
     --stage: #e9edf2;
     --code-line: #f7f8fa;
+    --radius-xs: 2px;   /* 细元素：进度条、指示条、内联代码 */
     --radius-sm: 4px;
     --radius-md: 8px;
     --radius-lg: 10px;
     --radius-xl: 12px;
+    --radius-pill: 999px;   /* 胶囊：开关、徽章、chip */
     --space-1: 4px;
     --space-2: 8px;
     --space-3: 12px;
     --space-4: 16px;
     --space-5: 24px;
     --space-6: 32px;
+    --font-2xs: 10px;
     --font-xs: 12px;
-    --font-sm: 13px;
+    --font-sm: 14px;
     --font-md: 14px;
-    --font-lg: 15px;
+    --font-lg: 16px;
     --font-xl: 16px;
-    --font-2xl: 18px;
+    --font-2xl: 20px;
+    --font-3xl: 24px;
+    --font-4xl: 32px;
+    /* 控件/徽章/图标阶梯：fluent-baseline.md §3.5 / §3.6 */
+    --control-sm: 24px;
+    --control-md: 32px;
+    --control-lg: 40px;
+    --icon-xs: 12px;
+    --icon-sm: 16px;
+    --icon-md: 20px;
+    --icon-lg: 24px;
+    --icon-xl: 32px;
+    --badge-h: 22px;
+    /* 行高：UI 档位为绝对值，与字号同后缀；内容/样张区为系数（§3.3） */
+    --line-2xs: 14px;
+    --line-xs: 16px;
+    --line-sm: 20px;
+    --line-md: 20px;
+    --line-lg: 22px;
+    --line-xl: 22px;
+    --line-2xl: 28px;
+    --line-3xl: 32px;
+    --line-4xl: 40px;
+    --line-reading: 1.75;
+    --line-code: 1.5;
+    --line-loose: 1.7;
+    --line-sample: 1.35;
+    --code-line-h: 20px;
+    --btn-primary-text: #ffffff;
+    --close-hover: #e81123;
     --t-fast: 0.15s ease;
     --t-base: 0.2s ease;
     --t-med: 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -64,11 +102,16 @@ html[data-theme='dark'] {
     --surface: #2b2b2b;
     --text: #ffffff;
     --text-2: #c2c2c2;
-    --text-3: #8f8f8f;
+    --text-3: #adadad;          /* NeutralForeground3 dark */
     --border: #3a3a3a;
-    --accent: #2b95e3;
-    --accent-hi: #4aa8f0;
-    --accent-soft: rgba(43, 149, 227, 0.16);
+    --accent: #0078d4;            /* BrandBackground */
+    --accent-fg: #479ef5;         /* BrandForeground1 dark */
+    --accent-hover: #0e4775;
+    --pressed: rgba(255, 255, 255, 0.09);
+    --selected: #383838;
+    --selected-strong: #4a4a4a;
+    --danger-fg: #ff99a4;
+    --accent-soft: rgba(71, 158, 245, 0.14);
     --hover: rgba(255, 255, 255, 0.07);
     --hover-strong: rgba(255, 255, 255, 0.12);
     --chip-bg: rgba(255, 255, 255, 0.08);
@@ -84,11 +127,18 @@ html[data-theme='dark'] {
 
 * { box-sizing: border-box; }
 
+/* 焦点环：Fluent 2 双层（外 2px 品牌前景 + 内侧 1px 背景隔离） */
+:focus-visible {
+    outline: 2px solid var(--accent-fg);
+    outline-offset: 1px;
+    box-shadow: 0 0 0 1px var(--bg);
+}
+
 body {
     margin: 0;
     background: var(--stage);
     color: var(--text);
-    font-family: 'Segoe UI Variable Display', 'Segoe UI', 'Microsoft YaHei UI', 'Microsoft YaHei', system-ui, sans-serif;
+    font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif;
     -webkit-font-smoothing: antialiased;
     transition: background var(--t-med), color var(--t-med);
 }
@@ -121,8 +171,8 @@ body {
 
 .side .sub {
     margin: -12px 0 0;
-    font-size: 11.5px;
-    line-height: 1.5;
+    font-size: 12px;
+    line-height: var(--line-xs);
     color: var(--text-3);
 }
 
@@ -134,7 +184,7 @@ body {
     background: transparent;
     color: var(--text-2);
     font: inherit;
-    font-size: 13px;
+    font-size: 14px;
     text-align: left;
     padding: 7px 10px 7px 12px;
     border-radius: var(--radius-sm);
@@ -147,7 +197,7 @@ body {
 }
 
 .nav button .idx {
-    font-size: 10.5px;
+    font-size: 10px;
     color: var(--text-3);
     font-variant-numeric: tabular-nums;
     width: 12px;
@@ -157,8 +207,8 @@ body {
 .nav button:hover { background: var(--hover); color: var(--text); }
 
 .nav button[aria-current='true'] {
-    background: var(--accent-soft);
-    color: var(--accent);
+    background: var(--selected);
+    color: var(--text);
     font-weight: 600;
 }
 
@@ -169,11 +219,11 @@ body {
     top: 6px;
     bottom: 6px;
     width: 2px;
-    border-radius: 2px;
-    background: var(--accent);
+    border-radius: var(--radius-xs);
+    background: var(--accent-fg);
 }
 
-.nav button[aria-current='true'] .idx { color: var(--accent); opacity: 0.7; }
+.nav button[aria-current='true'] .idx { color: var(--accent-fg); opacity: 0.7; }
 
 .side-foot { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
 
@@ -193,7 +243,7 @@ body {
     font: inherit;
     font-size: 12px;
     padding: 5px 12px;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
     flex: 1;
     transition: background var(--t-fast), color var(--t-fast);
@@ -211,8 +261,8 @@ html[data-theme='dark'] .seg button[aria-pressed='true'] {
 }
 
 .hint {
-    font-size: 11px;
-    line-height: 1.6;
+    font-size: 12px;
+    line-height: var(--line-xs);
     color: var(--text-3);
 }
 
@@ -220,7 +270,7 @@ html[data-theme='dark'] .seg button[aria-pressed='true'] {
     font: inherit;
     font-size: 10px;
     padding: 1px 4px;
-    border-radius: 3px;
+    border-radius: var(--radius-xs);
     background: var(--chip-bg);
     border: 1px solid var(--border);
 }
@@ -244,8 +294,8 @@ html[data-theme='dark'] .seg button[aria-pressed='true'] {
     gap: 20px;
 }
 
-.stage-head .name { font-size: 15px; font-weight: 600; }
-.stage-head .meta { font-size: 11.5px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.stage-head .name { font-size: 16px; font-weight: 600; }
+.stage-head .meta { font-size: 12px; color: var(--text-3); font-variant-numeric: tabular-nums; }
 
 .frame {
     width: 1000px;
@@ -285,10 +335,10 @@ html[data-theme='dark'] .seg button[aria-pressed='true'] {
 }
 
 .hd-title {
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 600;
     letter-spacing: -0.01em;
-    line-height: 1.35;
+    line-height: var(--line-lg);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -312,8 +362,8 @@ html[data-theme='dark'] .seg button[aria-pressed='true'] {
     border: 0;
     background: transparent;
     color: var(--text-3);
-    width: 34px;
-    height: 30px;
+    width: var(--control-md);
+    height: var(--control-md);
     border-radius: var(--radius-sm);
     display: grid;
     place-items: center;
@@ -322,15 +372,15 @@ html[data-theme='dark'] .seg button[aria-pressed='true'] {
 }
 
 .hd-btn:hover { background: var(--hover); color: var(--text); }
-.hd-btn:active { background: var(--hover-strong); }
+.hd-btn:active { background: var(--pressed); }
 .hd-btn.close { margin-left: 4px; }
-.hd-btn.close:hover { background: #e81123; color: #fff; }
-.hd-btn svg { width: 13px; height: 13px; }
+.hd-btn.close:hover { background: var(--close-hover); color: var(--btn-primary-text); }
+.hd-btn svg { width: 16px; height: 16px; }
 
-/* 命令栏 40 —— 与窗口同底色，无下边框 */
+/* 命令栏 44 —— 与标题行等高，与窗口同底色，无下边框 */
 .tb {
     flex: none;
-    height: 40px;
+    height: 44px;
     display: flex;
     align-items: center;
     gap: 2px;
@@ -345,10 +395,10 @@ html[data-theme='dark'] .seg button[aria-pressed='true'] {
     border: 0;
     background: transparent;
     color: var(--text-2);
-    height: 28px;
-    min-width: 28px;
-    padding: 0 7px;
-    border-radius: 6px;
+    height: 32px;
+    min-width: 32px;
+    padding: 0 8px;
+    border-radius: var(--radius-sm);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -363,8 +413,8 @@ html[data-theme='dark'] .seg button[aria-pressed='true'] {
 
 .tb-btn:hover { background: var(--hover); color: var(--text); }
 .tb-btn:active { background: var(--hover-strong); }
-.tb-btn[aria-pressed='true'] { color: var(--accent); background: var(--accent-soft); }
-.tb-btn svg { width: 15px; height: 15px; flex: none; }
+.tb-btn[aria-pressed='true'] { color: var(--text); background: var(--selected-strong); }
+.tb-btn svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; }
 .tb-btn.strong { color: var(--text); }
 
 .tb-sep { width: 1px; height: 16px; background: var(--divider); margin: 0 8px; flex: none; }
@@ -375,12 +425,12 @@ html[data-theme='dark'] .seg button[aria-pressed='true'] {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    height: 22px;
+    height: var(--control-sm);
     min-width: 46px;
     padding: 0 8px;
     border-radius: var(--radius-sm);
     background: var(--chip-bg);
-    font-size: 11.5px;
+    font-size: 12px;
     color: var(--text);
     font-variant-numeric: tabular-nums;
     flex: none;
@@ -391,7 +441,7 @@ html[data-theme='dark'] .seg button[aria-pressed='true'] {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 11.5px;
+    font-size: 12px;
     color: var(--text-3);
     font-variant-numeric: tabular-nums;
     flex: none;
@@ -401,25 +451,25 @@ html[data-theme='dark'] .seg button[aria-pressed='true'] {
 .chip {
     display: inline-flex;
     align-items: center;
-    height: 18px;
+    height: var(--badge-h);
     padding: 0 6px;
     border-radius: var(--radius-sm);
     background: var(--chip-bg);
-    font-size: 11px;
+    font-size: 12px;
     color: var(--text-2);
     letter-spacing: 0.02em;
     flex: none;
     white-space: nowrap;
 }
 
-.chip.accent { background: var(--accent-soft); color: var(--accent); }
+.chip.accent { background: var(--chip-bg); color: var(--text-2); }
 
 /* 标题栏胶囊：10px / 600 / 全大写，与 audio 的格式徽章完全一致 */
 .pill {
     display: inline-flex;
     align-items: center;
     flex: none;
-    height: 18px;
+    height: var(--badge-h);
     padding: 0 6px;
     border-radius: var(--radius-sm);
     background: var(--chip-bg);
@@ -436,8 +486,8 @@ html[data-theme='dark'] .seg button[aria-pressed='true'] {
 .pill.muted { color: var(--text-3); }
 
 
-/* 工具条内的小尺寸下拉箭头：必须同时给宽高，否则会被 .tb-btn svg 的 14px 拉变形 */
-.tb-btn svg.i-xs { width: 9px; height: 9px; }
+/* 工具条内的小尺寸下拉箭头：必须同时给宽高，否则会被 .tb-btn svg 的默认高度拉变形 */
+.tb-btn svg.i-xs { width: var(--icon-xs); height: var(--icon-xs); }
 
 /* 命令栏内的单行输入框（过滤、样例文本）：用描边而非填充，
    与只读胶囊 .tb-value 区分开，避免被误读成标签 */
@@ -445,7 +495,7 @@ html[data-theme='dark'] .seg button[aria-pressed='true'] {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    height: 26px;
+    height: 32px;
     padding: 0 8px;
     border-radius: var(--radius-sm);
     background: transparent;
@@ -463,19 +513,19 @@ html[data-theme='dark'] .seg button[aria-pressed='true'] {
 .tb-input:hover { background: var(--hover); }
 
 .tb-input .ph { color: var(--text-3); }
-.tb-input svg { width: 12px; height: 12px; flex: none; }
+.tb-input svg { width: var(--icon-xs); height: var(--icon-xs); flex: none; }
 
 /* 工具条内的只读数值框（字号等） */
 .tb-value {    display: inline-flex;
     align-items: center;
     justify-content: center;
-    height: 20px;
+    height: var(--control-sm);
     min-width: 30px;
     padding: 0 6px;
     border-radius: var(--radius-sm);
     background: var(--chip-bg);
     color: var(--text);
-    font-size: 11.5px;
+    font-size: 12px;
     font-variant-numeric: tabular-nums;
     flex: none;
 }
@@ -484,7 +534,7 @@ html[data-theme='dark'] .seg button[aria-pressed='true'] {
 .swatch {
     width: 12px;
     height: 12px;
-    border-radius: 3px;
+    border-radius: var(--radius-xs);
     border: 1px solid rgba(0, 0, 0, 0.16);
     flex: none;
     display: inline-block;
@@ -504,7 +554,7 @@ html[data-theme='dark'] .swatch { border-color: rgba(255, 255, 255, 0.22); }
 /* 滚动条 */
 .scroll { overflow: auto; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .scroll::-webkit-scrollbar { width: 8px; height: 8px; }
-.scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: var(--radius-sm); }
 .scroll::-webkit-scrollbar-track { background: transparent; }
 
 /* 说明条 */
@@ -514,9 +564,9 @@ html[data-theme='dark'] .swatch { border-color: rgba(255, 255, 255, 0.22); }
     display: flex;
     flex-wrap: wrap;
     gap: 6px 14px;
-    font-size: 11.5px;
+    font-size: 12px;
     color: var(--text-3);
-    line-height: 1.7;
+    line-height: var(--line-xs);
 }
 
 .spec b { color: var(--text-2); font-weight: 600; }
@@ -555,10 +605,10 @@ html[data-theme='dark'] .swatch { border-color: rgba(255, 255, 255, 0.22); }
     gap: 8px;
     height: 24px;
     padding: 0 10px;
-    border-radius: 12px;
+    border-radius: var(--radius-xl);
     background: rgba(20, 20, 20, 0.62);
     color: #fff;
-    font-size: 11px;
+    font-size: 12px;
     letter-spacing: 0.02em;
     backdrop-filter: blur(10px);
     opacity: 0;
@@ -574,6 +624,8 @@ html[data-theme='dark'] .swatch { border-color: rgba(255, 255, 255, 0.22); }
 .md-wrap { position: relative; height: 100%; display: flex; }
 
 .toc {
+    /* 挤压式分栏：占 220px 列宽，正文在剩余区域内居中；
+       做成绝对定位的覆盖层会让正文按整窗居中，视觉上偏左 */
     width: 220px;
     flex: none;
     padding: 10px 10px 12px 16px;
@@ -581,9 +633,9 @@ html[data-theme='dark'] .swatch { border-color: rgba(255, 255, 255, 0.22); }
 }
 
 .toc .toc-h {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--text-3);
-    letter-spacing: 0.06em;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
     padding: 0 8px 8px;
 }
@@ -592,16 +644,16 @@ html[data-theme='dark'] .swatch { border-color: rgba(255, 255, 255, 0.22); }
     display: block;
     padding: 4px 8px;
     border-radius: var(--radius-sm);
-    font-size: 12.5px;
+    font-size: 12px;
     color: var(--text-2);
     text-decoration: none;
-    line-height: 1.45;
+    line-height: var(--line-xs);
     border-left: 2px solid transparent;
 }
 
 .toc a.lv3 { padding-left: 22px; font-size: 12px; color: var(--text-3); }
 .toc a:hover { background: var(--hover); color: var(--text); }
-.toc a.cur { color: var(--accent); background: var(--accent-soft); border-left-color: var(--accent); font-weight: 600; }
+.toc a.cur { color: var(--accent-fg); background: var(--accent-soft); border-left-color: var(--accent-fg); font-weight: 600; }
 
 .md-doc {
     flex: 1;
@@ -617,19 +669,19 @@ html[data-theme='dark'] .swatch { border-color: rgba(255, 255, 255, 0.22); }
     color: var(--text);
 }
 
-.md-inner h1 { font-size: 26px; font-weight: 650; margin: 0 0 6px; letter-spacing: -0.02em; }
+.md-inner h1 { font-size: 24px; font-weight: 600; margin: 0 0 6px; letter-spacing: -0.01em; }
 .md-inner .doc-meta { font-size: 12px; color: var(--text-3); margin-bottom: 22px; }
-.md-inner h2 { font-size: 17px; font-weight: 650; margin: 26px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
-.md-inner p { font-size: 14.5px; line-height: 1.75; color: var(--text); margin: 0 0 12px; }
-.md-inner li { font-size: 14.5px; line-height: 1.75; margin: 0 0 6px; }
+.md-inner h2 { font-size: 16px; font-weight: 650; margin: 26px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+.md-inner p { font-size: 14px; line-height: var(--line-reading); color: var(--text); margin: 0 0 12px; }
+.md-inner li { font-size: 14px; line-height: var(--line-reading); margin: 0 0 6px; }
 .md-inner ul { padding-left: 20px; margin: 0 0 12px; }
 
 .md-inner code.inline {
     font-family: 'Cascadia Mono', Consolas, 'Courier New', monospace;
-    font-size: 12.5px;
+    font-size: 12px;
     background: var(--chip-bg);
     padding: 1.5px 5px;
-    border-radius: 3px;
+    border-radius: var(--radius-xs);
     color: var(--text);
 }
 
@@ -648,7 +700,7 @@ html[data-theme='dark'] .swatch { border-color: rgba(255, 255, 255, 0.22); }
     justify-content: space-between;
     padding: 0 8px 0 10px;
     border-bottom: 1px solid var(--border);
-    font-size: 11px;
+    font-size: 12px;
     color: var(--text-3);
     letter-spacing: 0.04em;
 }
@@ -659,13 +711,13 @@ html[data-theme='dark'] .swatch { border-color: rgba(255, 255, 255, 0.22); }
     background: transparent;
     color: var(--text-3);
     font: inherit;
-    font-size: 11px;
+    font-size: 12px;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     gap: 4px;
     padding: 2px 4px;
-    border-radius: 3px;
+    border-radius: var(--radius-xs);
     opacity: 0;
     transition: opacity var(--t-fast), background var(--t-fast);
 }
@@ -677,24 +729,24 @@ html[data-theme='dark'] .swatch { border-color: rgba(255, 255, 255, 0.22); }
     margin: 0;
     padding: 10px 12px;
     font-family: 'Cascadia Mono', Consolas, monospace;
-    font-size: 12.5px;
-    line-height: 1.65;
+    font-size: 12px;
+    line-height: var(--line-code);
     overflow: auto;
     color: var(--text);
 }
 
 .md-quote {
-    border-left: 3px solid var(--accent);
+    border-left: 3px solid var(--accent-fg);
     background: var(--accent-soft);
     padding: 10px 14px;
     border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
     margin: 0 0 16px;
-    font-size: 13.5px;
-    line-height: 1.7;
+    font-size: 14px;
+    line-height: var(--line-reading);
     color: var(--text-2);
 }
 
-.md-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 0 0 16px; }
+.md-table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 0 0 16px; }
 .md-table th { text-align: left; font-weight: 600; color: var(--text-2); font-size: 12px; padding: 6px 10px; border-bottom: 1px solid var(--border); background: var(--chip-bg); }
 .md-table td { padding: 7px 10px; border-bottom: 1px solid var(--border); }
 .md-table td.num { font-variant-numeric: tabular-nums; text-align: right; }
@@ -706,8 +758,8 @@ html[data-theme='dark'] .swatch { border-color: rgba(255, 255, 255, 0.22); }
     height: 100%;
     display: flex;
     font-family: 'Cascadia Mono', Consolas, 'Courier New', monospace;
-    font-size: 12.5px;
-    line-height: 20px;
+    font-size: 12px;
+    line-height: var(--code-line-h);
     overflow: auto;
 }
 
@@ -725,11 +777,11 @@ html[data-theme='dark'] .swatch { border-color: rgba(255, 255, 255, 0.22); }
     z-index: 1;
 }
 
-.cd-lines div { padding-right: 10px; height: 20px; }
-.cd-lines div.hl { color: var(--accent); }
+.cd-lines div { padding-right: 10px; height: var(--code-line-h); }
+.cd-lines div.hl { color: var(--accent-fg); }
 
 .cd-code { flex: 1; padding: 14px 20px 40px; min-width: max-content; }
-.cd-code div { height: 20px; white-space: pre; }
+.cd-code div { height: var(--code-line-h); white-space: pre; }
 .cd-code div.hl { background: var(--accent-soft); margin: 0 -20px; padding: 0 20px; }
 
 .tk-k { color: #af00db; }
@@ -762,7 +814,7 @@ html[data-theme='dark'] .tk-n { color: #b5cea8; }
     margin: 0 auto 12px;
     background: var(--paper);
     border: 1px solid var(--paper-line);
-    border-radius: 2px;
+    border-radius: var(--radius-xs);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 6px 20px rgba(0, 0, 0, 0.07);
     padding: 34px 42px 26px;
     position: relative;
@@ -772,20 +824,20 @@ html[data-theme='dark'] .tk-n { color: #b5cea8; }
 html[data-theme='dark'] .page { box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
 
 .page .p-eyebrow { font-size: 10px; letter-spacing: 0.14em; color: var(--text-3); text-transform: uppercase; margin-bottom: 14px; }
-.page h3 { font-size: 20px; font-weight: 650; margin: 0 0 4px; letter-spacing: -0.01em; }
-.page .p-sub { font-size: 11.5px; color: var(--text-3); margin-bottom: 18px; }
-.page p { font-size: 11.5px; line-height: 1.9; margin: 0 0 10px; color: var(--text-2); text-align: justify; }
+.page h3 { font-size: 20px; font-weight: 600; margin: 0 0 4px; letter-spacing: -0.01em; }
+.page .p-sub { font-size: 12px; color: var(--text-3); margin-bottom: 18px; }
+.page p { font-size: 12px; line-height: var(--line-reading); margin: 0 0 10px; color: var(--text-2); text-align: justify; }
 .page .p-num { position: absolute; bottom: 12px; left: 0; right: 0; text-align: center; font-size: 10px; color: var(--text-3); font-variant-numeric: tabular-nums; }
 
 .page .p-figure {
     height: 92px;
     margin: 14px 0 16px;
-    border-radius: 3px;
+    border-radius: var(--radius-xs);
     background: linear-gradient(135deg, var(--accent-soft), transparent 72%);
     border: 1px dashed var(--border);
     display: grid;
     place-items: center;
-    font-size: 10.5px;
+    font-size: 10px;
     color: var(--text-3);
 }
 
@@ -801,20 +853,25 @@ html[data-theme='dark'] .page { box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
     overflow: auto;
 }
 
-.bk-toc .cap { font-size: 11px; color: var(--text-3); padding: 0 8px 8px; letter-spacing: 0.06em; text-transform: uppercase; }
+.bk-toc .cap { font-size: 12px; color: var(--text-3); padding: 0 8px 8px; letter-spacing: 0.04em; text-transform: uppercase; }
+
+/* 顶部书名/作者：替代原 toolbar 里重复的标题 */
+.bk-toc-head { padding: 2px 8px 10px; margin-bottom: 6px; border-bottom: 1px solid var(--divider); }
+.bk-toc-head .t { margin: 0; font-size: 12px; font-weight: 600; line-height: var(--line-xs); }
+.bk-toc-head .a { margin: 3px 0 0; font-size: 12px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .bk-toc a {
     display: block;
     padding: 5px 8px;
-    font-size: 12.5px;
+    font-size: 12px;
     color: var(--text-2);
     text-decoration: none;
     border-radius: var(--radius-sm);
-    line-height: 1.5;
+    line-height: var(--line-xs);
 }
 
 .bk-toc a.lv2 { padding-left: 20px; font-size: 12px; color: var(--text-3); }
-.bk-toc a.cur { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.bk-toc a.cur { background: var(--accent-soft); color: var(--accent-fg); font-weight: 600; }
 
 .bk-read {
     flex: 1;
@@ -825,11 +882,11 @@ html[data-theme='dark'] .page { box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
 }
 
 .bk-inner { width: 680px; max-width: calc(100% - 96px); margin: 0 auto; }
-.bk-inner .ch { font-size: 11px; color: var(--text-3); letter-spacing: 0.1em; margin-bottom: 10px; }
-.bk-inner h3 { font-size: 21px; font-weight: 600; margin: 0 0 20px; }
-.bk-inner p { font-size: 15px; line-height: 1.95; margin: 0 0 14px; text-indent: 2em; color: var(--text); }
+.bk-inner .ch { font-size: 12px; color: var(--text-3); letter-spacing: 0.04em; margin-bottom: 10px; }
+.bk-inner h3 { font-size: 20px; font-weight: 600; margin: 0 0 20px; }
+.bk-inner p { font-size: 16px; line-height: var(--line-reading); margin: 0 0 14px; text-indent: 2em; color: var(--text); }
 .bk-inner p.first { text-indent: 0; }
-.bk-inner p.first::first-letter { font-size: 34px; float: left; line-height: 1; padding: 3px 7px 0 0; color: var(--text); font-weight: 600; }
+.bk-inner p.first::first-letter { font-size: 32px; float: left; line-height: 1; padding: 3px 7px 0 0; color: var(--text); font-weight: 600; }
 
 .bk-bar {
     position: absolute;
@@ -837,11 +894,11 @@ html[data-theme='dark'] .page { box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
     right: 16px;
     bottom: 8px;
     height: 3px;
-    border-radius: 2px;
+    border-radius: var(--radius-xs);
     background: var(--divider);
 }
 
-.bk-bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 42%; background: var(--accent); border-radius: 2px; display: block; }
+.bk-bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 42%; background: var(--accent); border-radius: var(--radius-xs); display: block; }
 
 /* ============================================================
    6 · 压缩包
@@ -859,13 +916,13 @@ html[data-theme='dark'] .page { box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
 }
 
 .ar-head {
-    height: 26px;
+    height: var(--control-sm);
     position: sticky;
     top: 0;
     background: color-mix(in srgb, var(--bg) 88%, transparent);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--divider);
-    font-size: 11px;
+    font-size: 12px;
     color: var(--text-3);
     letter-spacing: 0.04em;
     z-index: 1;
@@ -873,16 +930,16 @@ html[data-theme='dark'] .page { box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
 
 .ar-head span:not(:first-child) { text-align: right; }
 
-.ar-row { height: 28px; font-size: 12.5px; color: var(--text); border-bottom: 1px solid transparent; }
+.ar-row { height: var(--control-sm); font-size: 12px; color: var(--text); border-bottom: 1px solid transparent; }
 .ar-row:hover { background: var(--hover); }
 
 .ar-name { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .ar-name .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ar-name svg { width: 14px; height: 14px; flex: none; color: var(--text-3); }
+.ar-name svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; color: var(--text-3); }
 .ar-name .chev { transition: transform var(--t-fast); }
 .ar-row.open .chev { transform: rotate(90deg); }
 
-.ar-row .sz, .ar-row .tm { text-align: right; font-size: 11.5px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.ar-row .sz, .ar-row .tm { text-align: right; font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; }
 
 .ar-row.dir .nm { font-weight: 600; }
 .ar-row.dir { background: color-mix(in srgb, var(--chip-bg) 60%, transparent); }
@@ -895,10 +952,10 @@ html[data-theme='dark'] .page { box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
 
 .ft-name {
     font-family: 'Cambria', 'Georgia', 'Times New Roman', serif;
-    font-size: 34px;
+    font-size: var(--font-4xl);
     font-weight: 600;
     letter-spacing: -0.01em;
-    line-height: 1.1;
+    line-height: var(--line-4xl);
     margin: 0;
 }
 
@@ -907,14 +964,14 @@ html[data-theme='dark'] .page { box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
 .ft-scale { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--divider); padding-top: 16px; }
 
 .ft-scale .row { display: grid; grid-template-columns: 34px 1fr; gap: 14px; align-items: baseline; }
-.ft-scale .sz { font-size: 10.5px; color: var(--text-3); font-variant-numeric: tabular-nums; text-align: right; }
-.ft-scale .sp { font-family: 'Cambria', Georgia, serif; color: var(--text); line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ft-scale .sz { font-size: 10px; color: var(--text-3); font-variant-numeric: tabular-nums; text-align: right; }
+.ft-scale .sp { font-family: 'Cambria', Georgia, serif; color: var(--text); line-height: var(--line-sample); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.ft-grid-h { font-size: 11px; color: var(--text-3); letter-spacing: 0.06em; text-transform: uppercase; margin: 24px 0 10px; }
+.ft-grid-h { font-size: 12px; color: var(--text-3); letter-spacing: 0.04em; text-transform: uppercase; margin: 24px 0 10px; }
 
 .ft-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 1px; background: var(--divider); border: 1px solid var(--divider); border-radius: var(--radius-sm); overflow: hidden; }
 .ft-grid div { background: var(--bg); aspect-ratio: 1.5; display: grid; place-items: center; font-family: 'Cambria', Georgia, serif; font-size: 20px; color: var(--text); }
-.ft-grid div:hover { background: var(--accent-soft); color: var(--accent); }
+.ft-grid div:hover { background: var(--accent-soft); color: var(--accent-fg); }
 
 /* ============================================================
    8 · 3D 模型
@@ -941,11 +998,11 @@ html[data-theme='dark'] .page { box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
     gap: 8px;
     height: 24px;
     padding: 0 10px;
-    border-radius: 12px;
+    border-radius: var(--radius-xl);
     background: rgba(18, 20, 24, 0.6);
     border: 1px solid rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
-    font-size: 11px;
+    font-size: 12px;
     color: #d8dbe0;
     font-variant-numeric: tabular-nums;
 }
@@ -960,8 +1017,8 @@ html[data-theme='dark'] .page { box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
 .na-body { height: 100%; display: grid; place-items: center; }
 
 .na-card {
-    width: 380px;
-    padding: 28px 24px 24px;
+    width: 420px;
+    padding: 30px 24px 26px;
     border-radius: var(--radius-lg);
     background: var(--surface);
     text-align: center;
@@ -974,26 +1031,22 @@ html[data-theme='dark'] .na-card { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
     width: 48px;
     height: 48px;
     margin: 0 auto 14px;
-    border-radius: var(--radius-md);
-    background: var(--chip-bg);
     display: grid;
     place-items: center;
     color: var(--text-3);
 }
 
-.na-card h4 { font-size: 15px; font-weight: 600; margin: 0 0 6px; }
-.na-card .desc { font-size: 12.5px; line-height: 1.6; color: var(--text-3); margin: 0 0 18px; }
-
-.na-acts { display: flex; gap: 8px; justify-content: center; }
+.na-card h4 { font-size: 16px; font-weight: 600; margin: 0 0 6px; }
+.na-card .desc { font-size: 12px; line-height: var(--line-xs); color: var(--text-3); margin: 0; font-variant-numeric: tabular-nums; }
 
 .btn {
     appearance: none;
     border: 1px solid transparent;
-    height: 30px;
+    height: var(--control-md);
     padding: 0 14px;
     border-radius: var(--radius-sm);
     font: inherit;
-    font-size: 12.5px;
+    font-size: 12px;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
@@ -1158,6 +1211,8 @@ html[data-theme='dark'] .na-card { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
                         <button class="tb-btn" title="减小字号">A−</button>
                         <button class="tb-btn" title="增大字号">A+</button>
                         <div class="tb-grow"></div>
+                        <span class="tb-right">1,284 字</span>
+                        <i class="tb-sep"></i>
                         <button class="tb-btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="5" y="5" width="8" height="8" rx="1.2"/><path d="M11 5V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h1"/></svg>复制全文</button>
                     </div>
 
@@ -1308,19 +1363,20 @@ html[data-theme='dark'] .na-card { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
                     </header>
 
                     <div class="tb">
-                        <button class="tb-btn" title="上一页"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M10 3.5 5.5 8l4.5 4.5"/></svg></button>
-                        <span class="tb-num">3 / 128</span>
-                        <button class="tb-btn" title="下一页"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M6 3.5 10.5 8 6 12.5"/></svg></button>
+                        <!-- 顺序与 Markdown 面板一致：目录 → 视图方式 → 缩放，右区只放页码状态 -->
+                        <button class="tb-btn" aria-pressed="false" title="目录"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 4h4M3 8h4M3 12h4M9 4h4M9 8h4M9 12h4"/></svg>目录</button>
+                        <i class="tb-sep"></i>
+                        <button class="tb-btn" aria-pressed="true">适应宽度</button>
+                        <button class="tb-btn" title="旋转 90°"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M13 8a5 5 0 1 1-1.6-3.7"/><path d="M13.4 2.6v2.8h-2.8"/></svg></button>
                         <i class="tb-sep"></i>
                         <button class="tb-btn" title="缩小"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3.5 8h9"/></svg></button>
                         <span class="tb-num">100%</span>
                         <button class="tb-btn" title="放大"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 3.5v9M3.5 8h9"/></svg></button>
-                        <button class="tb-btn" aria-pressed="true">适应宽度</button>
-                        <i class="tb-sep"></i>
-                        <button class="tb-btn" title="目录"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 4h4M3 8h4M3 12h4M9 4h4M9 8h4M9 12h4"/></svg>目录</button>
                         <div class="tb-grow"></div>
-                        <span class="tb-input"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="4.2"/><path d="M10.2 10.2 13.5 13.5"/></svg>搜索</span>
-                        <span class="tb-right">A4 · 128 页</span>
+                        <button class="tb-btn" title="上一页"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M10 3.5 5.5 8l4.5 4.5"/></svg></button>
+                        <span class="tb-num">3</span>
+                        <span class="tb-right">/ 128</span>
+                        <button class="tb-btn" title="下一页"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M6 3.5 10.5 8 6 12.5"/></svg></button>
                     </div>
 
                     <div class="bd">
@@ -1367,10 +1423,12 @@ html[data-theme='dark'] .na-card { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
                         <button class="tb-btn" aria-pressed="true" title="目录"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 4.5h10M3 8h10M3 11.5h10"/></svg>目录</button>
                         <i class="tb-sep"></i>
                         <button class="tb-btn" title="减小字号">A−</button>
-                        <span class="tb-value">17</span>
+                        <span class="tb-value">16</span>
                         <button class="tb-btn" title="增大字号">A+</button>
                         <i class="tb-sep"></i>
-                        <button class="tb-btn" aria-pressed="true"><i class="swatch" style="background:#f2e6cf"></i>米黄</button>
+                        <button class="tb-btn" title="白纸" aria-label="白纸"><i class="swatch" style="background:#ffffff"></i></button>
+                        <button class="tb-btn" title="米黄" aria-label="米黄"><i class="swatch" style="background:#f2e6cf"></i></button>
+                        <button class="tb-btn" aria-pressed="true" title="深色" aria-label="深色"><i class="swatch" style="background:#3a3a41"></i></button>
                         <div class="tb-grow"></div>
                         <span class="tb-right">第 3 章 · 全书 42%</span>
                     </div>
@@ -1378,7 +1436,10 @@ html[data-theme='dark'] .na-card { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
                     <div class="bd">
                         <div class="bk-wrap">
                             <nav class="bk-toc scroll">
-                                <div class="cap">目录</div>
+                                <div class="bk-toc-head">
+                                    <p class="t">人类群星闪耀时</p>
+                                    <p class="a">斯蒂芬·茨威格</p>
+                                </div>
                                 <a href="#">译者序</a>
                                 <a href="#">序言</a>
                                 <a href="#" class="cur">1 · 到不朽的事业中寻求庇护</a>
@@ -1438,7 +1499,7 @@ html[data-theme='dark'] .na-card { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
                                 <div class="ar-head"><span>名称</span><span>大小</span><span>修改时间</span></div>
 
                                 <div class="ar-row dir open">
-                                    <div class="ar-name"><svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6.5 4 10.5 8l-4 4"/></svg><svg viewBox="0 0 16 16" fill="currentColor" style="color:#e9b44c"><path d="M1.8 4.2A1.2 1.2 0 0 1 3 3h3.1l1.3 1.6H13a1.2 1.2 0 0 1 1.2 1.2v5.4A1.2 1.2 0 0 1 13 12.4H3a1.2 1.2 0 0 1-1.2-1.2z"/></svg><span class="nm">binaries</span></div>
+                                    <div class="ar-name"><svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6.5 4 10.5 8l-4 4"/></svg><svg viewBox="0 0 16 16" fill="currentColor" style="color:var(--folder-fg)"><path d="M1.8 4.2A1.2 1.2 0 0 1 3 3h3.1l1.3 1.6H13a1.2 1.2 0 0 1 1.2 1.2v5.4A1.2 1.2 0 0 1 13 12.4H3a1.2 1.2 0 0 1-1.2-1.2z"/></svg><span class="nm">binaries</span></div>
                                     <span class="sz">—</span><span class="tm">2026-11-02 09:14</span>
                                 </div>
                                 <div class="ar-row">
@@ -1455,7 +1516,7 @@ html[data-theme='dark'] .na-card { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
                                 </div>
 
                                 <div class="ar-row dir open">
-                                    <div class="ar-name"><svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6.5 4 10.5 8l-4 4"/></svg><svg viewBox="0 0 16 16" fill="currentColor" style="color:#e9b44c"><path d="M1.8 4.2A1.2 1.2 0 0 1 3 3h3.1l1.3 1.6H13a1.2 1.2 0 0 1 1.2 1.2v5.4A1.2 1.2 0 0 1 13 12.4H3a1.2 1.2 0 0 1-1.2-1.2z"/></svg><span class="nm">resources</span></div>
+                                    <div class="ar-name"><svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6.5 4 10.5 8l-4 4"/></svg><svg viewBox="0 0 16 16" fill="currentColor" style="color:var(--folder-fg)"><path d="M1.8 4.2A1.2 1.2 0 0 1 3 3h3.1l1.3 1.6H13a1.2 1.2 0 0 1 1.2 1.2v5.4A1.2 1.2 0 0 1 13 12.4H3a1.2 1.2 0 0 1-1.2-1.2z"/></svg><span class="nm">resources</span></div>
                                     <span class="sz">—</span><span class="tm">2026-11-02 09:10</span>
                                 </div>
                                 <div class="ar-row">
@@ -1468,7 +1529,7 @@ html[data-theme='dark'] .na-card { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
                                 </div>
 
                                 <div class="ar-row dir">
-                                    <div class="ar-name"><svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6.5 4 10.5 8l-4 4"/></svg><svg viewBox="0 0 16 16" fill="currentColor" style="color:#e9b44c"><path d="M1.8 4.2A1.2 1.2 0 0 1 3 3h3.1l1.3 1.6H13a1.2 1.2 0 0 1 1.2 1.2v5.4A1.2 1.2 0 0 1 13 12.4H3a1.2 1.2 0 0 1-1.2-1.2z"/></svg><span class="nm">docs</span></div>
+                                    <div class="ar-name"><svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6.5 4 10.5 8l-4 4"/></svg><svg viewBox="0 0 16 16" fill="currentColor" style="color:var(--folder-fg)"><path d="M1.8 4.2A1.2 1.2 0 0 1 3 3h3.1l1.3 1.6H13a1.2 1.2 0 0 1 1.2 1.2v5.4A1.2 1.2 0 0 1 13 12.4H3a1.2 1.2 0 0 1-1.2-1.2z"/></svg><span class="nm">docs</span></div>
                                     <span class="sz">—</span><span class="tm">2026-11-01 15:48</span>
                                 </div>
                                 <div class="ar-row">
@@ -1640,14 +1701,10 @@ html[data-theme='dark'] .na-card { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
                         <div class="na-body">
                             <div class="na-card">
                                 <div class="na-icon">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" width="24" height="24"><path d="M5 3.5h8l5.5 5.5v11.5H5z"/><path d="M13 3.5V9h5.5"/><path d="M8.5 17h7" stroke-dasharray="1 2"/></svg>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" width="48" height="48"><path d="M6 2.5h7.5L19 8v13.5H6z"/><path d="M13.5 2.5V8H19"/><text x="12.5" y="18.2" font-size="7.5" font-family="inherit" text-anchor="middle" fill="currentColor" stroke="none">?</text></svg>
                                 </div>
                                 <h4>暂不支持预览</h4>
-                                <p class="desc">QuickLook 暂未支持 .db 格式。<br />可使用默认程序打开该文件。</p>
-                                <div class="na-acts">
-                                    <button class="btn primary"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M9 3h4v4"/><path d="M13 3 7.5 8.5"/><path d="M12 10.5V12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h1.5"/></svg>用默认程序打开</button>
-                                    <button class="btn ghost"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1.8 4.2A1.2 1.2 0 0 1 3 3h3.1l1.3 1.6H13a1.2 1.2 0 0 1 1.2 1.2v5.4A1.2 1.2 0 0 1 13 12.4H3a1.2 1.2 0 0 1-1.2-1.2z"/></svg>打开所在文件夹</button>
-                                </div>
+                                <p class="desc">.db · 26.8 MB</p>
                             </div>
                         </div>
                     </div>
@@ -1681,9 +1738,10 @@ html[data-theme='dark'] .na-card { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
             name: 'Markdown',
             meta: '1000 × 600 · 目录 220px · 正文 760px',
             spec: [
-                ['目录', '仅 h2/h3，滚动同步高亮，覆盖式不挤压正文'],
+                ['目录', 'h1–h3 三级，滚动同步高亮；挤压式占 220px，正文在剩余区域居中'],
                 ['源码切换', '共用滚动位置'],
                 ['代码块', '语言标签 + hover 显示复制'],
+                ['右区', '字数统计，其后为复制全文'],
                 ['长文', '超过 8 万字分块渲染'],
             ],
         },
@@ -1701,9 +1759,11 @@ html[data-theme='dark'] .na-card { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
             name: '文档 · PDF',
             meta: '1000 × 600 · 页面 620px · 页间距 12px',
             spec: [
-                ['页码', '‹ 3 / 128 ›，右区实时同步'],
+                ['顺序', '与 Markdown 一致：目录 → 适应宽度/旋转 → 缩放；右区只放页码'],
+                ['页码', '‹ 3 / 128 ›，右区实时同步，点击数字可跳转'],
                 ['缩放', '100% 即适应宽度，>150% 转横向滚动'],
-                ['目录', '复用 220px 抽屉，层级来自后端 outline'],
+                ['目录', '复用 220px 抽屉，h1–h3 来自后端 outline；PDF 用挤压式避免遮住页面'],
+                ['搜索', '待后端文本抽取与坐标映射，暂不呈现'],
                 ['同族', 'DOCX / Excel 共用同一条命令栏，按钮按类型显隐'],
             ],
         },
@@ -1712,9 +1772,10 @@ html[data-theme='dark'] .na-card { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
             meta: '1000 × 600 · 目录 240px · 正文 680px',
             spec: [
                 ['去重', '删除自带 toolbar 的标题与字号，迁入统一命令栏'],
-                ['字号', '14–24px 六档，独立记忆'],
-                ['底色', '浅 / 米黄 / 深，仅作用于阅读区'],
-                ['进度', '内容底部 3px 横条 + 右区百分比'],
+                ['顺序', '目录 → 字号 → 底色，右区只放阅读进度'],
+                ['字号', '14–24px 六档，默认 16，记忆到 config.data'],
+                ['底色', '白纸 / 米黄 / 深色三档色板，仅作用于阅读区，默认跟随主题'],
+                ['进度', '内容底部 3px 横条 + 右区章节与百分比（按 spine 计）'],
             ],
         },
         archive: {
@@ -1749,11 +1810,11 @@ html[data-theme='dark'] .na-card { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
         },
         na: {
             name: '不支持',
-            meta: '1000 × 600 · 空态卡片 380px',
+            meta: '1000 × 600 · 空态卡片 420px',
             spec: [
-                ['结构', '图标 48 + 标题 + 原因 + 主次按钮'],
-                ['主按钮', '用默认程序打开，使用 --btn-primary-*'],
-                ['次按钮', '打开所在文件夹'],
+                ['结构', '图标 48 + 标题 + 副标题（扩展名 · 体积）'],
+                ['无按钮', '打开文件 / 打开所在文件夹在标题行已有入口，卡片里重复摆放没有意义'],
+                ['无命令栏', '不留空栏'],
                 ['元信息', '迁入标题行胶囊，不再单独占一条状态栏'],
             ],
         },

@@ -1,0 +1,148 @@
+/* ==== PDF 预览的命令栏控件与目录抽屉 ====
+   从 document.vue 的 scoped 样式抽出，与 md-doc.scss 同一模式：
+   1. 类名统一带 pdf- 前缀，作为全局样式不会与其它预览类型冲突；
+   2. 规格与 Markdown 抽屉保持一致（220px、94% 底 + blur、右缘发丝线）；
+   3. 颜色只用 --color-* / --font-* / --radius-* 变量，不新增硬编码色值。 */
+
+/* ---------- 页码输入框：--control-sm 数值胶囊内的可编辑数字 ---------- */
+.pdf-tb-page {
+    display: inline-flex;
+    align-items: center;
+    flex: none;
+    height: var(--control-sm);
+    padding: 0 4px;
+    border-radius: var(--radius-sm);
+    background: var(--color-chip-bg);
+    border: 1px solid transparent;
+    transition: border-color var(--transition-fast);
+}
+
+.pdf-tb-page:focus-within {
+    border-color: var(--color-brand-fg);
+}
+
+.pdf-tb-page-input {
+    width: 34px;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: var(--color-text-primary);
+    font-family: inherit;
+    font-size: var(--font-xs);
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+}
+
+.pdf-tb-total {
+    margin-left: -2px;
+    margin-right: 2px;
+    font-size: var(--font-xs);
+}
+
+/* ---------- 目录抽屉 ----------
+   PDF 页面是「适应宽度」铺满的位图，覆盖式抽屉会直接把左侧正文挡住，
+   因此这里改为挤压式：抽屉占列宽，画布变窄后由 ResizeObserver 重算适应宽度。 */
+.pdf-toc {
+    position: relative;
+    flex: none;
+    width: 220px;
+    height: 100%;
+    padding: 6px 8px 16px 10px;
+    box-sizing: border-box;
+    background: color-mix(in srgb, var(--color-bg) 94%, transparent);
+    backdrop-filter: blur(14px);
+    border-right: 1px solid var(--color-divider);
+    box-shadow: 8px 0 18px -10px rgba(0, 0, 0, 0.22);
+}
+
+.pdf-toc-empty {
+    margin: 8px 0 0;
+    padding: 0 8px;
+    font-size: var(--font-xs);
+    color: var(--color-text-tertiary);
+}
+
+.pdf-toc-item {
+    display: block;
+    padding: 4px 8px;
+    margin-bottom: 1px;
+    border-radius: var(--radius-sm);
+    border-left: 2px solid transparent;
+    font-size: var(--font-xs);
+    line-height: var(--line-xs);
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition:
+        background-color var(--transition-fast),
+        color var(--transition-fast);
+}
+
+.pdf-toc-item:hover {
+    background: var(--elevation-hover);
+    color: var(--color-text-primary);
+}
+
+.pdf-toc-item.is-lv2 {
+    padding-left: 20px;
+}
+
+.pdf-toc-item.is-lv3 {
+    padding-left: 32px;
+    font-size: var(--font-xs);
+    color: var(--color-text-tertiary);
+}
+
+.pdf-toc-item.is-active {
+    color: var(--color-text-primary);
+    background: var(--color-selected-bg);
+    border-left-color: var(--color-brand-fg);
+    font-weight: 600;
+}
+
+/* ---------- 统一错态 ---------- */
+.pdf-state {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    padding: var(--space-5);
+    text-align: center;
+}
+
+.pdf-state-title {
+    font-size: var(--font-lg);
+    font-weight: 600;
+    color: var(--color-danger-fg);
+}
+
+.pdf-state-detail {
+    max-width: 460px;
+    font-size: var(--font-sm);
+    color: var(--color-text-secondary);
+    word-break: break-word;
+}
+
+.pdf-state-btn {
+    margin-top: var(--space-2);
+    height: var(--control-md);
+    padding: 0 14px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-text);
+    font-family: inherit;
+    font-size: var(--font-sm);
+    cursor: pointer;
+}
+
+.pdf-state-btn:hover {
+    background: var(--btn-primary-hover-bg);
+}

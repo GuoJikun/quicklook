@@ -228,7 +228,7 @@ const activeSheet = computed({
     }
     :deep(.handsontable .wtHolder::-webkit-scrollbar-thumb) {
         background-color: var(--ht-scrollbar-thumb-color);
-        border-radius: 4px;
+        border-radius: var(--radius-sm);
     }
 }
 </style>

@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "upgrade",
+  "description": "更新窗口：挂载前要读 config.data 里的 locale，否则界面语言与标题栏不一致",
+  "windows": ["upgrade"],
+  "local": true,
+  "permissions": [
+    "store:allow-load",
+    "store:allow-get"
+  ]
+}

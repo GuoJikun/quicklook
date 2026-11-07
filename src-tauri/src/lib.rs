@@ -16,11 +16,12 @@ use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_store::StoreExt;
 
 use commands::{
-    archive, archive_is_password_protected, cancel_video_conversion, check_ffmpeg, clear_cache,
-    clear_image_cache, clear_pdf_cache, convert_to_png, convert_video_to_hls, document,
-    get_default_program_name, get_epub_chapter, get_epub_info, get_pdf_outline, get_pdf_page_sizes,
-    parse_lrc, prepare_video_for_preview, read_audio_info, render_pdf_page, resolve_epub_link,
-    set_locale, set_log_level, show_open_with_dialog,
+    UpgradeState, archive, archive_is_password_protected, cancel_video_conversion, check_ffmpeg,
+    clear_cache, clear_image_cache, clear_pdf_cache, convert_to_png, convert_video_to_hls,
+    document, get_default_program_name, get_epub_chapter, get_epub_info, get_pdf_outline,
+    get_pdf_page_sizes, open_upgrade, parse_lrc, prepare_video_for_preview, read_audio_info,
+    render_pdf_page, resolve_epub_link, set_locale, set_log_level, show_open_with_dialog,
+    upgrade_cancel_download, upgrade_download_and_install,
 };
 
 /// 解析随包分发的 ffmpeg / ffprobe 路径。
@@ -51,7 +52,8 @@ fn resolve_bundled_binaries() -> Option<(PathBuf, Option<PathBuf>)> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let mut builder = tauri::Builder::default();
+    // 升级下载的中止信号挂在这个状态上：取消按钮与关闭升级窗口都通过它生效
+    let mut builder = tauri::Builder::default().manage(UpgradeState::default());
 
     // 注册插件
     builder = builder
@@ -173,6 +175,7 @@ pub fn run() {
             archive_is_password_protected,
             document,
             get_default_program_name,
+            open_upgrade,
             set_log_level,
             set_locale,
             convert_to_png,
@@ -191,7 +194,20 @@ pub fn run() {
             get_epub_info,
             get_epub_chapter,
             resolve_epub_link,
+            upgrade_download_and_install,
+            upgrade_cancel_download,
         ])
+        .on_window_event(|window, event| {
+            // 关掉升级窗口等同于取消下载：否则下载会在后台继续，下完还会自动安装并重启应用
+            if window.label() == "upgrade"
+                && matches!(
+                    event,
+                    tauri::WindowEvent::CloseRequested { .. } | tauri::WindowEvent::Destroyed
+                )
+            {
+                window.state::<UpgradeState>().cancel_download();
+            }
+        })
         .build(tauri::generate_context!())
         .expect("error while running tauri application");
 

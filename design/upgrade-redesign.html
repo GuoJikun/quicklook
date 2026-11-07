@@ -1,0 +1,730 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>QuickLook · 更新窗口 Fluent 重设计</title>
+<script>
+    (() => {
+        const q = new URLSearchParams(location.search).get('theme')
+        if (q === 'dark' || q === 'light') document.documentElement.dataset.theme = q
+    })()
+</script>
+<style>
+/* ============================================================
+   Design tokens —— 与 src/assets/var.css、settings-redesign.html 对齐
+   本文件只做设计演示，颜色一律来自变量，不引入硬编码色值
+   ============================================================ */
+:root {
+    --bg: #f3f3f3;
+    --surface: #ffffff;
+    --text: #1a1a1a;
+    --text-2: #555555;
+    --text-3: #616161;          /* NeutralForeground3 */
+    --disabled: #999999;
+    --border: #e1e1e1;          /* NeutralStroke2：容器边界 */
+    --stroke-control: #d1d1d1;  /* NeutralStroke1：标准按钮描边 */
+    --accent: #0078d4;          /* BrandBackground：仅作实心底 */
+    --accent-fg: #0f6cbd;       /* BrandForeground1：文字/图标/描边 */
+    --danger-fg: #a80000;
+    --success-fg: #0e700e;
+    --accent-soft: rgba(15, 108, 189, 0.10);
+    --hover: rgba(0, 0, 0, 0.08);
+    --pressed: rgba(0, 0, 0, 0.12);
+    --chip-bg: rgba(0, 0, 0, 0.05);
+    --divider: rgba(0, 0, 0, 0.07);
+    --btn-primary-bg: #0078d4;
+    --btn-primary-hover: #106ebe;
+    --btn-primary-active: #005a9e;
+    --btn-primary-text: #ffffff;
+    --btn-primary-disabled-bg: #cce4f7;
+    --btn-primary-disabled-text: #7a7a7a;
+    --stage: #e9edf2;
+    --shadow-win: 0 2px 4px rgba(0, 0, 0, 0.08), 0 18px 44px rgba(0, 0, 0, 0.16);
+    --radius-xs: 2px;
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 10px;
+    --radius-xl: 12px;
+    --radius-pill: 999px;
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+    --font-2xs: 10px;
+    --font-xs: 12px;
+    --font-sm: 14px;
+    --font-lg: 16px;
+    --font-2xl: 20px;
+    /* 行高按字号档位绑定绝对值（fluent-baseline.md §3.3） */
+    --line-2xs: 14px;
+    --line-xs: 16px;
+    --line-sm: 20px;
+    --line-md: 20px;
+    --line-lg: 22px;
+    --line-xl: 22px;
+    --line-2xl: 28px;
+    --line-3xl: 32px;
+    --line-4xl: 40px;
+    --line-reading: 1.75;
+    --line-code: 1.5;
+    --line-loose: 1.7;
+    /* 控件/徽章/图标阶梯 */
+    --control-sm: 24px;
+    --control-md: 32px;
+    --control-lg: 40px;
+    --icon-xs: 12px;
+    --icon-sm: 16px;
+    --icon-md: 20px;
+    --icon-lg: 24px;
+    --icon-xl: 32px;
+    --badge-h: 22px;
+    --t-fast: 0.15s ease;
+    --t-med: 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+html[data-theme='dark'] {
+    --bg: #1c1c1c;
+    --surface: #2b2b2b;
+    --text: #ffffff;
+    --text-2: #cccccc;
+    --text-3: #adadad;
+    --disabled: #777777;
+    --border: #3a3a3a;
+    --stroke-control: #666666;
+    --accent: #0078d4;
+    --accent-fg: #479ef5;
+    --danger-fg: #ff99a4;
+    --success-fg: #54b054;
+    --accent-soft: rgba(71, 158, 245, 0.14);
+    --hover: rgba(255, 255, 255, 0.05);
+    --pressed: rgba(255, 255, 255, 0.09);
+    --chip-bg: rgba(255, 255, 255, 0.06);
+    --divider: rgba(255, 255, 255, 0.08);
+    --btn-primary-bg: #0078d4;
+    --btn-primary-hover: #106ebe;
+    --btn-primary-active: #005a9e;
+    --btn-primary-text: #ffffff;
+    --btn-primary-disabled-bg: #333333;
+    --btn-primary-disabled-text: #555555;
+    --stage: #111111;
+    --shadow-win: 0 2px 8px rgba(0, 0, 0, 0.45), 0 18px 44px rgba(0, 0, 0, 0.5);
+}
+
+* { box-sizing: border-box; }
+
+:focus-visible {
+    outline: 2px solid var(--accent-fg);
+    outline-offset: 1px;
+    box-shadow: 0 0 0 1px var(--bg);
+}
+
+body {
+    margin: 0;
+    background: var(--stage);
+    color: var(--text);
+    font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    transition: background var(--t-med), color var(--t-med);
+}
+
+/* ---------- 原型外壳 ---------- */
+.topbar {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; align-items: baseline; gap: 16px;
+    padding: 18px 32px 14px;
+    background: color-mix(in srgb, var(--stage) 88%, transparent);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+.topbar h1 { margin: 0; font-size: 14px; font-weight: 600; }
+.topbar .sub { margin: 0; font-size: 12px; color: var(--text-3); }
+.topbar .spacer { margin-left: auto; }
+.theme-btn {
+    appearance: none; border: 1px solid var(--stroke-control); background: transparent;
+    color: var(--text); font: inherit; font-size: 12px; height: 32px; padding: 0 12px;
+    border-radius: var(--radius-sm); cursor: pointer;
+}
+.theme-btn:hover { background: var(--hover); }
+
+.stage {
+    display: grid;
+    grid-template-columns: repeat(2, 700px);
+    gap: 28px 32px;
+    padding: 8px 32px 64px;
+    justify-content: center;
+}
+
+.case { display: flex; flex-direction: column; gap: 10px; }
+.case-cap { display: flex; align-items: baseline; gap: 10px; }
+.case-cap .idx {
+    font-size: 10px; font-weight: 600; color: var(--text-3);
+    font-variant-numeric: tabular-nums; letter-spacing: 0.04em;
+}
+.case-cap .name { font-size: 14px; font-weight: 600; }
+.case-cap .note { font-size: 12px; color: var(--text-3); }
+
+/* ---------- 窗口外壳（700×600，含自绘 44px 标题栏） ---------- */
+.win {
+    width: 700px;
+    height: 600px;
+    /* 对话框形态：客户区整块 surface；标题栏自绘，见 .wtb */
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-win);
+    overflow: hidden;
+    transition: background var(--t-med);
+}
+
+/* ---------- 整窗 surface：三段直接铺开 ---------- */
+.uq-page {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    color: var(--text);
+    font-family: inherit;
+    overflow: hidden;
+}
+
+/* 自绘标题栏 44：与设置、预览窗口同规格。它住在 webview 里，明暗随 html.dark，
+   「应用内深色 + 系统浅色」不会再出现深页面配浅标题栏 */
+.wtb {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 44px;
+    padding: 0 6px 0 24px;
+}
+/* 对话框的标题就住在这条里：16/600 主色，左缩进与内容区同为 24 —— 同一条左基准线。
+   不再「空标题栏 + 下面再排一个大标题」，顶部只留一条。 */
+.wtb-title {
+    margin-right: auto;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 22px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.wtb-btn {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-2);
+    cursor: default;
+}
+.wtb-btn svg { width: 16px; height: 16px; }
+.wtb-btn:hover { background: var(--hover); color: var(--text); }
+
+/* 原型保留这一层以对应 SFC 里的 section，视觉上无样式 */
+.uq-card {
+    flex: 1; min-width: 0; min-height: 0;
+    display: flex; flex-direction: column;
+    background: transparent;
+    border: 0;
+    overflow: hidden;
+}
+
+/* ---------- 内容区 ---------- */
+.uq-main {
+    flex: 1; min-height: 0;
+    display: flex; flex-direction: column; gap: var(--space-4);
+    padding: var(--space-5) var(--space-5) var(--space-5);
+    overflow-y: auto;
+}
+
+/* 无内容的三态（检查中 / 已是最新 / 检查失败）整块居中：图标、标题、说明逐段水平居中，
+   整块在内容区垂直居中。这三种状态总共只有一到两行字，若贴左上，右侧与下方会各留一大片空白，
+   画面重心整个塌向一角；居中之后「这一屏只有一个结论」才读得出来 */
+.uq-status {
+    flex: 1; min-height: 0;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: var(--space-2);
+    text-align: center;
+}
+.uq-status-icon { flex: none; width: 32px; height: 32px; }
+.uq-status-icon.is-danger { color: var(--danger-fg); }
+.uq-status-icon.is-success { color: var(--success-fg); }
+.uq-status-title {
+    margin: var(--space-1) 0 0; font-size: var(--font-lg); font-weight: 600;
+    line-height: var(--line-lg); color: var(--text);
+}
+.uq-status-desc {
+    margin: 0;
+    /* 居中不等于拉通栏：失败态的错误详情常是 URL + 堆栈，
+       一行铺满 592px 读起来要来回甩头，限宽后居中折行 */
+    max-width: min(100%, 420px);
+    font-size: var(--font-sm); line-height: var(--line-sm); color: var(--text-2);
+    overflow-wrap: anywhere;
+}
+
+/* ---------- 版本信息 ---------- */
+/* 标签列 max-content：列宽由最长标签撑开，中英文都不折行且跨行对齐 */
+.uq-meta {
+    flex: none; display: grid; grid-template-columns: max-content 1fr;
+    align-items: baseline; column-gap: var(--space-3); row-gap: var(--space-1);
+    margin: 0;
+}
+.uq-meta-row { display: contents; }
+.uq-meta dt {
+    font-size: var(--font-sm); line-height: var(--line-sm); color: var(--text-2);
+    white-space: nowrap;
+}
+.uq-meta dd { margin: 0; font-size: var(--font-sm); line-height: var(--line-sm); color: var(--text); }
+.uq-meta dd.is-version {
+    font-size: var(--font-lg); font-weight: 600; line-height: var(--line-lg);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 更新说明 ---------- */
+.uq-notes {
+    flex: 0 1 auto; min-height: 0;
+    display: flex; flex-direction: column;
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--divider);
+}
+.uq-notes-body { min-height: 0; padding-right: var(--space-2); }
+
+/* 更新内容的正文排版：等价于 md-viewer 输出 */
+.notes-doc { font-size: var(--font-sm); line-height: var(--line-sm); color: var(--text); }
+.notes-doc p { margin: var(--space-1) 0; }
+.notes-doc h3 {
+    margin: var(--space-3) 0 var(--space-1);
+    font-size: var(--font-sm); font-weight: 600; line-height: var(--line-sm); color: var(--text);
+}
+.notes-doc > :first-child { margin-top: 0; }
+.notes-doc p:last-child { margin-bottom: 0; }
+.notes-doc strong { color: var(--text); font-weight: 600; }
+.notes-doc ul { margin: var(--space-1) 0; padding-left: 18px; }
+.notes-doc ul:last-child { margin-bottom: 0; }
+.notes-doc li + li { margin-top: 2px; }
+.notes-doc li::marker { color: var(--text-3); }
+.notes-doc code {
+    font-family: 'Cascadia Code', 'Cascadia Mono', Consolas, monospace;
+    font-size: var(--font-xs);
+    padding: 1px 4px;
+    border-radius: var(--radius-xs);
+    background: var(--chip-bg);
+    color: var(--text);
+}
+
+/* ---------- 下载进度 ---------- */
+.uq-progress {
+    flex: none; display: flex; flex-direction: column; gap: var(--space-2);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--divider);
+    margin-top: auto;
+}
+.uq-progress-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: var(--space-3); font-size: var(--font-sm); line-height: var(--line-sm);
+}
+.uq-progress-label { font-weight: 600; color: var(--text); }
+.uq-progress-pct { flex: none; font-size: var(--font-xs); color: var(--text-2); font-variant-numeric: tabular-nums; }
+.uq-progress-track {
+    height: 4px; border-radius: var(--radius-xs);
+    background: var(--chip-bg); overflow: hidden;
+}
+.uq-progress-bar { height: 100%; border-radius: var(--radius-xs); background: var(--accent); }
+.uq-progress-bar.is-done { background: var(--success-fg); }
+.uq-progress-meta { font-size: var(--font-xs); line-height: var(--line-xs); color: var(--text-3); font-variant-numeric: tabular-nums; }
+
+/* ---------- 页脚 ---------- */
+.uq-foot {
+    flex: none; display: flex; justify-content: flex-end; gap: var(--space-2);
+    padding: var(--space-3) var(--space-5);
+    border-top: 1px solid var(--divider);
+}
+.uq-btn {
+    appearance: none; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: var(--space-2);
+    height: 32px; padding: 0 var(--space-4);
+    border: 1px solid var(--stroke-control);
+    border-radius: var(--radius-sm);
+    background: transparent; color: var(--text);
+    font-family: inherit; font-size: var(--font-sm); font-weight: 600; line-height: 1;
+    cursor: pointer;
+    transition: background-color var(--t-fast), border-color var(--t-fast), color var(--t-fast);
+}
+.uq-btn:hover { background: var(--hover); border-color: var(--text-3); }
+.uq-btn:active { background: var(--pressed); }
+.uq-btn svg { width: 16px; height: 16px; flex: none; }
+.uq-btn.is-primary {
+    border-color: transparent;
+    background: var(--btn-primary-bg); color: var(--btn-primary-text);
+}
+.uq-btn.is-primary:hover { background: var(--btn-primary-hover); border-color: transparent; }
+.uq-btn.is-primary:active { background: var(--btn-primary-active); }
+.uq-btn:disabled {
+    cursor: default;
+    border-color: var(--border); background: var(--chip-bg); color: var(--disabled);
+}
+.uq-btn.is-primary:disabled {
+    border-color: transparent;
+    background: var(--btn-primary-disabled-bg); color: var(--btn-primary-disabled-text);
+}
+
+/* ---------- 进度环 ---------- */
+.uq-ring {
+    flex: none; width: 20px; height: 20px;
+    border: 2px solid color-mix(in srgb, var(--accent-fg) 30%, transparent);
+    border-top-color: var(--accent-fg);
+    border-radius: 50%;
+    animation: uq-spin 0.9s linear infinite;
+}
+@keyframes uq-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+    .uq-ring { animation-duration: 2.4s; }
+}
+
+/* ---------- 规格标注 ---------- */
+.spec {
+    grid-column: 1 / -1;
+    display: flex; flex-wrap: wrap; gap: 6px 20px;
+    font-size: 12px; color: var(--text-2); line-height: var(--line-xs);
+    border-top: 1px solid var(--divider); padding-top: 14px;
+}
+.spec .k { display: inline-flex; gap: 6px; align-items: baseline; }
+.spec .k b { color: var(--text-3); font-weight: 600; white-space: nowrap; }
+.spec .k b::after { content: ' ·'; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+    <h1>更新窗口 · Fluent 2 重设计</h1>
+    <p class="sub">700×600 · 自绘标题栏 44px，明暗随应用主题</p>
+    <span class="spacer"></span>
+    <button class="theme-btn" id="themeBtn" type="button">切换主题（D）</button>
+</div>
+
+<div class="stage">
+
+    <!-- 1 ---------- 检查中 ---------- -->
+    <div class="case">
+        <div class="case-cap">
+            <span class="idx">01</span>
+            <span class="name">检查中</span>
+            <span class="note">内联进度环，整块居中，不遮罩整页</span>
+        </div>
+        <div class="win">
+            <div class="wtb">
+                <span class="wtb-title">软件更新</span>
+                <button class="wtb-btn" type="button" title="关闭">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+                </button>
+            </div>
+            <div class="uq-page">
+                <section class="uq-card" aria-busy="true">
+                    <div class="uq-main">
+                        <div class="uq-status" role="status">
+                            <span class="uq-ring" aria-hidden="true"></span>
+                            <p class="uq-status-desc">正在检查更新…</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2 ---------- 已是最新 ---------- -->
+    <div class="case">
+        <div class="case-cap">
+            <span class="idx">02</span>
+            <span class="name">已是最新</span>
+            <span class="note">整块居中，状态色只染图标</span>
+        </div>
+        <div class="win">
+            <div class="wtb">
+                <span class="wtb-title">软件更新</span>
+                <button class="wtb-btn" type="button" title="关闭">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+                </button>
+            </div>
+            <div class="uq-page">
+                <section class="uq-card">
+                    <div class="uq-main">
+                        <div class="uq-status">
+                            <svg class="uq-status-icon is-success" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true">
+                                <path d="M16 2a14 14 0 1 0 0 28 14 14 0 0 0 0-28Zm0 1.5a12.5 12.5 0 1 1 0 25 12.5 12.5 0 0 1 0-25Zm6.2 7.4a.75.75 0 0 1 .06 1.06l-7.3 8.32a.75.75 0 0 1-1.1.02l-3.36-3.36a.75.75 0 1 1 1.06-1.06l2.8 2.8 6.78-7.72a.75.75 0 0 1 1.06-.06Z" />
+                            </svg>
+                            <p class="uq-status-title">当前已经是最新版本</p>
+                            <p class="uq-status-desc">v1.0.0</p>
+                        </div>
+                    </div>
+                    <footer class="uq-foot">
+                        <button class="uq-btn" type="button">再次检查</button>
+                    </footer>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3 ---------- 检查失败 ---------- -->
+    <div class="case">
+        <div class="case-cap">
+            <span class="idx">03</span>
+            <span class="name">检查失败</span>
+            <span class="note">整块居中，错误详情限宽 420px 折行</span>
+        </div>
+        <div class="win">
+            <div class="wtb">
+                <span class="wtb-title">软件更新</span>
+                <button class="wtb-btn" type="button" title="关闭">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+                </button>
+            </div>
+            <div class="uq-page">
+                <section class="uq-card">
+                    <div class="uq-main">
+                        <div class="uq-status">
+                            <svg class="uq-status-icon is-danger" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true">
+                                <path d="M16 2a14 14 0 1 0 0 28 14 14 0 0 0 0-28Zm0 1.5a12.5 12.5 0 1 1 0 25 12.5 12.5 0 0 1 0-25ZM16 8a.75.75 0 0 1 .75.75v8.5a.75.75 0 0 1-1.5 0v-8.5A.75.75 0 0 1 16 8Zm0 14.5a1.15 1.15 0 1 1 0-2.3 1.15 1.15 0 0 1 0 2.3Z" />
+                            </svg>
+                            <p class="uq-status-title">检查更新失败</p>
+                            <p class="uq-status-desc">failed to fetch release metadata: error sending request for url (https://api.github.com/repos/…/releases/latest): connection timed out after 30000ms</p>
+                        </div>
+                    </div>
+                    <footer class="uq-foot">
+                        <button class="uq-btn is-primary" type="button">重试</button>
+                    </footer>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4 ---------- 有更新 ---------- -->
+    <div class="case">
+        <div class="case-cap">
+            <span class="idx">04</span>
+            <span class="name">有可用更新</span>
+            <span class="note">键值表 + 发丝线分区</span>
+        </div>
+        <div class="win">
+            <div class="wtb">
+                <span class="wtb-title">软件更新</span>
+                <button class="wtb-btn" type="button" title="关闭">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+                </button>
+            </div>
+            <div class="uq-page">
+                <section class="uq-card">
+                    <div class="uq-main">
+                        <dl class="uq-meta">
+                            <div class="uq-meta-row">
+                                <dt>当前版本</dt>
+                                <dd>v1.0.0</dd>
+                            </div>
+                            <div class="uq-meta-row">
+                                <dt>最新版本</dt>
+                                <dd class="is-version">v1.4.0</dd>
+                            </div>
+                            <div class="uq-meta-row">
+                                <dt>发布日期</dt>
+                                <dd>2026年11月6日 09:30</dd>
+                            </div>
+                        </dl>
+                        <div class="uq-notes">
+                            <div class="uq-notes-body">
+                                <div class="notes-doc">
+                                    <h3>新增</h3>
+                                    <ul>
+                                        <li>PDF 预览支持连续滚动，跨页拖选不再中断</li>
+                                        <li>音频视图新增歌词偏移微调（<code>←</code> / <code>→</code>）</li>
+                                        <li>压缩包内可直接预览 20 余种文本格式</li>
+                                    </ul>
+                                    <h3>修复</h3>
+                                    <ul>
+                                        <li>深色模式下命令栏元信息的对比度不足</li>
+                                        <li>超过 2 GB 的文件加载时进度条不更新</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <footer class="uq-foot">
+                        <button class="uq-btn" type="button">
+<span>重新检查</span>
+                        </button>
+                        <button class="uq-btn is-primary" type="button">
+<span>立即更新</span>
+                        </button>
+                    </footer>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5 ---------- 下载中 ---------- -->
+    <div class="case">
+        <div class="case-cap">
+            <span class="idx">05</span>
+            <span class="name">下载中</span>
+            <span class="note">4px 细条，无条纹动画</span>
+        </div>
+        <div class="win">
+            <div class="wtb">
+                <span class="wtb-title">软件更新</span>
+                <button class="wtb-btn" type="button" title="关闭">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+                </button>
+            </div>
+            <div class="uq-page">
+                <section class="uq-card">
+                    <div class="uq-main">
+                        <dl class="uq-meta">
+                            <div class="uq-meta-row">
+                                <dt>当前版本</dt>
+                                <dd>v1.0.0</dd>
+                            </div>
+                            <div class="uq-meta-row">
+                                <dt>最新版本</dt>
+                                <dd class="is-version">v1.4.0</dd>
+                            </div>
+                            <div class="uq-meta-row">
+                                <dt>发布日期</dt>
+                                <dd>2026年11月6日 09:30</dd>
+                            </div>
+                        </dl>
+                        <div class="uq-notes">
+                            <div class="uq-notes-body">
+                                <div class="notes-doc">
+                                    <h3>新增</h3>
+                                    <ul>
+                                        <li>PDF 预览支持连续滚动，跨页拖选不再中断</li>
+                                        <li>音频视图新增歌词偏移微调（<code>←</code> / <code>→</code>）</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="uq-progress">
+                            <div class="uq-progress-head">
+                                <span class="uq-progress-label">正在下载更新…</span>
+                                <span class="uq-progress-pct">42%</span>
+                            </div>
+                            <div class="uq-progress-track" role="progressbar" aria-valuenow="42" aria-valuemin="0" aria-valuemax="100">
+                                <div class="uq-progress-bar" style="width: 42%"></div>
+                            </div>
+                            <div class="uq-progress-meta">8.6 MB / 20.4 MB · 2.4 MB/s</div>
+                        </div>
+                    </div>
+                    <footer class="uq-foot">
+                        <button class="uq-btn" type="button">
+<span>取消下载</span>
+                        </button>
+                    </footer>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- 6 ---------- 下载完成 ---------- -->
+    <div class="case">
+        <div class="case-cap">
+            <span class="idx">06</span>
+            <span class="name">下载完成</span>
+            <span class="note">主按钮禁用态不换色系</span>
+        </div>
+        <div class="win">
+            <div class="wtb">
+                <span class="wtb-title">软件更新</span>
+                <button class="wtb-btn" type="button" title="关闭">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+                </button>
+            </div>
+            <div class="uq-page">
+                <section class="uq-card">
+                    <div class="uq-main">
+                        <dl class="uq-meta">
+                            <div class="uq-meta-row">
+                                <dt>当前版本</dt>
+                                <dd>v1.0.0</dd>
+                            </div>
+                            <div class="uq-meta-row">
+                                <dt>最新版本</dt>
+                                <dd class="is-version">v1.4.0</dd>
+                            </div>
+                            <div class="uq-meta-row">
+                                <dt>发布日期</dt>
+                                <dd>2026年11月6日 09:30</dd>
+                            </div>
+                        </dl>
+                        <div class="uq-notes">
+                            <div class="uq-notes-body">
+                                <div class="notes-doc">
+                                    <h3>新增</h3>
+                                    <ul>
+                                        <li>PDF 预览支持连续滚动，跨页拖选不再中断</li>
+                                        <li>音频视图新增歌词偏移微调（<code>←</code> / <code>→</code>）</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="uq-progress">
+                            <div class="uq-progress-head">
+                                <span class="uq-progress-label">下载完成</span>
+                                <span class="uq-progress-pct">100%</span>
+                            </div>
+                            <div class="uq-progress-track" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
+                                <div class="uq-progress-bar is-done" style="width: 100%"></div>
+                            </div>
+                            <div class="uq-progress-meta">20.4 MB / 20.4 MB</div>
+                        </div>
+                    </div>
+                    <footer class="uq-foot">
+                        <button class="uq-btn" type="button">
+<span>重新检查</span>
+                        </button>
+                        <button class="uq-btn is-primary" type="button" disabled>
+<span>下载完成</span>
+                        </button>
+                    </footer>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- 规格 -->
+    <div class="spec">
+        <span class="k"><b>结构</b>标题行 / 内容区 / 页脚共处一张 surface，发丝线分区，无嵌套卡片</span>
+        <span class="k"><b>标题</b>16/22 · 600，与窗口控制同处 44px 标题行</span>
+        <span class="k"><b>页脚</b>32px 标准按钮，主操作最右</span>
+        <span class="k"><b>进度</b>4px 轨道 · --color-accent · 完成态 --color-success-fg</span>
+        <span class="k"><b>状态图标</b>32 网格，成对同尺寸</span>
+        <span class="k"><b>状态块</b>无内容三态整块居中，说明限宽 420px</span>
+        <span class="k"><b>描边</b>NeutralStroke1 #d1d1d1 / #666666</span>
+    </div>
+
+</div>
+
+<script>
+    const html = document.documentElement
+    const btn = document.getElementById('themeBtn')
+    function setTheme(t) {
+        html.dataset.theme = t
+        btn.textContent = t === 'dark' ? '切换浅色（D）' : '切换深色（D）'
+    }
+    setTheme(new URLSearchParams(location.search).get('theme') === 'dark' ? 'dark' : 'light')
+    btn.addEventListener('click', () => setTheme(html.dataset.theme === 'dark' ? 'light' : 'dark'))
+    document.addEventListener('keydown', e => {
+        if (e.metaKey || e.ctrlKey || e.altKey) return
+        if (e.key.toLowerCase() === 'd') setTheme(html.dataset.theme === 'dark' ? 'light' : 'dark')
+    })
+</script>
+</body>
+</html>

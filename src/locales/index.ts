@@ -84,14 +84,20 @@ export async function loadStoredLocale(): Promise<LocaleCode> {
     try {
         const store = await getConfigStore()
         return normalizeLocale(await store.get<string>(LOCALE_STORAGE_KEY))
-    } catch {
+    } catch (e) {
+        // 读不到就退回中文，但必须留下痕迹：窗口漏掉 store 权限时
+        // （capabilities 里没登记该窗口）表现就是「界面语言和标题栏不一致」，
+        // 静默回退会让这类问题只能靠猜
+        console.warn('[i18n] failed to read stored locale, fallback to', DEFAULT_LOCALE, e)
         return DEFAULT_LOCALE
     }
 }
 
 /**
  * 启动时调用：读出语言并应用。
- * 在 store 不可用（例如纯浏览器环境）时静默退回默认语言。
+ * 每个 webview 各挂载一次 Vue，所以每个窗口都必须能读 store ——
+ * 窗口的 capability 里漏掉 `store:allow-load` / `store:allow-get` 时，
+ * 这里会退回默认语言，界面语言就与 Rust 画的标题栏对不上。
  */
 export async function initLocale(): Promise<LocaleCode> {
     const code = await loadStoredLocale()

@@ -19,7 +19,7 @@
 }
 
 html {
-    line-height: 1.4;
+    line-height: var(--line-reading);
     -webkit-text-size-adjust: 100%;
 }
 

@@ -1,6 +1,6 @@
 {
   "name": "quicklook",
-  "version": "0.26.1",
+  "version": "1.0.0",
   "description": "Windows 平台的文件预览工具",
   "private": true,
   "type": "module",
@@ -67,6 +67,7 @@
     "@vue/eslint-config-typescript": "^14.1.4",
     "@vue/test-utils": "^2.4.6",
     "@vue/tsconfig": "^0.7.0",
+    "@x18n/core": "^0.1.8",
     "eslint": "^9.16.0",
     "eslint-plugin-vue": "^9.32.0",
     "jsdom": "^25.0.1",
