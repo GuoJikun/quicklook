@@ -41,7 +41,7 @@ pub fn read_music_info<P: AsRef<Path>>(path: P) -> Option<MusicInfo> {
         artist,
         album,
         duration: Some(props.duration().as_secs()),
-        bitrate: props.audio_bitrate().map(|b| b / 1000), // 转换为 kbps
+        bitrate: props.audio_bitrate(), // lofty 已返回 kbps，无需换算
         cover,
     };
     log::info!("audio metadata: {:?}", music_info);
