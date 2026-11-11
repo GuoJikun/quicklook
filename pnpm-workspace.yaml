@@ -3,6 +3,10 @@ allowBuilds:
   core-js: true
   es5-ext: true
   esbuild: true
+minimumReleaseAgeExclude:
+  - '@tauri-apps/plugin-log@2.10.2'
+  - '@tauri-apps/plugin-opener@2.7.3'
+  - '@tauri-apps/plugin-store@2.5.1'
 onlyBuiltDependencies:
   - '@sentry/cli'
   - core-js

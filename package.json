@@ -22,10 +22,10 @@
     "@shikijs/markdown-it": "^4.3.1",
     "@tauri-apps/api": "2.12.4",
     "@tauri-apps/plugin-fs": "^2.7.1",
-    "@tauri-apps/plugin-log": "^2.10.1",
-    "@tauri-apps/plugin-opener": "^2.7.2",
+    "@tauri-apps/plugin-log": "^2.10.2",
+    "@tauri-apps/plugin-opener": "^2.7.3",
     "@tauri-apps/plugin-shell": "^2.6.0",
-    "@tauri-apps/plugin-store": "2.5.0",
+    "@tauri-apps/plugin-store": "2.5.1",
     "@tauri-apps/plugin-updater": "^2.14.1",
     "@vicons/fluent": "^0.13.0",
     "@vueuse/core": "^14.3.0",
@@ -80,9 +80,5 @@
     "vite": "^6.0.3",
     "vitest": "^2.1.8",
     "vue-tsc": "^2.2.0"
-  },
-  "volta": {
-    "node": "24.21.0",
-    "pnpm": "11.28.5"
   }
 }
